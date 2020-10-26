@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>uned_crazyflie_config</name>
+  <version>0.0.0</version>
+  <description>The uned_crazyflie_config package</description>
+
+  <maintainer email="fma527@ual.es">Francisco-Jose Manas Alvarez</maintainer>
+  <author>Francisco-Jose Manas Alvarez </author>
+  <license>BSD</license>
+ 
+  <buildtool_depend>catkin</buildtool_depend>
+
+ </package>
