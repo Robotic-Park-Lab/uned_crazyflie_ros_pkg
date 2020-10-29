@@ -15,8 +15,13 @@ Simulador Hardware-in-the-Loop del dron crazyflie 2.1 en ROS, Gazebo y Matlab
   
 ## Espacio de trabajo ##
 mkdir -p crazyflie_ws/src
+
 cd crazyflie/src
+
 git clone https://github.com/FranciscoJManasAlvarez/uned_crazyflie_ros_pkg
+
 cd ../..
+
 catkin build
+
 source devel/setup.bash
