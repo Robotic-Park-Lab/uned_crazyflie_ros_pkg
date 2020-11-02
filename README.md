@@ -96,4 +96,7 @@ Subscribed topics:
  * /crazyflie/battery [std_msgs/Float32] 1 subscriber
  * /crazyflie/rssi [std_msgs/Float32] 1 subscriber
 ```
-En ROS noetic, falla a los pocos segundos y no es capaz de lanzar el joy.
+En ROS noetic, falla a los pocos segundos y no es capaz de lanzar el joy. Se debe instalar el paquete de ros correspondiente.
+```
+sudo apt-get install ros-noetic-joystick-drivers
+```
