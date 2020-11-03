@@ -4,7 +4,6 @@
   <arg name="joy_dev" default="/dev/input/js2" />
   <arg name="uri" default="radio://0/80/2M" />
   
-  <group ns="inputs">
 
     <node name="joy" pkg="joy" type="joy_node" output="screen" >
       <param name="dev" value="$(arg joy_dev)" />
@@ -23,11 +22,9 @@
     	<param name="yaw_velocity_max" value="-200"/>
     </node>
 
-  </group>
   
   <group ns="crazyflie">
-    <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch">
-    </include>
+    <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch"> </include>
   </group>
   
   <group ns="graph_results">
