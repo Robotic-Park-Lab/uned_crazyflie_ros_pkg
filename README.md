@@ -14,17 +14,25 @@ Simulador Hardware-in-the-Loop del dron crazyflie 2.1 en ROS, Gazebo y Matlab
   ```
   lanzar:
   roslaunch rosbridge_server rosbridge_websocket.launch
-  
-  
+ 
+ - `sudo apt-get install ros-<rosdistro>-octomap`
+ - install xacro
 ## Espacio de trabajo ##
 ```
 mkdir -p crazyflie_ws/src
 cd crazyflie/src
 git clone https://github.com/FranciscoJManasAlvarez/uned_crazyflie_ros_pkg
+cd uned_crazyflie_ros_pkg
+git submodules init
+git submodules update
+cd ..
+git clone https://github.com/ethz-asl/mav_comm.git
 cd ../..
 catkin build
-source devel/setup.bash
+echo "source devel/setup.bash" >> ~/.bashrc
 ```
+mav_comm??
+
 
 ## Configurar los permisos udev
 ```
