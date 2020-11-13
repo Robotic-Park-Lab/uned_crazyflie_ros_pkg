@@ -11,9 +11,6 @@
   <arg name="gui" default="true"/>
   <arg name="csvFilesStoring" default="false"/>
   <arg name="csvFilesStoringTime" default="15.0"/> <!-- seconds -->
-  <arg name="user_account" default="giuseppe"/>
-  <!-- The following line causes gzmsg and gzerr messages to be printed to the console
-      (even when Gazebo is started through roslaunch) -->
   <arg name="verbose" default="false"/>
 
   <!-- The following lines simulate the world in Gazebo. The physic engine properties
@@ -39,5 +36,8 @@
       <arg name="log_file" value="$(arg log_file)"/>
     </include>
 
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+    
   </group>
 </launch>
