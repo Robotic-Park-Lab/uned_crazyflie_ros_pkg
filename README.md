@@ -26,6 +26,28 @@ La conexión común de todos los componentes de la red de ROS se realiza a trav�
   ```
   Para el lanzamiento del paquete, se emplea el comando `roslaunch rosbridge_server rosbridge_websocket.launch`
 
+
+##### Matlab
+- Matlab debe disponer del toolbox de ROS instalado. En este caso, se trabaja con la versión de Matlab 2020b.
+- Se deben configurar los parámetros _ROS_MASTER_URI_ y _ROS_HOSTNAME_ para que pueda conectarse a la red que se ejecute en el dispositivo principal (_ROS_MASTER_URI_) y sea identificado dentro de la red. Estas acciones se llevan a cabo en línea de comandos mediante las instrucciones:
+```
+setenv('ROS_MASTER_URI','http://192.168.1.xx:11311')
+setenv('ROS_HOSTNAME','192.168.1.xx')
+```
+- La versión de Python que emplea el toolbox de Matlab es la 2.7. En principio no supone un problema porque no influye en el desempeño del resto de la red de dispositivos. Se puede descargar esta versión desde la [web](https://www.python.org/download/releases/2.7/) oficial. Se debe configurar la versión de Python Matlab mediante el comando `pyversion _folder_` donde _folder_ es el directorio donde se ha instalado previamente la versión de python. Esto se emplea para integrar posteriormente los mensajes no estándares que se emplean en el proyecto.
+- El compilador que debe estar fijado en Matlab debe ser _Microsoft Visual C++ 2017_. Para realizar esta comprobación se puede ejecutar el comando `mex -setup cpp`.
+- Una vez asegurada la versión de python y del compilador se deben agregar las nuevas tipologías de mensajes al directorio de Matlab. Para ello, se deben ejecutar los siguientes comandos:
+```
+folderpath = 'C:\_folder con los nuevos mensajes_'
+rosgenmsg(folderpath)
+addpath('C:\_folder con los nuevos mensajes_\matlab_msg_gen_ros1\win64\install\m')
+savepath
+clear classes
+rehash toolboxcache
+rosmsg list
+```
+Recordar ejecutar siempre el comando `rosshutdown` al final del script para evitar dejar el nodo en el aire y al proncipio por si se nos ha olvidado cerrarlo anteriormente, que no de problemas. 
+
 ##### Dependencias
  - **Octomap**. TO-DO: Especificar los paquetes que dependen
  ```
@@ -41,7 +63,7 @@ sudo apt-get install ros-<rosdistro>-joystick-drivers
 ```
  - **[mav_comm](https://github.com/ethz-asl/mav_comm)**. TO-DO. Este paquete se emplea como complemento a gran parte de los paquetes ya desarrollados de Crazyflie y es compatible con ambas versiones de ROS y Ubuntu por lo que se puede alojar en el espacio de trabajo del dispositivo y compilarlo como cualquier otro paquete. 
 
-##### - Ubuntu 18.04 - ROS Melodic Morenia
+### - Ubuntu 18.04 - ROS Melodic Morenia
 A continuación se detalla la instalación en el entorno de trabajo de ROS para el paquete [CrazyS](https://github.com/gsilano/CrazyS), de donde se reutiliza gran parte de la arquitectura de simulación.
 ```
 mkdir -p catkin_ws/src
@@ -64,7 +86,7 @@ echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 ```
 En [link](https://github.com/gsilano/CrazyS#installation-instructions---ubuntu-1804-with-ros-melodic-and-gazebo-9) se detalla est proceso y posibles soluciones en caso de fallos con gazebo (como que no se inicie la simulación).
-##### - Ubuntu 20.04 - ROS Noetic Ninjemys
+### - Ubuntu 20.04 - ROS Noetic Ninjemys
 La configuración del entorno de trabajo para el paquete desarrollado se muestra a continuación.
 ```
 mkdir -p crazyflie_ws/src
