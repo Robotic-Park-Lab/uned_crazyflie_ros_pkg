@@ -9,7 +9,7 @@ Repositorio con los paquetes de ROS y ficheros de configuración para la teleope
 - **uned_crazyflie_drone**. Paquete de ROS. Comprende los nodos propios desarrollados para la integración de drones en el sistema. Incluye toda la información asociada para su correcta puesta en marcha.
 - **uned_crazyflie_test**. Paquete de ROS. Paquete en el que se incluyen todos los elementos destinados a realizar comprobaciones en el sistema de forma rápida. Por ejemplo los nodos _talker_ y _listener_ que se desarrollan al empezar a usar ROS, que en este caso se usan para comprobar la correcta comunicación entre máquinas en el sistema distribuido.
 
-## Instalación
+## Instalación :book:
 El objetivo es implementar todo el sistema en [ROS Noetic Ninjemys](https://http://wiki.ros.org/noetic) y [Ubuntu 20.04 LTS (Focal Fossa)](https://releases.ubuntu.com/20.04/)  a fin de prolongar el mantenimiento y vigencia de la plataforma. No obstante, inicialmente, se plantea la reutilización de gran parte del material ya disponible en la web, para lo que habrá que trabajar con parte del sistema en la configuración comentada y otra parte en la versión anterior ([ROS Melodic Morenia](http://wiki.ros.org/melodic) y [Ubuntu 18.04 LTS (Bionic Beaver)](https://releases.ubuntu.com/18.04/))
 
 ### Pre-requisitos 📋
@@ -80,6 +80,28 @@ catkin build
 echo "source devel/setup.bash" >> ~/.bashrc
 ```
 Este paquete compila correctamente en ambas versiones de ROS y Ubuntu. 
+
+## Uso 🔧
+### Simulador
+Para ejecutar solo la simulación se usa el repositorio [CrazyS](https://github.com/gsilano/CrazyS). Se pueden realizar simulaciones en dos modalidades:
+#### Exclusivo en ROS
+TO-DO: Cambiar la forma de leer el fichero.
+
+TO-DO: Documentar bien nuestro proceso específico
+
+Ejemplo básico de ejecución:
+```
+roslaunch rotors_gazebo crazyflie2_hovering_example.launch
+```
+
+#### Controlador en Matlab
+TO-DO: Para más información consultar la documentación.
+```
+roslaunch rotors_gazebo crazyflie2_without_controller.launch
+```
+Ejecutar el scritp de Matlab `script.m`
+
+### Hardware-in-the-Loop
 
 ## Autores ✒️
 * **[Francisco José Mañas Álvarez](https://github.com/FranciscoJManasAlvarez)** :envelope: fjmanas@dia.uned.es
