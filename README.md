@@ -35,9 +35,33 @@ La conexión común de todos los componentes de la red de ROS se realiza a trav�
  ```
  sudo apt-get install ros-<rosdistro>-xacro 
  ```
-### - Ubuntu 18.04 - ROS Melodic Morenia
+ - **[mav_comm](https://github.com/ethz-asl/mav_comm)**. TO-DO. Este paquete se emplea como complemento a gran parte de los paquetes ya desarrollados de Crazyflie y es compatible con ambas versiones de ROS y Ubuntu por lo que se puede alojar en el espacio de trabajo del dispositivo y compilarlo como cualquier otro paquete. 
 
-## Espacio de trabajo ##
+##### - Ubuntu 18.04 - ROS Melodic Morenia
+A continuación se detalla la instalación en el entorno de trabajo de ROS para el paquete [CrazyS](https://github.com/gsilano/CrazyS), de donde se reutiliza gran parte de la arquitectura de simulación.
+```
+mkdir -p catkin_ws/src
+cd crazyflie/src
+catkin_init_workspace
+cd ..
+catkin init
+cd src
+git clone https://github.com/gsilano/CrazyS.git
+git clone https://github.com/gsilano/mav_comm.git
+
+rosdep install --from-paths src -i
+sudo apt install ros-melodic-rqt-rotors ros-melodic-rotors-comm ros-melodic-mav-msgs ros-melodic-rotors-control
+sudo apt install ros-melodic-rotors-gazebo ros-melodic-rotors-evaluation ros-melodic-rotors-joy-interface
+sudo apt install ros-melodic-rotors-gazebo-plugins ros-melodic-mav-planning-msgs ros-melodic-rotors-description ros-melodic-rotors-hil-interface
+rosdep update
+catkin build
+
+echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
+En [link](https://github.com/gsilano/CrazyS#installation-instructions---ubuntu-1804-with-ros-melodic-and-gazebo-9) se detalla est proceso y posibles soluciones en caso de fallos con gazebo (como que no se inicie la simulación).
+##### - Ubuntu 20.04 - ROS Noetic Ninjemys
+La configuración del entorno de trabajo para el paquete desarrollado se muestra a continuación.
 ```
 mkdir -p crazyflie_ws/src
 cd crazyflie/src
@@ -51,36 +75,7 @@ cd ../..
 catkin build
 echo "source devel/setup.bash" >> ~/.bashrc
 ```
-mav_comm??
-
-
-## Configurar los permisos udev
-```
-sudo groupadd plugdev
-sudo usermod -a -G plugdev $USER
-sudo touch /etc/udev/rules.d/99-crazyradio.rules
-```
-
-Añadir al archivo /etc/udev/rules.d/99-crazyradio.rules:
-```
-# Crazyradio (normal operation)
-SUBSYSTEM=="usb", ATTRS{idVendor}=="1915", ATTRS{idProduct}=="7777", MODE="0664", GROUP="plugdev"
-# Bootloader
-SUBSYSTEM=="usb", ATTRS{idVendor}=="1915", ATTRS{idProduct}=="0101", MODE="0664", GROUP="plugdev"
-```
-Para conectar el Crazyflie 2.0 por usb:
-```
-sudo touch /etc/udev/rules.d/99-crazyradio.rules
-```
-```
-# Crazyflie 2.0
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5740", MODE="0664", GROUP="plugdev"
-```
-Recargar udev-rules:
-```
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
+Este paquete compila correctamente en ambas versiones de ROS y Ubuntu. 
 
 ## Proyecto anterior
 En Ubuntu 18.04 y con ROS melodic, funciona perfectamente [crazyflie_ros](https://github.com/whoenig/crazyflie_ros). Tiene interfaz de rviz (lo que no es demasiado importante ahora. Para la ejecución:
