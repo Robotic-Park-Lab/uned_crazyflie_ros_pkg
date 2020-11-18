@@ -35,6 +35,10 @@ La conexión común de todos los componentes de la red de ROS se realiza a trav�
  ```
  sudo apt-get install ros-<rosdistro>-xacro 
  ```
+ - **Joy**. Paquete para realizar la lectura del joystick para teleoperación.
+ ```
+sudo apt-get install ros-<rosdistro>-joystick-drivers
+```
  - **[mav_comm](https://github.com/ethz-asl/mav_comm)**. TO-DO. Este paquete se emplea como complemento a gran parte de los paquetes ya desarrollados de Crazyflie y es compatible con ambas versiones de ROS y Ubuntu por lo que se puede alojar en el espacio de trabajo del dispositivo y compilarlo como cualquier otro paquete. 
 
 ##### - Ubuntu 18.04 - ROS Melodic Morenia
@@ -77,7 +81,7 @@ echo "source devel/setup.bash" >> ~/.bashrc
 ```
 Este paquete compila correctamente en ambas versiones de ROS y Ubuntu. 
 
+## Autores ✒️
+* **[Francisco José Mañas Álvarez](https://github.com/FranciscoJManasAlvarez)** :envelope: fjmanas@dia.uned.es
 
-```
-sudo apt-get install ros-noetic-joystick-drivers
-```
+## Publicaciones asociadas :paperclip:
