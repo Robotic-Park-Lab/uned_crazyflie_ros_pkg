@@ -9,22 +9,34 @@ Repositorio con los paquetes de ROS y ficheros de configuración para la teleope
 - **uned_crazyflie_drone**. Paquete de ROS. Comprende los nodos propios desarrollados para la integración de drones en el sistema. Incluye toda la información asociada para su correcta puesta en marcha.
 - **uned_crazyflie_test**. Paquete de ROS. Paquete en el que se incluyen todos los elementos destinados a realizar comprobaciones en el sistema de forma rápida. Por ejemplo los nodos _talker_ y _listener_ que se desarrollan al empezar a usar ROS, que en este caso se usan para comprobar la correcta comunicación entre máquinas en el sistema distribuido.
 
-## Instalación ##
-- [ROS Noetic](http://wiki.ros.org/noetic/Installation)
-- Rosbridge -> `sudo apt-get install ros-<rosdistro>-rosbridge-suite`
-  
-  Para ejecutar en distintas máquinas:
+## Instalación
+El objetivo es implementar todo el sistema en [ROS Noetic Ninjemys](https://http://wiki.ros.org/noetic) y [Ubuntu 20.04 LTS (Focal Fossa)](https://releases.ubuntu.com/20.04/)  a fin de prolongar el mantenimiento y vigencia de la plataforma. No obstante, inicialmente, se plantea la reutilización de gran parte del material ya disponible en la web, para lo que habrá que trabajar con parte del sistema en la configuración comentada y otra parte en la versión anterior ([ROS Melodic Morenia](http://wiki.ros.org/melodic) y [Ubuntu 18.04 LTS (Bionic Beaver)](https://releases.ubuntu.com/18.04/))
+
+### Pre-requisitos 📋
+##### ROS
+Lo primero debe ser tener instalada la correspondiente versión de ROS para el sistema operativo del dispositivo ([Noetic](https://http://wiki.ros.org/noetic/Installation), [Melodic](https://http://wiki.ros.org/melodic/Installation)). La máquina donde se ejecuten los paquetes reutilizados debe trabajar con ROS Melodic. No hay problema de compatibilidad en la interconexión de distintas máquinas siempre que los topics no presenten incompatibilidades entre versiones. 
+
+##### rosbridge_suite
+La conexión común de todos los componentes de la red de ROS se realiza a través del paquete [rosbridge_suite](http://wiki.ros.org/rosbridge_suite), instalado mediante el comando `sudo apt-get install ros-<rosdistro>-rosbridge-suite` (debe estar instalado previamente ROS en el dispositivo). Para la correcta identificación y conexión de cada máquina, se debe configurar en cada una los parámetros _ROS_MASTER_URI_ y _ROS_HOSTNAME_, dados por la ip de cada dispositivo. 
   ```
-  vim ~/.bashrc
+  sudo nano ~/.bashrc
   ...
   export ROS_MASTER_URI=http://xxx.xxx.x.xx:11311
-  export ROS_HOSTNAME=http://xxx.xxx.x.xx
+  export ROS_HOSTNAME=xxx.xxx.x.xx
   ```
-  lanzar:
-  roslaunch rosbridge_server rosbridge_websocket.launch
- 
- - `sudo apt-get install ros-<rosdistro>-octomap`
- - install xacro
+  Para el lanzamiento del paquete, se emplea el comando `roslaunch rosbridge_server rosbridge_websocket.launch`
+
+##### Dependencias
+ - **Octomap**. TO-DO: Especificar los paquetes que dependen
+ ```
+ sudo apt-get install ros-<rosdistro>-octomap
+ ```
+  - **Xacro**. TO-DO: Especificar los paquetes que dependen
+ ```
+ sudo apt-get install ros-<rosdistro>-xacro 
+ ```
+### - Ubuntu 18.04 - ROS Melodic Morenia
+
 ## Espacio de trabajo ##
 ```
 mkdir -p crazyflie_ws/src
