@@ -52,7 +52,6 @@ CATKIN_IGNORE
 *.aux
 *.log
 *.out
-*.pdf
 *.gz
 *.toc
 *.bbl
