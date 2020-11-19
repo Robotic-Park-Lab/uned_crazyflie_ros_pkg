@@ -55,3 +55,6 @@ CATKIN_IGNORE
 *.pdf
 *.gz
 *.toc
+*.bbl
+*.blg
+*.dvi
