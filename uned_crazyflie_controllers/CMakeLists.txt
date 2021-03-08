@@ -8,6 +8,7 @@ project(uned_crazyflie_controllers)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+#  message_generation
   roscpp
   rospy
   std_msgs
@@ -25,26 +26,6 @@ find_package(catkin REQUIRED COMPONENTS
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
-
-## To declare and build messages, services or actions from within this
-## package, follow these steps:
-## * Let MSG_DEP_SET be the set of packages whose message types you use in
-##   your messages/services/actions (e.g. std_msgs, actionlib_msgs, ...).
-## * In the file package.xml:
-##   * add a build_depend tag for "message_generation"
-##   * add a build_depend and a exec_depend tag for each package in MSG_DEP_SET
-##   * If MSG_DEP_SET isn't empty the following dependency has been pulled in
-##     but can be declared for certainty nonetheless:
-##     * add a exec_depend tag for "message_runtime"
-## * In this file (CMakeLists.txt):
-##   * add "message_generation" and every package in MSG_DEP_SET to
-##     find_package(catkin REQUIRED COMPONENTS ...)
-##   * add "message_runtime" and every package in MSG_DEP_SET to
-##     catkin_package(CATKIN_DEPENDS ...)
-##   * uncomment the add_*_files sections below as needed
-##     and list every .msg/.srv/.action file to be processed
-##   * uncomment the generate_messages entry below
-##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
 # add_message_files(
@@ -68,44 +49,19 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
-
-################################################
-## Declare ROS dynamic reconfigure parameters ##
-################################################
-
-## To declare and build dynamic reconfigure parameters within this
-## package, follow these steps:
-## * In the file package.xml:
-##   * add a build_depend and a exec_depend tag for "dynamic_reconfigure"
-## * In this file (CMakeLists.txt):
-##   * add "dynamic_reconfigure" to
-##     find_package(catkin REQUIRED COMPONENTS ...)
-##   * uncomment the "generate_dynamic_reconfigure_options" section below
-##     and list every .cfg file to be processed
-
-## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+#generate_messages(
+#  DEPENDENCIES
+#  std_msgs
+#)
 
 ###################################
 ## catkin specific configuration ##
 ###################################
-## The catkin_package macro generates cmake config files for your package
-## Declare things to be passed to dependent projects
-## INCLUDE_DIRS: uncomment this if your package contains header files
-## LIBRARIES: libraries you create in this project that dependent projects also need
-## CATKIN_DEPENDS: catkin_packages dependent projects also need
-## DEPENDS: system dependencies of this project that dependent projects also need
+
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES uned_crazyflie_drone
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+  INCLUDE_DIRS include/${PROJECT_NAME}
+  LIBRARIES ${PROJECT_NAME}
+  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
 )
 
@@ -116,20 +72,25 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
   ${catkin_INCLUDE_DIRS}
+  ${${PROJECT_NAME}_SOURCE_DIR}/include
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/uned_crazyflie_drone.cpp
-# )
+file(GLOB lib_srcs  src/${PROJECT_NAME}/*.cpp include/${PROJECT_NAME}/*.h)
+
+add_library(${PROJECT_NAME}
+   ${lib_srcs}
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+target_link_libraries(${PROJECT_NAME}
+   ${catkin_LIBRARIES}
+   )
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
@@ -141,14 +102,18 @@ include_directories(
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
 # set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
 
-## Add cmake target dependencies of the executable
-## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# Declare a C++ executable
+add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}_node.cpp)
 
-## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+# Add cmake target dependencies of the executable
+# same as for the library above
+add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+# Specify libraries to link a library or executable target against
+target_link_libraries(${PROJECT_NAME}_node
+   ${catkin_LIBRARIES}
+   ${PROJECT_NAME}
+)
 
 #############
 ## Install ##
@@ -164,26 +129,18 @@ include_directories(
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
 
-## Mark executables for installation
-## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
-# install(TARGETS ${PROJECT_NAME}_node
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
-
-## Mark libraries for installation
-## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
-# install(TARGETS ${PROJECT_NAME}
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
-# )
+# Mark executables and/or libraries for installation
+install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_node
+   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
