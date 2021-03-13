@@ -9,13 +9,19 @@ project(uned_crazyflie_controllers)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
 #  message_generation
+  geometry_msgs
+  mav_msgs
+  nav_msgs
+  sensor_msgs
   roscpp
   rospy
   std_msgs
 )
 
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+find_package(
+  Eigen3 REQUIRED
+)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -59,10 +65,10 @@ find_package(catkin REQUIRED COMPONENTS
 ###################################
 
 catkin_package(
-  INCLUDE_DIRS include/${PROJECT_NAME}
+  INCLUDE_DIRS include/${PROJECT_NAME} ${Eigen3_INCLUDE_DIRS}
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs
-#  DEPENDS system_lib
+  CATKIN_DEPENDS geometry_msgs mav_msgs nav_msgs roscpp sensor_msgs rospy std_msgs
+  DEPENDS Eigen3
 )
 
 ###########
@@ -74,6 +80,7 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${${PROJECT_NAME}_SOURCE_DIR}/include
+  ${Eigen3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
