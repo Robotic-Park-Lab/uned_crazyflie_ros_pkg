@@ -61,7 +61,7 @@
        <remap from="odometry" to="odometry_sensor1/odometry" />
    </node>
 -->
-   <node name="uned_crazyflie_controllers_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_controllers_node" output="screen" />
+   <node name="uned_crazyflie_position_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_position_controller_node" output="screen" />
 
   </group>
 </launch>

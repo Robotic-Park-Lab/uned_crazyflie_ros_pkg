@@ -6,16 +6,16 @@ int main(int argc, char **argv)
 {
 	try
 	{
-		ros::init(argc, argv, "crazyflie_controller");
+		ros::init(argc, argv, "crazyflie_attitude_controller");
 
-		CrazyflieController  crazyflie_controller;
-		crazyflie_controller.initialize();
+		CrazyflieController  crazyflie_attitude_controller;
+		crazyflie_attitude_controller.initialize();
 
-		ros::Rate loop_rate(100); // f : 100Hz => T = 10 ms
+		ros::Rate loop_rate(500); // f : 500Hz => T = 2 ms
 		while (ros::ok())
 		{
 			ros::spinOnce();
-			crazyflie_controller.iterate();
+			crazyflie_attitude_controller.iterate();
 			loop_rate.sleep();
 		}
 
