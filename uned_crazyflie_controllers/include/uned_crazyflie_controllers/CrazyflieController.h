@@ -14,6 +14,7 @@
 #include <std_msgs/Float64.h>
 #include <std_msgs/String.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Point.h>
 #include <mav_msgs/Actuators.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
 
@@ -48,7 +49,7 @@ class CrazyflieController
 
     double m_joy_x{.0}, m_joy_y{.0}, speed{.0};
     std::string m_controller_type, m_robot_id, m_controller_mode;
-    geometry_msgs::Pose m_GT_pose;
+    geometry_msgs::Pose m_GT_pose, m_ref_pose, m_error_pose;
 
     int step{0};
 

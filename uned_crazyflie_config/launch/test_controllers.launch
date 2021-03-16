@@ -30,7 +30,7 @@
 
   <group ns="$(arg robot_id)">
   <!-- The following lines simulate the Crazyflie dynamics -->
-    <include file="$(find rotors_gazebo)/launch/spawn_mav_crazyflie.launch">
+    <include file="$(find uned_crazyflie_config)/launch/spawn_mav_crazyflie.launch">
       <arg name="mav_name" value="$(arg mav_name)" />
       <arg name="namespace" value="$(arg robot_id)" />
       <arg name="model" value="$(find rotors_description)/urdf/mav_generic_odometry_sensor.gazebo" />

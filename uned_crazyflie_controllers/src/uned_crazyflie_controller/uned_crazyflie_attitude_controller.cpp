@@ -4,7 +4,7 @@ bool CrazyflieController::initialize()
 {
 	ROS_INFO("CrazyflieController::inicialize() ok.");
 
-	// Publisher: 
+	// Publisher:
 	// Actuators
 	m_pub_motor_velocity_reference = m_nh.advertise<mav_msgs::Actuators>("command/motor_speed_attitude", 10);
 
@@ -20,8 +20,18 @@ bool CrazyflieController::iterate()
 {
 	// Housekeeping -------
 	// TO-DO:
-    ROS_INFO_THROTTLE(1, "In progress ...");
+  ROS_INFO_THROTTLE(1, "In progress ...");
+	m_ref_pose.position.x = 0;
+	m_ref_pose.position.y = 0;
+	m_ref_pose.position.z = 1;
+	m_ref_pose.orientation.x = 0;
+	m_ref_pose.orientation.y = 0;
+	m_ref_pose.orientation.z = 0;
+	m_ref_pose.orientation.w = 1;
 
+	ROS_INFO_STREAM_THROTTLE(1, "GT Pose:\n" << m_GT_pose);
+	ROS_INFO_STREAM_THROTTLE(1, "REF Pose:\n" << m_ref_pose);
+	
 	return true;
 }
 

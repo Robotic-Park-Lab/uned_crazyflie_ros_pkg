@@ -28,9 +28,22 @@ bool CrazyflieController::iterate()
 {
 	// Housekeeping -------
 	// TO-DO:
-    ROS_INFO_THROTTLE(1, "In progress ...");
-	ROS_WARN_STREAM_THROTTLE(1, "GT Pose:\n" << m_GT_pose);
+	ROS_INFO_THROTTLE(1, "In progress ...");
+	m_ref_pose.position.x = 0;
+	m_ref_pose.position.y = 0;
+	m_ref_pose.position.z = 1;
+	m_ref_pose.orientation.x = 0;
+	m_ref_pose.orientation.y = 0;
+	m_ref_pose.orientation.z = 0;
+	m_ref_pose.orientation.w = 1;
 
+	ROS_INFO_STREAM_THROTTLE(1, "GT Pose:\n" << m_GT_pose);
+	ROS_INFO_STREAM_THROTTLE(1, "REF Pose:\n" << m_ref_pose);
+	m_error_pose.position.x = m_ref_pose.position.x - m_GT_pose.position.x;
+	m_error_pose.position.y = m_ref_pose.position.y - m_GT_pose.position.y;
+	m_error_pose.position.z = m_ref_pose.position.z - m_GT_pose.position.z;
+
+	ROS_INFO_STREAM_THROTTLE(1, "Error Pose:\n" << m_error_pose);
 
 	Eigen::Vector4d ref_rotor_velocities;
 	if(step>200)
