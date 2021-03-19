@@ -21,6 +21,7 @@ bool CrazyflieController::initialize()
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyflieController::gtposeCallback, this);
 	// Reference
 
+
 	return true;
 }
 
@@ -45,15 +46,25 @@ bool CrazyflieController::iterate()
 
 	ROS_INFO_STREAM_THROTTLE(1, "Error Pose:\n" << m_error_pose);
 
+	// Calculo señal de control
+	error_signal[2] = error_signal[1];
+	error_signal[1] = error_signal[0];
+	error_signal[0] = m_error_pose.position.z;
+	control_signal[1] = control_signal[0];
+	control_signal[0] = control_signal[1]+q[0]*error_signal[0]+q[1]*error_signal[1]+q[2]*error_signal[2];
+
+	if(control_signal[0]>3500)
+		control_signal[0] = 3500;
+	if(control_signal[0] < 0)
+		control_signal[0] = 0;
+	ROS_INFO_THROTTLE(0.1,"Control signal: %f", control_signal[0]);
+	ROS_INFO_THROTTLE(0.1,"Error signal: %f", error_signal[0]);
+
 	Eigen::Vector4d ref_rotor_velocities;
-	if(step>200)
-		step = 0;
-	speed = 2250+(-100+step);
-	step = step+1;
-	ref_rotor_velocities[0] = speed;
-	ref_rotor_velocities[1] = speed;
-	ref_rotor_velocities[2] = speed;
-	ref_rotor_velocities[3] = speed;
+	ref_rotor_velocities[0] = control_signal[0];
+	ref_rotor_velocities[1] = control_signal[0];
+	ref_rotor_velocities[2] = control_signal[0];
+	ref_rotor_velocities[3] = control_signal[0];
 
 	rotorvelocitiesCallback(ref_rotor_velocities);
 	return true;

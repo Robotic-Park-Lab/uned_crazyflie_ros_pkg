@@ -47,11 +47,14 @@ class CrazyflieController
     void rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities);
     void readTrajectory(const trajectory_msgs::MultiDOFJointTrajectoryConstPtr& trajectory_reference_msg);
 
-    double m_joy_x{.0}, m_joy_y{.0}, speed{.0};
+    double m_joy_x{.0}, m_joy_y{.0}, speed;
     std::string m_controller_type, m_robot_id, m_controller_mode;
     geometry_msgs::Pose m_GT_pose, m_ref_pose, m_error_pose;
-
-    int step{0};
+    double w_equilibrio = 2000.0;
+    double control_signal[2] = {w_equilibrio, w_equilibrio};
+    double Kp{100.0}, Ti{3.14}, Td{0.0}, Tp{0.01};
+    double q[3] = {Kp*(1+(Tp/Ti)+(Td/Tp)), Kp*(-1+(Tp/Ti)+(Td/Tp)), Kp*(Td/Tp)};
+    double error_signal[3] = {0.0, 0.0, 0.0};
 
 
 };
