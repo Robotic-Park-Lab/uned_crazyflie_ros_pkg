@@ -52,7 +52,7 @@ class CrazyflieController
     geometry_msgs::Pose m_GT_pose, m_ref_pose, m_error_pose;
     double w_equilibrio = 2000.0;
     double control_signal[2] = {w_equilibrio, w_equilibrio};
-    double Kp{100.0}, Ti{3.14}, Td{0.0}, Tp{0.01};
+    double Kp{1000.0}, Ti{31.14}, Td{0.0}, Tp{0.01};
     double q[3] = {Kp*(1+(Tp/Ti)+(Td/Tp)), Kp*(-1+(Tp/Ti)+(Td/Tp)), Kp*(Td/Tp)};
     double error_signal[3] = {0.0, 0.0, 0.0};
 

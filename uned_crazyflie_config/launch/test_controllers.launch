@@ -43,7 +43,7 @@
       <arg name="z" default="$(arg z)"/>
     </include>
    <!-- The Crazyflie position controller -->
-<!--   <node name="position_controller_node" pkg="rotors_control" type="position_controller_node" output="screen">
+   <node name="position_controller_node" pkg="rotors_control" type="position_controller_node" output="screen">
       <param name="enable_state_estimator" value="$(arg enable_state_estimator)" />
       <param name="csvFilesStoring" value="$(arg csvFilesStoring)"/>
       <param name="csvFilesStoringTime" value="$(arg csvFilesStoringTime)"/>
@@ -53,15 +53,16 @@
       <rosparam command="load" file="$(find rotors_gazebo)/resource/$(arg mav_name).yaml" />
    </node>
 
-   <node name="hovering_example" pkg="rotors_gazebo" type="hovering_example" output="screen" />
--->
-<!--<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+<!--<node name="hovering_example" pkg="rotors_gazebo" type="hovering_example" output="screen" />-->
+   <node name="uned_crazyflie_trajectory_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_trajectory_controller_node" output="screen" />
+
+   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
    <node name="quaternion_to_rpy" pkg="rotors_gazebo" type="quaternion_to_rpy" output="screen" >
        <remap from="odometry" to="odometry_sensor1/odometry" />
    </node>
--->
-   <node name="uned_crazyflie_position_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_position_controller_node" output="screen" />
+
+<!--<node name="uned_crazyflie_position_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_position_controller_node" output="screen" />-->
 
   </group>
 </launch>

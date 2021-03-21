@@ -41,6 +41,10 @@ include_directories(
   ${Eigen3_INCLUDE_DIRS}
 )
 
+add_library(uned_crazyflie_trajectory_controller src/uned_crazyflie_controller/uned_crazyflie_trajectory_controller.cpp)
+target_link_libraries(uned_crazyflie_trajectory_controller ${catkin_LIBRARIES})
+add_dependencies(uned_crazyflie_trajectory_controller ${catkin_EXPORTED_TARGETS})
+
 add_library(uned_crazyflie_position_controller src/uned_crazyflie_controller/uned_crazyflie_position_controller.cpp)
 target_link_libraries(uned_crazyflie_position_controller ${catkin_LIBRARIES})
 add_dependencies(uned_crazyflie_position_controller ${catkin_EXPORTED_TARGETS})
@@ -50,6 +54,11 @@ target_link_libraries(uned_crazyflie_attitude_controller ${catkin_LIBRARIES})
 add_dependencies(uned_crazyflie_attitude_controller ${catkin_EXPORTED_TARGETS})
 
 # Declare a C++ executable
+add_executable(uned_crazyflie_trajectory_controller_node src/uned_crazyflie_trajectory_controller_node.cpp)
+target_link_libraries(uned_crazyflie_trajectory_controller_node uned_crazyflie_trajectory_controller
+   ${catkin_LIBRARIES}
+)
+
 add_executable(uned_crazyflie_position_controller_node src/uned_crazyflie_position_controller_node.cpp)
 target_link_libraries(uned_crazyflie_position_controller_node uned_crazyflie_position_controller
    ${catkin_LIBRARIES}
@@ -65,11 +74,11 @@ target_link_libraries(uned_crazyflie_attitude_controller_node uned_crazyflie_att
 #############
 
 # Mark executables and/or libraries for installation
-install(TARGETS uned_crazyflie_position_controller uned_crazyflie_attitude_controller
+install(TARGETS uned_crazyflie_trajectory_controller uned_crazyflie_position_controller uned_crazyflie_attitude_controller
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
 
-install(TARGETS uned_crazyflie_position_controller_node uned_crazyflie_attitude_controller_node
+install(TARGETS uned_crazyflie_trajectory_controller uned_crazyflie_position_controller_node uned_crazyflie_attitude_controller_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

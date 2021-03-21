@@ -21,7 +21,6 @@ bool CrazyflieController::initialize()
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyflieController::gtposeCallback, this);
 	// Reference
 
-
 	return true;
 }
 
