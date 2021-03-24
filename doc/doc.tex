@@ -1,6 +1,6 @@
 \documentclass[a4paper,10pt]{article}
 \usepackage{graphicx}
-\usepackage[spanish]{babel}
+\usepackage[spanish,es-tabla]{babel}
 \usepackage[latin1]{inputenc}
 \usepackage{a4wide}
 \usepackage{amsmath}
@@ -12,6 +12,7 @@
 \usepackage{natbib}
 \usepackage{algorithm}
 \usepackage{hyperref}
+\usepackage{multirow}
 
 \usepackage{amsfonts}  % For \mathbb
 \usepackage{bm}   % command \bm
@@ -206,6 +207,54 @@ catkin build
 echo "source devel/setup.bash" >> ~/.bashrc
 \end{lstlisting}
 Este paquete compila correctamente en ambas versiones de ROS y Ubuntu.
+
+% -------------------------------------
+\section{Modelado}
+% -------------------------------------
+A continuación se realiza el modelado basado en espacios de estado para un quadrotor genérico. Los parámetros empleados en el proceso se muestran en la tabla \ref{tab:quadrotors-param}. El vector de estados está compuesto por cuatro vectores asociados a los 6 grados de libertad del dron y sus respectivas velocidades tal como se describe en la tabla \ref{tab:state-space-vector}.
+
+\begin{table}[ht]
+	\begin{center}
+		\begin{tabular}{|c|c|c|}
+			\hline
+			Parámetro 	& Unidad 	& Descripción\\ \hline
+			$m$		  	& $kg$		& Masa del quadrotor \\ \hline
+		\end{tabular}
+		\caption{Parámetros.}
+		\label{tab:quadrotors-param}
+	\end{center}
+\end{table}
+
+\begin{table}[ht]
+	\begin{center}
+		\begin{tabular}{|c|c|c|}
+			\hline
+			Vector					& Estado 	& Descripción\\ \hline
+			\multirow{3}{*}{$p$}	& $x$		& \\ \cline{2-3}
+									& $y$ 		& \\ \cline{2-3}
+			 						& $z$ 		& \\ \hline
+			\multirow{3}{*}{$\Phi$}	& $\phi$	& \\ \cline{2-3}
+									& $\theta$ 	& \\ \cline{2-3}
+			 						& $\psi$ 	& \\ \hline
+			\multirow{3}{*}{$V$}	& $u$		& \\ \cline{2-3}
+									& $v$ 		& \\ \cline{2-3}
+			 						& $w$ 		& \\ \hline
+			\multirow{3}{*}{$\omega$}& $p$		& \\ \cline{2-3}
+									& $q$ 		& \\ \cline{2-3}
+			 						& $r$ 		& \\ \hline
+		\end{tabular}
+		\caption{Vector de estados.}
+		\label{tab:state-space-vector}
+	\end{center}
+\end{table}
+\subsection{Ecuaciones del equilibrio de fuerzas}
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.63\textwidth]{figs/Quadrotor-Scheme.png}
+  \caption{Esquema de un quadrotor.}
+  \label{fig:Quadrotor-scheme}
+\end{figure}
 
 % -------------------------------------
 \section{Simulador}
