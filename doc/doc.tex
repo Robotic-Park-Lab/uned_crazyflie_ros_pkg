@@ -59,18 +59,123 @@ Este repositorio\footnote{Github: \url{https://github.com/FranciscoJManasAlvarez
 \end{itemize}
 
 \subsection{Crazyflie}
-TO-DO: Describir detalladamente el dron e incluir enlaces a los diferentes trabajos y videos realizados con él.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin euismod, erat ultrices hendrerit consequat, ligula nisi semper felis, id euismod ex erat eget diam. Vestibulum ut leo condimentum, ullamcorper orci id, suscipit arcu. Suspendisse suscipit purus tincidunt ex eleifend, sed tristique eros maximus. Donec vitae nisl congue, gravida orci vitae, consectetur sapien. Interdum et malesuada fames ac ante ipsum primis in faucibus. Duis ante orci, blandit rutrum urna in, mollis commodo lorem. Donec blandit, velit sed aliquam auctor, mi nunc lobortis arcu, in imperdiet sapien est vitae libero. Donec tincidunt quam ipsum, vitae rhoncus dolor efficitur id. Proin laoreet, ipsum quis vehicula condimentum, ex ipsum tincidunt est, bibendum iaculis enim est vel risus.
-
-In hac habitasse platea dictumst. Aenean justo tortor, congue non congue ut, egestas a sem. Mauris egestas diam id nulla dictum eleifend. Nulla aliquam vulputate dapibus. Morbi tellus dolor, ornare sed iaculis ac, sodales sed nisl. Sed elementum, ligula eget venenatis congue, nisi nulla finibus mauris, sed hendrerit dui odio et massa. Cras nec enim ut nunc rhoncus cursus. Vestibulum ex ipsum, commodo a dolor a, bibendum fermentum lacus. Praesent et ultricies sem. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. In iaculis elit eget mattis auctor. Duis vel gravida magna. Cras egestas cursus rutrum. Duis consectetur et ex et commodo. Suspendisse dignissim magna ac mi porta bibendum. Praesent sollicitudin aliquet malesuada.
-
-\begin{figure}[ht]
+El dron crazyflie 2.1, figura \ref{fig:crazyflie}, se trata de un quadrotor que por su reducido tamaño entra dentro de la categoría de "nanoquadrotor". Su diseño está especialmente pensado para vuelo en interiores. A continuación se detallan sus especificaciones técnicas, disponibles también en la web del dron\footnote{Bitcraze: \url{https://store.bitcraze.io/products/crazyflie-2-1}}.
+\begin{figure}[H]
   \centering
-    \includegraphics[width=0.63\textwidth]{figs/Crazyflie_2.1.jpg}
+    \includegraphics[width=0.5\textwidth]{figs/Crazyflie_2.1.jpg}
   \caption{Crazyflie 2.1.}
   \label{fig:crazyflie}
 \end{figure}
+\subsubsection{Especificaciones mecánicas}
+\begin{itemize}
+\item Peso: $27 \left[g\right]$
+\item Dimensiones: $92x92x29 \left[mm\right]$
+\end{itemize}
+\subsubsection{Radio}
+\begin{itemize}
+\item 2.4GHz ISM band radio
+\item Increased range with 20 dBm radio amplifier, tested to > 1 km range LOS with Crazyradio PA (environmentally dependent)
+\item Bluetooth Low Energy support with iOS and Android clients available
+\item Dual antenna support with both on board chip antenna and U.FL connector
+\end{itemize}
+\subsubsection{Microcontroladores}
+\begin{itemize}
+\item STM32F405 main application MCU (Cortex-M4, 168MHz, 192kb SRAM, 1Mb flash)
+\item nRF51822 radio and power management MCU (Cortex-M0, 32Mhz, 16kb SRAM, 128kb flash)
+\item uUSB connector
+\item On-board LiPo charger with 100mA, 500mA and 980mA modes available
+\item Full speed USB device interface
+\item Partial USB OTG capability (USB OTG present but no 5V output)
+\item 8KB EEPROM
+\end{itemize}
+\subsubsection{IMU}
+\begin{itemize}
+\item 3 axis accelerometer / gyroscope (BMI088)
+\item high precision pressure sensor (BMP388)
+\end{itemize}
+\subsubsection{Especificaciones de vuelo}
+\begin{itemize}
+\item Tiempo de vuelo con batería completa: 7 minutos
+\item Tiempo de carga hasta batería completa: 40 minutos
+\item Máxima carga recomendada: 15g
+\end{itemize}
+\subsubsection{Conectores}
+\begin{itemize}
+\item VCC (3.0V, max 100mA)
+\item GND
+\item VCOM (unregulated VBAT or VUSB, max 1A)
+\item VUSB (both for input and output)
+\item I2C (400kHz)
+\item SPI
+\item 2 x UART
+\item 4 x GPIO/CS for SPI
+\item 1-wire bus for expansion identification
+\item 2 x GPIO connected to nRF51
+\end{itemize}
+
+\subsubsection{Modelado}
+El modelado se ha basado en el capítulo 4 del trabajo \cite{luis2016design}. Para el modelado, se comprenderá la configuración del crazyflie en "X", ya que presenta menos inconvenientes en el caso de querer agregar sensores, como cámaras.
+
+Para la obtención del modelo dinámico del sistema, se asumen tres hipótesis, que simplifican el modelo pero dan una buena aproximación para trabajar. Las simplificaciones sobre el dron son:
+\begin{itemize}
+\item Se comporta como un sólido-rígido sin deformaciones.
+\item Es simétrico, tanto en masa como en el sistema de propulsión (todos los motores presentan el mismo comportamiento).
+\item La masa es constante.
+\end{itemize}
+
+La transformación desde el centro de referencia del sistema global al dron está determinada por tres rotaciones sucesivas: Yaw $\left(\psi\right) \rightarrow$ Pitch $\left(\theta\right)\rightarrow$ Roll $\left(\phi\right)$. La matriz de rotación resultante sería: \textcolor{red}{COMPROBAR}
+\begin{equation}
+	R^{b}_{i} = 
+	\begin{pmatrix}
+		\cos\theta\cos\psi & \cos\theta\sin\psi & -\sin\theta\\
+		\sin\phi\sin\theta\cos\psi-\cos\phi\sin\psi & \sin\phi\sin\theta\sin\psi+\cos\phi\cos\psi & \sin\phi\cos\theta\\
+		\cos\phi\sin\theta\cos\psi+\sin\phi\sin\psi & \cos\phi\sin\theta\sin\psi-\sin\phi\cos\psi & \cos\phi\cos\theta
+	\end{pmatrix}
+\end{equation}
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.5\textwidth]{figs/CrazyflieAxis_scheme.png}
+  \caption{Ejes y ángulos.}
+  \label{fig:crazyflie-axis}
+\end{figure}
+
+En la siguiente tabla se representan las variables de estado que se emplean en este modelado
+
+A continuación se realiza el modelado basado en espacios de estado para un quadrotor genérico. Los parámetros empleados en el proceso se muestran en la tabla \ref{tab:quadrotors-param}. El vector de estados está compuesto por cuatro vectores asociados a los 6 grados de libertad del dron y sus respectivas velocidades tal como se describe en la tabla \ref{tab:state-space-vector}.
+
+\begin{table}[h]
+	\begin{center}
+		\begin{tabular}{|c|c|c|}
+			\hline
+			Vector					& Estado 	& Descripción \\ \hline
+			\multirow{3}{*}{$p$}	& $x$		& Posición X \\ \cline{2-3}
+									& $y$ 		& Posición Y \\ \cline{2-3}
+			 						& $z$ 		& Posición Z \\ \hline
+			\multirow{3}{*}{$\Phi$}	& $\phi$	& Ángulo Roll \\ \cline{2-3}
+									& $\theta$ 	& Ángulo Pitch \\ \cline{2-3}
+			 						& $\psi$ 	& Ángulo Yaw \\ \hline
+			\multirow{3}{*}{$V$}	& $u$		& Velocidad Lineal X \\ \cline{2-3}
+									& $v$ 		& Velocidad Lineal Y \\ \cline{2-3}
+			 						& $w$ 		& Velocidad Lineal Z \\ \hline
+			\multirow{3}{*}{$\omega$}& $p$		& Velocidad Angular X \\ \cline{2-3}
+									& $q$ 		& Velocidad Angular Y \\ \cline{2-3}
+			 						& $r$ 		& Velocidad Angular Z \\ \hline
+		\end{tabular}
+		\caption{Vector de estados.}
+		\label{tab:state-space-vector}
+	\end{center}
+\end{table}
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.63\textwidth]{figs/Quadrotor-Scheme.png}
+  \caption{Esquema de un quadrotor.}
+  \label{fig:Quadrotor-scheme}
+\end{figure}
+
+\subsection{Ecuaciones del equilibrio de fuerzas}
+Para determinar las ecuaciones relacionadas con los parámetros lineales del dron, se aplica la segunda ley de Newton.
+
+
 
 \subsection{Proyectos anteriores}
 En este apartado se describen los trabajos ya realizados sobre crazyflie que se han consultado y reutilizado parcialmente para la herramienta desarrollada.
@@ -208,53 +313,6 @@ echo "source devel/setup.bash" >> ~/.bashrc
 \end{lstlisting}
 Este paquete compila correctamente en ambas versiones de ROS y Ubuntu.
 
-% -------------------------------------
-\section{Modelado}
-% -------------------------------------
-A continuación se realiza el modelado basado en espacios de estado para un quadrotor genérico. Los parámetros empleados en el proceso se muestran en la tabla \ref{tab:quadrotors-param}. El vector de estados está compuesto por cuatro vectores asociados a los 6 grados de libertad del dron y sus respectivas velocidades tal como se describe en la tabla \ref{tab:state-space-vector}.
-
-\begin{table}[ht]
-	\begin{center}
-		\begin{tabular}{|c|c|c|}
-			\hline
-			Parámetro 	& Unidad 	& Descripción\\ \hline
-			$m$		  	& $kg$		& Masa del quadrotor \\ \hline
-		\end{tabular}
-		\caption{Parámetros.}
-		\label{tab:quadrotors-param}
-	\end{center}
-\end{table}
-
-\begin{table}[ht]
-	\begin{center}
-		\begin{tabular}{|c|c|c|}
-			\hline
-			Vector					& Estado 	& Descripción\\ \hline
-			\multirow{3}{*}{$p$}	& $x$		& \\ \cline{2-3}
-									& $y$ 		& \\ \cline{2-3}
-			 						& $z$ 		& \\ \hline
-			\multirow{3}{*}{$\Phi$}	& $\phi$	& \\ \cline{2-3}
-									& $\theta$ 	& \\ \cline{2-3}
-			 						& $\psi$ 	& \\ \hline
-			\multirow{3}{*}{$V$}	& $u$		& \\ \cline{2-3}
-									& $v$ 		& \\ \cline{2-3}
-			 						& $w$ 		& \\ \hline
-			\multirow{3}{*}{$\omega$}& $p$		& \\ \cline{2-3}
-									& $q$ 		& \\ \cline{2-3}
-			 						& $r$ 		& \\ \hline
-		\end{tabular}
-		\caption{Vector de estados.}
-		\label{tab:state-space-vector}
-	\end{center}
-\end{table}
-\subsection{Ecuaciones del equilibrio de fuerzas}
-
-\begin{figure}[ht]
-  \centering
-    \includegraphics[width=0.63\textwidth]{figs/Quadrotor-Scheme.png}
-  \caption{Esquema de un quadrotor.}
-  \label{fig:Quadrotor-scheme}
-\end{figure}
 
 % -------------------------------------
 \section{Simulador}
@@ -325,8 +383,8 @@ TO-DO
 %% ---------------------------------------------------------------
 %%                         BIBLIOGRAPHY
 %% ---------------------------------------------------------------
-%\bibliographystyle{plain}
-%\bibliography{refs}
+\bibliographystyle{plain}
+\bibliography{refs}
 
 
 \end{document}
