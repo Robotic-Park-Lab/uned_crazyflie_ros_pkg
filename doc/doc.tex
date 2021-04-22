@@ -58,7 +58,7 @@ Este repositorio\footnote{Github: \url{https://github.com/FranciscoJManasAlvarez
 
 \end{itemize}
 
-\subsection{Crazyflie}
+\section{Crazyflie}
 El dron crazyflie 2.1, figura \ref{fig:crazyflie}, se trata de un quadrotor que por su reducido tamaño entra dentro de la categoría de "nanoquadrotor". Su diseño está especialmente pensado para vuelo en interiores. A continuación se detallan sus especificaciones técnicas, disponibles también en la web del dron\footnote{Bitcraze: \url{https://store.bitcraze.io/products/crazyflie-2-1}}.
 \begin{figure}[H]
   \centering
@@ -66,15 +66,16 @@ El dron crazyflie 2.1, figura \ref{fig:crazyflie}, se trata de un quadrotor que 
   \caption{Crazyflie 2.1.}
   \label{fig:crazyflie}
 \end{figure}
+\subsection{Características}
 \subsubsection{Especificaciones mecánicas}
 \begin{itemize}
-\item Peso: $27 \left[g\right]$
-\item Dimensiones: $92x92x29 \left[mm\right]$
+\item Peso: $27 g$
+\item Dimensiones: $92x92x29 mm$
 \end{itemize}
 \subsubsection{Radio}
 \begin{itemize}
 \item 2.4GHz ISM band radio
-\item Increased range with 20 dBm radio amplifier, tested to > 1 km range LOS with Crazyradio PA (environmentally dependent)
+\item Increased range with 20 dBm radio amplifier, tested to $>$ 1 km range LOS with Crazyradio PA (environmentally dependent)
 \item Bluetooth Low Energy support with iOS and Android clients available
 \item Dual antenna support with both on board chip antenna and U.FL connector
 \end{itemize}
@@ -113,7 +114,20 @@ El dron crazyflie 2.1, figura \ref{fig:crazyflie}, se trata de un quadrotor que 
 \item 2 x GPIO connected to nRF51
 \end{itemize}
 
-\subsubsection{Modelado}
+\subsection{Proyectos anteriores}
+En este apartado se describen los trabajos ya realizados sobre crazyflie que se han consultado y reutilizado parcialmente para la herramienta desarrollada.
+
+\subsubsection*{CrazyS \footnote{Github: \url{https://github.com/gsilano/CrazyS}}}
+TO-DO
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin euismod, erat ultrices hendrerit consequat, ligula nisi semper felis, id euismod ex erat eget diam. Vestibulum ut leo condimentum, ullamcorper orci id, suscipit arcu. Suspendisse suscipit purus tincidunt ex eleifend, sed tristique eros maximus. Donec vitae nisl congue, gravida orci vitae, consectetur sapien. Interdum et malesuada fames ac ante ipsum primis in faucibus. Duis ante orci, blandit rutrum urna in, mollis commodo lorem. Donec blandit, velit sed aliquam auctor, mi nunc lobortis arcu, in imperdiet sapien est vitae libero. Donec tincidunt quam ipsum, vitae rhoncus dolor efficitur id. Proin laoreet, ipsum quis vehicula condimentum, ex ipsum tincidunt est, bibendum iaculis enim est vel risus.
+
+\subsubsection*{Crazyflie\_ros \footnote{Github: \url{https://github.com/whoenig/crazyflie_ros}}}
+TO-DO
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin euismod, erat ultrices hendrerit consequat, ligula nisi semper felis, id euismod ex erat eget diam. Vestibulum ut leo condimentum, ullamcorper orci id, suscipit arcu. Suspendisse suscipit purus tincidunt ex eleifend, sed tristique eros maximus. Donec vitae nisl congue, gravida orci vitae, consectetur sapien. Interdum et malesuada fames ac ante ipsum primis in faucibus. Duis ante orci, blandit rutrum urna in, mollis commodo lorem. Donec blandit, velit sed aliquam auctor, mi nunc lobortis arcu, in imperdiet sapien est vitae libero. Donec tincidunt quam ipsum, vitae rhoncus dolor efficitur id. Proin laoreet, ipsum quis vehicula condimentum, ex ipsum tincidunt est, bibendum iaculis enim est vel risus.
+
+\subsection{Modelado}
 El modelado se ha basado en el capítulo 4 del trabajo \cite{luis2016design}. Para el modelado, se comprenderá la configuración del crazyflie en "X", ya que presenta menos inconvenientes en el caso de querer agregar sensores, como cámaras.
 
 Para la obtención del modelo dinámico del sistema, se asumen tres hipótesis, que simplifican el modelo pero dan una buena aproximación para trabajar. Las simplificaciones sobre el dron son:
@@ -123,14 +137,22 @@ Para la obtención del modelo dinámico del sistema, se asumen tres hipótesis, que
 \item La masa es constante.
 \end{itemize}
 
-La transformación desde el centro de referencia del sistema global al dron está determinada por tres rotaciones sucesivas: Yaw $\left(\psi\right) \rightarrow$ Pitch $\left(\theta\right)\rightarrow$ Roll $\left(\phi\right)$. La matriz de rotación resultante sería: \textcolor{red}{COMPROBAR}
+La transformación desde el centro de referencia del sistema global al dron está determinada por tres rotaciones sucesivas: Yaw $\left(\psi\right) \rightarrow$ Pitch $\left(\theta\right)\rightarrow$ Roll $\left(\phi\right)$. La matriz de rotación resultante sería: 
 \begin{equation}
-	R^{b}_{i} = 
+	R^{b}_{o} = 
 	\begin{pmatrix}
-		\cos\theta\cos\psi & \cos\theta\sin\psi & -\sin\theta\\
-		\sin\phi\sin\theta\cos\psi-\cos\phi\sin\psi & \sin\phi\sin\theta\sin\psi+\cos\phi\cos\psi & \sin\phi\cos\theta\\
-		\cos\phi\sin\theta\cos\psi+\sin\phi\sin\psi & \cos\phi\sin\theta\sin\psi-\sin\phi\cos\psi & \cos\phi\cos\theta
+		\cos\theta\cos\psi & \textcolor{red}{-}\cos\theta\sin\psi & \textcolor{red}{+}\sin\theta\\
+		\sin\phi\sin\theta\cos\psi\textcolor{red}{+}\cos\phi\sin\psi & \textcolor{red}{-}\sin\phi\sin\theta\sin\psi+\cos\phi\cos\psi & \textcolor{red}{-}\sin\phi\cos\theta\\
+		\textcolor{red}{-}\cos\phi\sin\theta\cos\psi+\sin\phi\sin\psi & \cos\phi\sin\theta\sin\psi\textcolor{red}{+}\sin\phi\cos\psi & \cos\phi\cos\theta
 	\end{pmatrix}
+	\label{eq:Matriz-R}
+\end{equation}
+
+\textcolor{red}{Las correcciones en rojo son las modificaciones que hay que hacerle a la matriz para que concuerde con la matriz que expone Barrientos \citep{barrientos2007fundamentos} en la ecuación 3.13 de acuerdo al orden de rotaciones que expone \cite{luis2016design}}
+
+Al tratarse de una matriz ortonormal, se cumple la siguiente propiedad:
+\begin{equation}
+\left(R_{o}^{b}\right)^{-1}=\left(R_{o}^{b}\right)^{T}=R_{b}^{o}
 \end{equation}
 \begin{figure}[H]
   \centering
@@ -139,9 +161,7 @@ La transformación desde el centro de referencia del sistema global al dron está 
   \label{fig:crazyflie-axis}
 \end{figure}
 
-En la siguiente tabla se representan las variables de estado que se emplean en este modelado
-
-A continuación se realiza el modelado basado en espacios de estado para un quadrotor genérico. Los parámetros empleados en el proceso se muestran en la tabla \ref{tab:quadrotors-param}. El vector de estados está compuesto por cuatro vectores asociados a los 6 grados de libertad del dron y sus respectivas velocidades tal como se describe en la tabla \ref{tab:state-space-vector}.
+A continuación se realiza el modelado basado en espacios de estado para un quadrotor genérico. El vector de estados está compuesto por cuatro vectores asociados a los 6 grados de libertad del dron y sus respectivas velocidades tal como se describe en la tabla \ref{tab:state-space-vector}.
 
 \begin{table}[h]
 	\begin{center}
@@ -172,24 +192,145 @@ A continuación se realiza el modelado basado en espacios de estado para un quadr
   \label{fig:Quadrotor-scheme}
 \end{figure}
 
-\subsection{Ecuaciones del equilibrio de fuerzas}
-Para determinar las ecuaciones relacionadas con los parámetros lineales del dron, se aplica la segunda ley de Newton.
+\subsubsection{Ecuaciones del equilibrio de fuerzas}
+Para determinar las ecuaciones relacionadas con los parámetros lineales del dron, se aplica la segunda ley de Newton, determinando la derivada de la velocidad según la ecuación de Coriolis
+\begin{equation}
+\Sigma F = m\cdot\dot{V}^{o}_{CG}=m\cdot\left(\dot{V}^{b}_{CG}+\omega_{b/o}\times V_{CG}\right)
+\end{equation}
 
+Considerando que en estacionario, tanto el Roll como el Pitch son nulos, el equilibrio de fuerzas permite aislar la derivada de la velocidad lineal del dron.
+\begin{equation}
+	\begin{bmatrix} 0 \\ 0 \\ F_{z} \end{bmatrix} - R^{b}_{o} \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix} = m \begin{pmatrix} \begin{bmatrix} \dot{u} \\ \dot{v} \\ \dot{w} \end{bmatrix} + \begin{bmatrix} p \\ q \\ r \end{bmatrix} \times \begin{bmatrix} u \\ v \\ w \end{bmatrix} \end{pmatrix}
+\end{equation}
+\begin{equation}
+\boxed{
+	\begin{bmatrix}
+		\dot{u} \\
+		\dot{v} \\
+		\dot{w}
+	\end{bmatrix}
+	= 
+	\begin{bmatrix}
+		0 \\
+		0 \\
+		\frac{F_{z}}{m}
+	\end{bmatrix}
+	- R^{b}_{o}
+	\begin{bmatrix}
+		0 \\
+		0 \\
+		g
+	\end{bmatrix}
+	-
+	\begin{bmatrix}
+		p \\
+		q \\
+		r
+	\end{bmatrix}
+	\times
+	\begin{bmatrix}
+		u \\
+		v \\
+		w
+	\end{bmatrix}
+}
+\end{equation}
 
+Para determinar las derivadas de los espacios de estado referentes a la posición, se proyectan las velocidades lineales del dron sobre el marco general mediante la correspondiente matriz de transformación, ecuación \ref{eq:Matriz-R}.
+\begin{equation}
+	\dot{p}^{o}=R^{o}_{b}\cdot V^{b}\rightarrow \boxed{
+	\begin{bmatrix}
+		\dot{x} \\
+		\dot{y} \\
+		\dot{z}
+	\end{bmatrix}
+	= R^{o}_{b}
+	\begin{bmatrix}
+		u \\
+		v \\
+		w
+	\end{bmatrix}}
+\end{equation}
 
-\subsection{Proyectos anteriores}
-En este apartado se describen los trabajos ya realizados sobre crazyflie que se han consultado y reutilizado parcialmente para la herramienta desarrollada.
+Para determinar la fuerza que generan las hélices del dron se emplea la siguiente expresión:
+\begin{equation}
+F^{b}_{i}=\begin{bmatrix} 0\\ 0 \\ T_{i}\end{bmatrix}\rightarrow T_{i}=C_{T}\omega^{2}_{i}\rightarrow \boxed{ \Sigma F^{b}_{i}=\begin{bmatrix} 0\\ 0 \\ C_{T}\left(\omega^{2}_{1}+\omega^{2}_{2}+\omega^{2}_{3}+\omega^{2}_{4}\right)\end{bmatrix}}
+\end{equation}\label{eq:dron-thrust}
 
-\subsubsection*{CrazyS \footnote{Github: \url{https://github.com/gsilano/CrazyS}}}
-TO-DO
+$T_{i}$ es el empuje expresado en Newtons y $C_{T}$ es el coeficiente de empuje que se determina mediante la siguiente expresión:
+\begin{equation}
+C_{T}=k_{T}\rho\frac{\left(2r\right)^{4}}{3600}
+\end{equation}
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin euismod, erat ultrices hendrerit consequat, ligula nisi semper felis, id euismod ex erat eget diam. Vestibulum ut leo condimentum, ullamcorper orci id, suscipit arcu. Suspendisse suscipit purus tincidunt ex eleifend, sed tristique eros maximus. Donec vitae nisl congue, gravida orci vitae, consectetur sapien. Interdum et malesuada fames ac ante ipsum primis in faucibus. Duis ante orci, blandit rutrum urna in, mollis commodo lorem. Donec blandit, velit sed aliquam auctor, mi nunc lobortis arcu, in imperdiet sapien est vitae libero. Donec tincidunt quam ipsum, vitae rhoncus dolor efficitur id. Proin laoreet, ipsum quis vehicula condimentum, ex ipsum tincidunt est, bibendum iaculis enim est vel risus.
+\subsubsection{Equilibrio de Momentos}
+Para determinar los elementos asociados a los componentes angulares de los estados del sistema, se emplea el equilibrio de momentos. Aplicando la sumatoria de momentos equivalente al momento angular del dron usando la equivalencia de la ecuación de Coriolis:
+\begin{equation}
+\Sigma M^{o}=~^{o}\dot{h}\rightarrow \Sigma M^{o}=~^{b}\dot{h}+\omega_{b/o}\times h
+\end{equation}
 
-\subsubsection*{Crazyflie\_ros \footnote{Github: \url{https://github.com/whoenig/crazyflie_ros}}}
-TO-DO
+Aplicado al marco del dron, las ecuaciones de cantidad de movimiento se calculan más fácilmente, como se explica en \citep{peraire2009lecturea,peraire2009lectureb}
+\begin{equation}
+\Sigma M^{b}=J^{b}\dot{\omega}_{b/o}+\omega_{b/o}\times J\omega_{b/o}
+\end{equation}
+donde $J$ representa la matriz de inercia del dron. Al asumirse la hipótesis de simetría del dron, la matriz sería:
+\begin{equation}
+J = \begin{bmatrix} I_{xx} & - I_{xy} & -I_{xz} \\ -I_{yx} & I_{yy} & -I_{yz} \\ -I_{zx} & -I_{zy} & I_{zz}\end{bmatrix} \rightarrow J = \begin{bmatrix} I_{xx} & 0 & 0 \\ 0 & I_{yy} & 0 \\ 0 & 0 & I_{zz}\end{bmatrix}
+\end{equation}
+\begin{equation}
+\left(J\right)^{-1}= \frac{adj\begin{pmatrix} I_{xx} & 0 & 0 \\ 0 & I_{yy} & 0 \\ 0 & 0 & I_{zz}\end{pmatrix}}{\begin{vmatrix}I_{xx} & 0 & 0 \\ 0 & I_{yy} & 0 \\ 0 & 0 & I_{zz}\end{vmatrix}}= \frac{\begin{pmatrix} I_{yy}I_{zz} & 0 & 0 \\ 0 & I_{xx}I_{zz} & 0 \\ 0 & 0 & I_{xx}I_{yy}\end{pmatrix}}{I_{xx}I_{yy}I_{zz}}
+\end{equation}
+\begin{equation}
+\left(J\right)^{-1}=\begin{pmatrix} \frac{1}{I_{xx}} & 0 & 0 \\ 0 & \frac{1}{I_{yy}} & 0 \\ 0 & 0 & \frac{1}{I_{zz}}\end{pmatrix}
+\end{equation}
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin euismod, erat ultrices hendrerit consequat, ligula nisi semper felis, id euismod ex erat eget diam. Vestibulum ut leo condimentum, ullamcorper orci id, suscipit arcu. Suspendisse suscipit purus tincidunt ex eleifend, sed tristique eros maximus. Donec vitae nisl congue, gravida orci vitae, consectetur sapien. Interdum et malesuada fames ac ante ipsum primis in faucibus. Duis ante orci, blandit rutrum urna in, mollis commodo lorem. Donec blandit, velit sed aliquam auctor, mi nunc lobortis arcu, in imperdiet sapien est vitae libero. Donec tincidunt quam ipsum, vitae rhoncus dolor efficitur id. Proin laoreet, ipsum quis vehicula condimentum, ex ipsum tincidunt est, bibendum iaculis enim est vel risus.
+Por lo tanto, se puede realizar el despeje del término $\dot{\omega}_{b/o}$, obteniendo la siguiente expresión:
+\begin{equation}
+\dot{\omega}_{b/o} =\boxed{ \begin{bmatrix} \dot{p} \\ \dot{q} \\ \dot{r} \end{bmatrix} = \left(J\right)^{-1}\left(\begin{bmatrix} M_{x} \\ M_{y} \\ M_{z}\end{bmatrix}-\begin{bmatrix} p \\ q \\ r\end{bmatrix}\times J\begin{bmatrix} p \\ q \\ r\end{bmatrix} \right)}
+\end{equation}
 
+La última ecuación de estado determina la relación entre el vector $\omega_{b/o}$ y la derivada de $\Phi$.
+\begin{equation}
+\begin{bmatrix} p \\ q \\ r\end{bmatrix} = \begin{bmatrix} 1 & 0 & -\sin\theta \\ 0 & \cos\phi & \sin\phi\cos\theta \\ 0 & -\sin\phi & \cos\phi\cos\theta\end{bmatrix}\begin{bmatrix} \dot{\phi} \\ \dot{\theta} \\ \dot{\psi}\end{bmatrix}\rightarrow \boxed{\begin{bmatrix} \dot{\phi} \\ \dot{\theta} \\ \dot{\psi}\end{bmatrix} = \begin{bmatrix} 1 & \sin\phi\tan\theta & \cos\phi\tan\theta \\ 0 & \cos\phi & -\sin\phi \\ 0 & \sin\phi/\cos\theta & \cos\phi/\cos\theta\end{bmatrix}\begin{bmatrix} p \\ q \\ r\end{bmatrix}}
+\end{equation}
+
+Para determinar la correlación entre la velocidad de giro de las hélices y el momento resultante, el proceso es el siguiente:
+\begin{equation}
+M = \Sigma P_{i}\times F_{i}+\Sigma\tau_{i}
+\end{equation}
+donde $P_{i}$ representa la distancia de cada motor al centro de gravedad y $\tau_{i}$ representa el momento inducido en el dron por cada motor. Este momento es consecuencia de la tercera ley de newton aplicada al giro de la hélice.
+
+Al emplear una configuración en "X", la posición de cada motor es:
+\begin{equation}
+P_{1} = \begin{bmatrix} \frac{d}{\sqrt{2}}\\-\frac{d}{\sqrt{2}}\\0\end{bmatrix} ; P_{2} = \begin{bmatrix} -\frac{d}{\sqrt{2}}\\-\frac{d}{\sqrt{2}}\\0\end{bmatrix} ; P_{3} = \begin{bmatrix} -\frac{d}{\sqrt{2}}\\\frac{d}{\sqrt{2}}\\0\end{bmatrix} ; P_{4} = \begin{bmatrix} \frac{d}{\sqrt{2}}\\\frac{d}{\sqrt{2}}\\0\end{bmatrix}
+\end{equation}
+
+Conociendo la fuerza que genera cada motor a partir de la ecuación \ref{eq:dron-thrust}, el momento producto de esa fuerza se puede determinar según la siguiente expresión:
+\begin{equation*}
+\begin{matrix}
+P_{1}\times F_{1} = \begin{bmatrix} -\left(C_{T}\omega_{1}^{2}\right)d/\sqrt{2} \\ -\left(C_{T}\omega_{1}^{2}\right)d/\sqrt{2} \\ 0\end{bmatrix} & P_{2}\times F_{2} = \begin{bmatrix} -\left(C_{T}\omega_{2}^{2}\right)d/\sqrt{2} \\ \left(C_{T}\omega_{2}^{2}\right)d/\sqrt{2} \\ 0\end{bmatrix} \\
+P_{3}\times F_{3} = \begin{bmatrix} \left(C_{T}\omega_{3}^{2}\right)d/\sqrt{2} \\ \left(C_{T}\omega_{3}^{2}\right)d/\sqrt{2} \\ 0\end{bmatrix} & P_{4}\times F_{4} = \begin{bmatrix} \left(C_{T}\omega_{4}^{2}\right)d/\sqrt{2} \\ -\left(C_{T}\omega_{4}^{2}\right)d/\sqrt{2} \\ 0\end{bmatrix}
+\end{matrix}
+\end{equation*}
+
+Aplicando la conservación del momento angular:
+\begin{equation}
+\Sigma\tau_{i}^{b}= \begin{bmatrix} 0 \\ 0\\ C_{D}\left(-\omega_{1}^{2}+\omega_{2}^{2}-\omega_{3}^{2}+\omega_{4}^{2}\right)\end{bmatrix}
+\end{equation}
+
+Por lo tanto, en el cálculo de los momentos, el resultado sería:
+\begin{equation}
+M^{b}=\begin{bmatrix} M_{x} \\ M_{y} \\ M_{z}\end{bmatrix} = \begin{bmatrix} dC_{T}/\sqrt{2}\left(-\omega_{1}^{2}-\omega_{2}^{2}+\omega_{3}^{2}+\omega_{4}^{2}\right)\\dC_{T}/\sqrt{2}\left(-\omega_{1}^{2}+\omega_{2}^{2}+\omega_{3}^{2}-\omega_{4}^{2}\right)\\ C_{D}\left(-\omega_{1}^{2}+\omega_{2}^{2}-\omega_{3}^{2}+\omega_{4}^{2}\right)\end{bmatrix}
+\end{equation}
+
+El coeficiente de torque, $C_{D}$, se determina según las expresiones siguientes como se especifica en \citep{greitzer2006thermodynamics}:
+\begin{equation}
+Q = k_{D}\rho n^{2}D^{5} 
+\end{equation}
+\begin{equation}
+C_{D} = k_{D}\rho\left(2r\right)^{5}/3600=7.9379\cdot10^{-12}\left[Nm/rpm^{2}\right]
+\end{equation}
+
+En la ecuación de la cantidad de movimiento total hay ciertos términos que incluyen aceleraciones angulares que se han omitido, ya que tienden a ser pequeños en comparación con los otros términos de la ecuación. Los momentos de los giroscópicos también se han omitido utilizando el argumento de que el momento de inercia de cada motor tiende a ser pequeño, por lo que su contribución en el momento total también es despreciable \citep{sabatino2015quadrotor,bouabdallah2004pid}.
 % -------------------------------------
 \section{Instalación}
 % -------------------------------------
