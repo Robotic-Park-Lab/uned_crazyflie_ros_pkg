@@ -137,18 +137,24 @@ Para la obtención del modelo dinámico del sistema, se asumen tres hipótesis, que
 \item La masa es constante.
 \end{itemize}
 
-La transformación desde el centro de referencia del sistema global al dron está determinada por tres rotaciones sucesivas: Yaw $\left(\psi\right) \rightarrow$ Pitch $\left(\theta\right)\rightarrow$ Roll $\left(\phi\right)$. La matriz de rotación resultante sería: 
+La transformación desde el centro de referencia del sistema global al dron está determinada por tres rotaciones sucesivas: Yaw $\left(\psi\right) \rightarrow$ Pitch $\left(\theta\right)\rightarrow$ Roll $\left(\phi\right)$. IMPORTANTE: Se emplea la representación extrínseca de Tait-Bryan. La matriz de rotación resultante sería: 
+\begin{equation}
+	Rot_{\phi} = \begin{pmatrix} 1 & 0 & 0\\ 0 & \cos\phi & \sin\phi\\	0 & -\sin\phi & \cos\phi\end{pmatrix}
+	Rot_{\theta} = \begin{pmatrix} \cos\theta & 0 & -\sin\theta\\ 0 & 1 & 0\\\sin\theta & 0 & \cos\theta\end{pmatrix}
+	Rot_{\psi} = \begin{pmatrix} \cos\psi & \sin\psi & 0\\ -\sin\psi & \cos\psi  & 0\\0 & 0 & 1 \end{pmatrix}
+	\label{eq:Matriz-Rot}
+\end{equation}
 \begin{equation}
 	R^{b}_{o} = 
 	\begin{pmatrix}
-		\cos\theta\cos\psi & \textcolor{red}{-}\cos\theta\sin\psi & \textcolor{red}{+}\sin\theta\\
-		\sin\phi\sin\theta\cos\psi\textcolor{red}{+}\cos\phi\sin\psi & \textcolor{red}{-}\sin\phi\sin\theta\sin\psi+\cos\phi\cos\psi & \textcolor{red}{-}\sin\phi\cos\theta\\
-		\textcolor{red}{-}\cos\phi\sin\theta\cos\psi+\sin\phi\sin\psi & \cos\phi\sin\theta\sin\psi\textcolor{red}{+}\sin\phi\cos\psi & \cos\phi\cos\theta
+		\cos\theta\cos\psi & \cos\theta\sin\psi & -\sin\theta\\
+		\sin\phi\sin\theta\cos\psi-\cos\phi\sin\psi & \sin\phi\sin\theta\sin\psi+\cos\phi\cos\psi & \sin\phi\cos\theta\\
+		\cos\phi\sin\theta\cos\psi+\sin\phi\sin\psi & \cos\phi\sin\theta\sin\psi-\sin\phi\cos\psi & \cos\phi\cos\theta
 	\end{pmatrix}
 	\label{eq:Matriz-R}
 \end{equation}
 
-\textcolor{red}{Las correcciones en rojo son las modificaciones que hay que hacerle a la matriz para que concuerde con la matriz que expone Barrientos \citep{barrientos2007fundamentos} en la ecuación 3.13 de acuerdo al orden de rotaciones que expone \cite{luis2016design}}
+\textcolor{red}{Las correcciones en rojo son las modificaciones que hay que hacerle a la matriz para que concuerde con la matriz que expone Barrientos \citep{barrientos2007fundamentos} en la ecuación 3.13 de acuerdo al orden de rotaciones que expone \cite{luis2016design}. En \citep{green2019autonomous} también aparecen los signos cambiados respecto a Barrientos, pero indica mal las matrices de rotación individuales. En \citep{greiff2017modelling} sí justifica la razón de los signos cambiados y expone también las matrices individuales correctas. Debe haber algún cambio de pi/2 por algún lado.}
 
 Al tratarse de una matriz ortonormal, se cumple la siguiente propiedad:
 \begin{equation}
@@ -193,7 +199,7 @@ A continuación se realiza el modelado basado en espacios de estado para un quadr
 \end{figure}
 
 \subsubsection{Ecuaciones del equilibrio de fuerzas}
-Para determinar las ecuaciones relacionadas con los parámetros lineales del dron, se aplica la segunda ley de Newton, determinando la derivada de la velocidad según la ecuación de Coriolis
+Para determinar las ecuaciones relacionadas con los parámetros lineales del dron, se aplica la segunda ley de Newton, determinando la derivada de la velocidad según la ecuación de Coriolis\footnote{Explicación: \url{https://www.youtube.com/watch?v=-OyRCgv-hPs}} \citep{blakelock1991automatic}
 \begin{equation}
 \Sigma F = m\cdot\dot{V}^{o}_{CG}=m\cdot\left(\dot{V}^{b}_{CG}+\omega_{b/o}\times V_{CG}\right)
 \end{equation}

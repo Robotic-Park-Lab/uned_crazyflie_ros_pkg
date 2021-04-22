@@ -8,7 +8,6 @@ close all;
 %%
 % Model
 Crazyflie_Model
-
 % Controllers
 Crazyflie_PIDcontrollers
 
