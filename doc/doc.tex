@@ -335,6 +335,57 @@ C_{D} = k_{D}\rho\left(2r\right)^{5}/3600=7.9379\cdot10^{-12}\left[Nm/rpm^{2}\ri
 \end{equation}
 
 En la ecuación de la cantidad de movimiento total hay ciertos términos que incluyen aceleraciones angulares que se han omitido, ya que tienden a ser pequeños en comparación con los otros términos de la ecuación. Los momentos de los giroscópicos también se han omitido utilizando el argumento de que el momento de inercia de cada motor tiende a ser pequeño, por lo que su contribución en el momento total también es despreciable \citep{sabatino2015quadrotor,bouabdallah2004pid}.
+
+\section{Control}
+En esta sección se documentarán los controladores propuestos y operativos que se han implementado, así como sus resultados en Matlab, Gazebo y experimentos reales. A continuación se muestra el esquema de control genérico implementado.
+\begin{figure}[h]
+  \centering
+    \includegraphics[width=1.0\textwidth]{figs/control-scheme.PNG}
+  \caption{Esquema de control para el dron crazyflie 2.1.}
+  \label{fig:control-scheme}
+\end{figure}
+\subsection{PID continuo}
+El primer controlador probado sobre el sistema se trata de una arquitectura de control basada en controladores del tipo PID en tiempo continuo. A continuación se detallan los valores establecidos para los distintos parámetros de cada controlador. La configuración de los controladores PID se trata del modelo paralelo. ecuación \ref{eq:pid_continuous}, donde N es el coeficiente del filtro del término derivativo y toma el valor $100$.
+\begin{equation}
+C\left(s\right) = \frac{Y\left(s\right)}{U\left(s\right)}=K_{p}+K_{i}\cdot\frac{1}{s}+K_{d}\cdot\frac{N}{1+N\cdot\frac{1}{s}}
+\label{eq:pid_continuous}
+\end{equation}
+\begin{table}[h]
+	\begin{center}
+		\begin{tabular}{|c|c|c|c|c|}
+			\hline
+			Controlador					& Objetivo 	& $K_{p}$ 	& $K_{i}$ 	& $K_{d}$ \\ \hline
+			\multirow{2}{*}{Altitude}	& $z$		& $15000.0$ & $3500.0$ 	& $9000.0$ \\ \cline{2-5}
+										& $w$ 		& $1.0$ 	& $0.0$ 	& $0.0$ \\ \hline
+			\multirow{4}{*}{X-Y}		& $x$		& $1.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
+										& $u$ 		& $30.0$ 	& $2.0$ 	& $0.0$ \\ \cline{2-5}
+										& $y$ 		& $1.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
+			 							& $v$ 		& $-30.0$ 	& $-2.0$ 	& $0.0$ \\ \hline
+			\multirow{2}{*}{Attitude}	& $\phi$	& $3.5$ 	& $2.0$ 	& $0.0$ \\ \cline{2-5}
+			 							& $\theta$ 	& $3.5$ 	& $2.0$ 	& $0.0$ \\ \hline
+			Yaw 						& $\psi$	& $3.0$ 	& $0.0$ 	& $0.0$ \\ \hline
+			\multirow{3}{*}{Rate}		& $p$		& $70.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
+										& $q$ 		& $70.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
+			 							& $r$ 		& $70.0$ 	& $16.7$ 	& $0.0$ \\ \hline
+		\end{tabular}
+		\caption{Controladores PID. Parámetros.}
+		\label{tab:pid_parameters}
+	\end{center}
+\end{table}
+
+El resultado global para esta configuración se muestra en la figura \ref{fig:PIDc_results}.
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.75\textwidth]{figs/PID_continuous_results}
+  \caption{PID continuo. Resultados.}
+  \label{fig:PIDc_results}
+\end{figure}
+ 
+\subsection{PID discreto}
+
+\subsection{MPC}
+
+\subsection{Control basado en eventos}
 % -------------------------------------
 \section{Instalación}
 % -------------------------------------
