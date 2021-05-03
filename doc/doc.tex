@@ -347,7 +347,7 @@ En esta sección se documentarán los controladores propuestos y operativos que se
 \subsection{PID continuo}
 El primer controlador probado sobre el sistema se trata de una arquitectura de control basada en controladores del tipo PID en tiempo continuo. A continuación se detallan los valores establecidos para los distintos parámetros de cada controlador. La configuración de los controladores PID se trata del modelo paralelo. ecuación \ref{eq:pid_continuous}, donde N es el coeficiente del filtro del término derivativo y toma el valor $100$.
 \begin{equation}
-C\left(s\right) = \frac{Y\left(s\right)}{U\left(s\right)}=K_{p}+K_{i}\cdot\frac{1}{s}+K_{d}\cdot\frac{N}{1+N\cdot\frac{1}{s}}
+C\left(s\right) = \frac{U\left(s\right)}{E\left(s\right)}=K_{p}+K_{i}\cdot\frac{1}{s}+K_{d}\cdot\frac{N}{1+N\cdot\frac{1}{s}}
 \label{eq:pid_continuous}
 \end{equation}
 \begin{table}[h]
@@ -382,6 +382,47 @@ El resultado global para esta configuración se muestra en la figura \ref{fig:PID
 \end{figure}
  
 \subsection{PID discreto}
+En el caso del controlador PID discreto, se toma como referencia los valores del caso continuo. El sistema se ejecuta a tres frecuencias distintas. El sistema más rápido se ejecuta a $500Hz$ ($T=0.002s$) y se corresponde con el ``\textit{Rate Controller}''. En el caso del ``\textit{Attitude Controller}'', la frecuencia de funcionamiento se reduce a $250Hz$ ($T=0.004s$). Finalmente, el resto de controladores operan a una frecuencia de funcionamiento de $100Hz$ ($T=0.010s$). Para la discretización de los controladores, se ha estimado que la aproximación más adecuada es la trapezoidal (\textit{Tustin's approximation} ó \textit{the bilinear transformation}) \citep{wittenmark2002computer}, ecuación \ref{eq:aprox_trapezoidal}.
+
+\begin{equation}
+U\left(s\right)=\left(K_{p}+K_{i}\cdot\frac{1}{s}+K_{d}\cdot\frac{N}{1+N\cdot\frac{1}{s}}\right)E\left(s\right)\rightarrow u\left(t\right)=K_{p}e\left(t\right)+K_{i}\int e\left(t\right)dt+K_{d}\dfrac{de\left(t\right)}{dt}
+\label{eq:pid_s2t}
+\end{equation}
+\begin{equation}
+s=\frac{2}{T}\frac{1-z^{-1}}{1+z^{-1}}\rightarrow z=e^{sT}\approx\frac{1+(sT/2)}{1-(sT/2)}
+\label{eq:aprox_trapezoidal}
+\end{equation}
+\begin{equation}
+C\left(z\right)=\frac{U\left(z\right)}{E\left(z\right)}=\frac{q_{0}+q_{1}z^{-1}+q_{2}z^{-2}}{1-z^{-1}}
+\begin{cases}
+q_{0} & = K_{p}+\frac{K_{i}T}{2}+\frac{K_{d}}{T} \\
+q_{1} & = -K_{p}+\frac{K_{i}T}{2}-2\frac{K_{d}}{T} \\
+q_{2} & = \frac{K_{d}}{T}
+\end{cases}
+\label{eq:pid_Z}
+\end{equation}
+\begin{table}[h]
+	\begin{center}
+		\begin{tabular}{|c|c|c|c|c|}
+			\hline
+			Controlador					& Objetivo 	& $q_{0}$ 	& $q_{1}$ 	& $q_{2}$ \\ \hline
+			\multirow{2}{*}{Altitude}	& $z$		& $15000.0$ & $3500.0$ 	& $9000.0$ \\ \cline{2-5}
+										& $w$ 		& $1.0$ 	& $0.0$ 	& $0.0$ \\ \hline
+			\multirow{4}{*}{X-Y}		& $x$		& $1.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
+										& $u$ 		& $30.0$ 	& $2.0$ 	& $0.0$ \\ \cline{2-5}
+										& $y$ 		& $1.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
+			 							& $v$ 		& $-30.0$ 	& $-2.0$ 	& $0.0$ \\ \hline
+			\multirow{2}{*}{Attitude}	& $\phi$	& $3.5$ 	& $2.0$ 	& $0.0$ \\ \cline{2-5}
+			 							& $\theta$ 	& $3.5$ 	& $2.0$ 	& $0.0$ \\ \hline
+			Yaw 						& $\psi$	& $3.0$ 	& $0.0$ 	& $0.0$ \\ \hline
+			\multirow{3}{*}{Rate}		& $p$		& $70.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
+										& $q$ 		& $70.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
+			 							& $r$ 		& $70.0$ 	& $16.7$ 	& $0.0$ \\ \hline
+		\end{tabular}
+		\caption{Controladores PID discreto. Parámetros. ACTUALIZAR}
+		\label{tab:pidz_parameters}
+	\end{center}
+\end{table}
 
 \subsection{MPC}
 
