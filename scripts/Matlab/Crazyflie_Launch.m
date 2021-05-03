@@ -1,18 +1,18 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CRAZYFLIE 2.1 Set up
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-clear;
+clear variables;
 clc;
 close all;
 
-%%
-% Model
+%% Model
 Crazyflie_Model
-% Controllers
-Crazyflie_PIDcontrollers
-
-% Simulation
-sim('Crazyflie_NoLinealModel')
+%% PID Continuo
+% Crazyflie_PIDs
+% sim('Crazyflie_NoLinealModel_S')
+%% PID Discreto
+Crazyflie_PIDz
+sim('Crazyflie_NoLinealModel_Z')
 
 % Graphs
 Crazyflie_Graphs

@@ -198,9 +198,9 @@ grid minor
 %% 3D Results. Crazyflie flight
 figure('Name', 'Crazyflie flight')
 %subplot(2,1,1)
-plot3(references.x_ref.Data,references.y_ref.Data, references.z_ref.Data,'linewidth',1.5,'marker','.')
+plot3(references.x_ref.Data,references.y_ref.Data, references.z_ref.Data,'linewidth',1.0,'marker','.')
 hold on
-plot3(dron_state.x.Data,dron_state.y.Data, dron_state.z.Data,'linewidth',1.5,'marker','.')
+plot3(dron_state.x.Data,dron_state.y.Data, dron_state.z.Data,'linewidth',1.0,'marker','.')
 grid minor
 axis equal
 title('Crazyflie flight')
@@ -208,6 +208,7 @@ xlabel('X [m]')
 ylabel('Y [m]')
 zlabel('Z [m]')
 legend('Ref','dron', 'Location', 'best')
+
 figure
 %subplot(2,1,2)
 plot(actuators.PWM_M1)

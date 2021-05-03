@@ -382,7 +382,7 @@ El resultado global para esta configuración se muestra en la figura \ref{fig:PID
 \end{figure}
  
 \subsection{PID discreto}
-En el caso del controlador PID discreto, se toma como referencia los valores del caso continuo. El sistema se ejecuta a tres frecuencias distintas. El sistema más rápido se ejecuta a $500Hz$ ($T=0.002s$) y se corresponde con el ``\textit{Rate Controller}''. En el caso del ``\textit{Attitude Controller}'', la frecuencia de funcionamiento se reduce a $250Hz$ ($T=0.004s$). Finalmente, el resto de controladores operan a una frecuencia de funcionamiento de $100Hz$ ($T=0.010s$). Para la discretización de los controladores, se ha estimado que la aproximación más adecuada es la trapezoidal (\textit{Tustin's approximation} ó \textit{the bilinear transformation}) \citep{wittenmark2002computer}, ecuación \ref{eq:aprox_trapezoidal}.
+En el caso del controlador PID discreto, se toma como referencia los valores del caso continuo. El sistema se ejecuta a tres frecuencias distintas. Los sistemas más rápidos se ejecutan a $500Hz$ ($T=0.002s$) y se corresponden con el ``\textit{Rate Controller}'' y el ``\textit{Yaw Controller}''. En el caso del ``\textit{Attitude Controller}'', la frecuencia de funcionamiento se reduce a $250Hz$ ($T=0.004s$). Finalmente, el resto de controladores operan a una frecuencia de funcionamiento de $100Hz$ ($T=0.010s$). Para la discretización de los controladores, se ha estimado que la aproximación más adecuada es la trapezoidal (\textit{Tustin's approximation} ó \textit{the bilinear transformation}) \citep{wittenmark2002computer}, ecuación \ref{eq:aprox_trapezoidal}.
 
 \begin{equation}
 U\left(s\right)=\left(K_{p}+K_{i}\cdot\frac{1}{s}+K_{d}\cdot\frac{N}{1+N\cdot\frac{1}{s}}\right)E\left(s\right)\rightarrow u\left(t\right)=K_{p}e\left(t\right)+K_{i}\int e\left(t\right)dt+K_{d}\dfrac{de\left(t\right)}{dt}
@@ -406,20 +406,20 @@ q_{2} & = \frac{K_{d}}{T}
 		\begin{tabular}{|c|c|c|c|c|}
 			\hline
 			Controlador					& Objetivo 	& $q_{0}$ 	& $q_{1}$ 	& $q_{2}$ \\ \hline
-			\multirow{2}{*}{Altitude}	& $z$		& $15000.0$ & $3500.0$ 	& $9000.0$ \\ \cline{2-5}
-										& $w$ 		& $1.0$ 	& $0.0$ 	& $0.0$ \\ \hline
-			\multirow{4}{*}{X-Y}		& $x$		& $1.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
-										& $u$ 		& $30.0$ 	& $2.0$ 	& $0.0$ \\ \cline{2-5}
-										& $y$ 		& $1.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
-			 							& $v$ 		& $-30.0$ 	& $-2.0$ 	& $0.0$ \\ \hline
-			\multirow{2}{*}{Attitude}	& $\phi$	& $3.5$ 	& $2.0$ 	& $0.0$ \\ \cline{2-5}
-			 							& $\theta$ 	& $3.5$ 	& $2.0$ 	& $0.0$ \\ \hline
-			Yaw 						& $\psi$	& $3.0$ 	& $0.0$ 	& $0.0$ \\ \hline
-			\multirow{3}{*}{Rate}		& $p$		& $70.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
-										& $q$ 		& $70.0$ 	& $0.0$ 	& $0.0$ \\ \cline{2-5}
-			 							& $r$ 		& $70.0$ 	& $16.7$ 	& $0.0$ \\ \hline
+			\multirow{2}{*}{Altitude}	& $z$		& $915000$ & $-1815000$ 	& $900000.0$ \\ \cline{2-5}
+										& $w$ 		& $1.0$ 	& $-1.0$ 	& $0.0$ \\ \hline
+			\multirow{4}{*}{X-Y}		& $x$		& $1.0$ 	& $-1.0$ 	& $0.0$ \\ \cline{2-5}
+										& $u$ 		& $30.01$ 	& $-29.99$ 	& $0.00$ \\ \cline{2-5}
+										& $y$ 		& $1.0$ 	& $-1.0$ 	& $0.0$ \\ \cline{2-5}
+			 							& $v$ 		& $-30.01$ 	& $29.99$ 	& $0.00$ \\ \hline
+			\multirow{2}{*}{Attitude}	& $\phi$	& $3.504$ 	& $-3.4960$ 	& $0.0$ \\ \cline{2-5}
+			 							& $\theta$ 	& $3.5040$ 	& $-3.4960$ 	& $0.0$ \\ \hline
+			Yaw 						& $\psi$	& $3.0$ 	& $-3.0$ 	& $0.0$ \\ \hline
+			\multirow{3}{*}{Rate}		& $p$		& $70.0$ 	& $-70.0$ 	& $0.0$ \\ \cline{2-5}
+										& $q$ 		& $70.0$ 	& $-70.0$ 	& $0.0$ \\ \cline{2-5}
+			 							& $r$ 		& $70.0167$ 	& $-69.9833$ 	& $0.00$ \\ \hline
 		\end{tabular}
-		\caption{Controladores PID discreto. Parámetros. ACTUALIZAR}
+		\caption{Controladores PID discreto. Parámetros.}
 		\label{tab:pidz_parameters}
 	\end{center}
 \end{table}
