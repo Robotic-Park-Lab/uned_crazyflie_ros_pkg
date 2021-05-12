@@ -4,9 +4,9 @@ m = 0.027;      % mass [Kg]
 g = 9.81;       % gravity [m/s2]
 d = 39.73e-3;   % arm length [m]
 r = 23.1348e-3; % rotor radius [m]
-Ixx = 1.657e-5; % moment of inertia [Kg.m-2]
-Iyy = 1.665e-5; % moment of inertia [kg.m-2]
-Izz = 2.296e-5; % moment of inertia [kg.m-2]
+% Ixx = 1.657e-5; % moment of inertia [Kg.m-2]
+% Iyy = 1.665e-5; % moment of inertia [kg.m-2]
+% Izz = 2.296e-5; % moment of inertia [kg.m-2]
 kT = 0.2025;    % adimensional
 kD = 0.11;      % adimensional
 fm = 0.2685;    % adimensional
@@ -40,7 +40,7 @@ quad.c = 9.59e-3;                  %   c       Blade chord                      
 
 quad.Ct = 0.15; %0.0187336 %1.92558e-03;                    %2.11163e-05 for rad/s                            %            %   Ct      Non-dim. thrust coefficient         1x1
 quad.Cq = 0.11; % quad.Ct*sqrt(quad.Ct/2);         %   Cq      Non-dim. torque coefficient         1x1
-quad.Mb = 0.00025                     %Rotor Blade Mass
+quad.Mb = 0.00025;                     %Rotor Blade Mass
 quad.Jr = 0.5*quad.Mb*quad.r^2;
 
 
@@ -52,6 +52,7 @@ quad.k = quad.Cq*quad.rho*(2*pi*9.5493)^(-2)*(2*quad.r)^5; % Q = k w^2
 
 quad.verbose = false;
 
+% disp(quad)
 %% Definition of state model
 
 x_e = [0 0 0 0 0 0 0 0 0 0 0 0];

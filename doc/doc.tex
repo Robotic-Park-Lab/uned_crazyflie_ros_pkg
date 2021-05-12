@@ -424,9 +424,31 @@ q_{2} & = \frac{K_{d}}{T}
 	\end{center}
 \end{table}
 
+El resultado global para esta configuración se muestra en la figura \ref{fig:PIDd_results}.
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.75\textwidth]{figs/PID_discrete_results}
+  \caption{PID discreto. Resultados.}
+  \label{fig:PIDd_results}
+\end{figure}
 \subsection{MPC}
 
 \subsection{Control basado en eventos}
+A partir de los controladores diseñados en secciones anteriores, se ha procedido a montar la correspondiente estructura de control basado en eventos. En este caso, tras por la velocidad que demandan el nivel inferior, comprendido por el \textit{Yaw Controller}, \textit{Attitude Controller} y \textit{Rate Controller}, $500[Hz]$, se opta por implementar el control basado en eventos para los controladores de posición exclusivamente. El generador de eventos se rige por tres leyes:
+\begin{itemize}
+\item Ciclo límite con una frecuencia menor que la empleada en el control en tiempo discreto.
+\item Cota de error inferior a los $10[cm]$. Para evitar un sobremuestreo en la simulación, se emplea esta cota a una frecuencia de $100[Hz]$.
+\item Implementación \textit{send-on-delta} simple con una banda de $3[cm]$.
+\end{itemize}
+
+El resultado global para esta configuración se muestra en la figura \ref{fig:PIDeb_results}. \textcolor{red}{LOS RESULTADOS SON MALÍSIMOS. LÓGICO PORQUE NO SE HAN AJUSTADO LOS PARÁMETROS DE LOS CONTROLADORES. A LO MEJOR IMPLEMENTANDO ALGUNA REGLA COMO SIMC O EL MÉTODO AMIGO PUEDE MEJORAR.} 
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.75\textwidth]{figs/PID_eventbased_results}
+  \caption{PID basado en eventos. Resultados.}
+  \label{fig:PIDeb_results}
+\end{figure}
+
 % -------------------------------------
 \section{Instalación}
 % -------------------------------------

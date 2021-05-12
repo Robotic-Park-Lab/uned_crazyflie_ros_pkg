@@ -41,9 +41,9 @@ grid minor
 % Altitude Controller
 figure('Name', 'Altitude Controller')
 subplot(2,1,1)
-plot(altitude_controller.z_ref)
+plot(references.z_ref)
 hold on
-plot(altitude_controller.z)
+plot(dron_state.z)
 xlabel('Time [s]')
 ylabel('Z [m]')
 title('Z position')
@@ -59,9 +59,9 @@ grid minor
 % Yaw Controller
 figure('Name', 'Yaw Controller')
 subplot(3,1,1)
-plot(yaw_controller.yaw_ref)
+plot(references.yaw_ref)
 hold on
-plot(yaw_controller.yaw)
+plot(dron_state.yaw*180/pi)
 xlabel('Time [s]')
 ylabel('Yaw [º]')
 title('Yaw position')
@@ -87,9 +87,9 @@ grid minor
 % X
 figure('Name', 'X Controller')
 subplot(3,1,1)
-plot(x_controller.x_ref)
+plot(references.x_ref)
 hold on
-plot(x_controller.x)
+plot(dron_state.x)
 hold on
 plot(x_controller.xbe)
 xlabel('Time [s]')
@@ -115,9 +115,9 @@ grid minor
 % Y
 figure('Name', 'Y Controller')
 subplot(3,1,1)
-plot(y_controller.y_ref)
+plot(references.y_ref)
 hold on
-plot(y_controller.y)
+plot(dron_state.y)
 hold on
 plot(y_controller.ybe)
 xlabel('Time [s]')
