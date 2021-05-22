@@ -53,8 +53,10 @@
       <param name="Z_POS" value="$(arg z)"/>
    </node>
 
-   <node name="attitude_rate_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_attitude_controller_node" output="screen">
+   <node name="attitude_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_attitude_controller_node" output="screen">
+   </node>
 
+   <node name="ratemixer_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_ratemixer_controller_node" output="screen">
    </node>
 
 <!--<node name="hovering_example" pkg="rotors_gazebo" type="hovering_example" output="screen" />-->

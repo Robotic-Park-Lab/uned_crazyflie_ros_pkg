@@ -6,7 +6,7 @@ bool CrazyflieAttitudeController::initialize()
 
 	// Publisher:
 	// Actuators
-	m_pub_motor_velocity_reference = m_nh.advertise<mav_msgs::Actuators>("command/motor_speed", 10);
+//	m_pub_motor_velocity_reference = m_nh.advertise<mav_msgs::Actuators>("command/motor_speed", 10);
 
 	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::RateMixerRefs>("ratemixer_controller_ref", 10);
 
@@ -15,17 +15,13 @@ bool CrazyflieAttitudeController::initialize()
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyflieAttitudeController::gtposeCallback, this);
 	// Reference
 	m_sub_attitude_ref = m_nh.subscribe( "attitude_controller_ref", 10, &CrazyflieAttitudeController::attitudeRefsCallback, this);
-
+	ROS_INFO_THROTTLE(1, "In revision ...");
 	return true;
 }
 
 bool CrazyflieAttitudeController::iterate()
 {
-	// Housekeeping -------
-	// TO-DO:
-  ROS_INFO_THROTTLE(1, "In progress ...");
 
-	ROS_INFO_THROTTLE(0.5, "Omega: %f", omega);
 	// Roll
 	double sinr_cosp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.x+m_GT_pose.orientation.y*m_GT_pose.orientation.z);
 	double cosr_cosp = 1 - 2 * (m_GT_pose.orientation.x*m_GT_pose.orientation.x+m_GT_pose.orientation.y*m_GT_pose.orientation.y);
@@ -71,7 +67,9 @@ bool CrazyflieAttitudeController::iterate()
 		if(droll[0]<-314.1593)
 			droll[0] = -314.1593;
 	}
+
 	rateMixerRefsCallback(omega,dpitch[0],droll[0],dyaw);
+	/*
 	// Control Mixer
 	{
 		Eigen::Vector4d ref_rotor_velocities;
@@ -82,6 +80,7 @@ bool CrazyflieAttitudeController::iterate()
 
 		rotorvelocitiesCallback(ref_rotor_velocities);
 	}
+	*/
 	return true;
 }
 

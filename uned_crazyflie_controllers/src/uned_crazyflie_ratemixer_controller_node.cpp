@@ -1,4 +1,4 @@
-#include <uned_crazyflie_controllers/CrazyflieAttitudeController.h>
+#include <uned_crazyflie_controllers/CrazyflieRateMixerController.h>
 #include <ros/console.h>
 
 
@@ -6,16 +6,16 @@ int main(int argc, char **argv)
 {
 	try
 	{
-		ros::init(argc, argv, "crazyflie_attitude_controller");
+		ros::init(argc, argv, "crazyflie_ratemixer_controller");
 
-		CrazyflieAttitudeController  crazyflie_attitude_controller;
-		crazyflie_attitude_controller.initialize();
+		CrazyflieRateMixerController  crazyflie_ratemixer_controller;
+		crazyflie_ratemixer_controller.initialize();
 
 		ros::Rate loop_rate(500); // f : 500Hz => T = 2 ms
 		while (ros::ok())
 		{
 			ros::spinOnce();
-			crazyflie_attitude_controller.iterate();
+			crazyflie_ratemixer_controller.iterate();
 			loop_rate.sleep();
 		}
 
