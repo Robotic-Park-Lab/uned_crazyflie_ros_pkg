@@ -19,6 +19,17 @@ find_package(
   Eigen3 REQUIRED
 )
 
+################################################
+## Declare ROS messages, services and actions ##
+################################################
+add_message_files(
+  DIRECTORY msg
+  FILES
+    AttitudeRateMixerRefs.msg
+)
+
+generate_messages(DEPENDENCIES std_msgs)
+
 ###################################
 ## catkin specific configuration ##
 ###################################

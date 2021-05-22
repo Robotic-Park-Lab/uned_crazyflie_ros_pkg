@@ -3,18 +3,17 @@
 
 bool CrazyfliePositionController::initialize()
 {
-	ROS_INFO("CrazyflieController::inicialize() ok.");
+	ROS_INFO("CrazyfliePositionController::inicialize() ok.");
 
 	m_nh_params.getParam("CONTROLLER_TYPE", m_controller_type);
 	m_nh_params.getParam("ROBOT_ID", m_robot_id);
 	m_nh_params.getParam("CONTROLLER_MODE", m_controller_mode);
 
-	// Publisher: Controller Status
-	m_pub_control_signal = m_nh.advertise<std_msgs::Float64>("crazyflie_control_signal", 10);
+	// Publisher:
 	// Actuators
 	m_pub_motor_velocity_reference = m_nh.advertise<mav_msgs::Actuators>("command/motor_speed", 10);
 	// Referencias para los controladores PID Attitude y Rate
-	//m_pub_attitude_rate_references = m_nh.advertise<Eigen::Vector4d>("attitude_rate_references", 10);
+	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::AttitudeRateMixerRefs>("attitude_rate_references", 10);
 
 	// Subscriber:
 	m_sub_eje_x = m_nh.subscribe( "joystick_eje_x", 10, &CrazyfliePositionController::ejexCallback, this);
@@ -61,8 +60,12 @@ bool CrazyfliePositionController::iterate()
 
 		// Output signal
 		omega = (delta_omega[0]+(we-4070.3)/0.2685)*0.0509;
-		ROS_INFO_THROTTLE(0.1, "Z_error: %f ; \tZ_deltaOmega: %f ; \tOmega: %f->%f", z_error_signal[0], delta_omega[0], omega/0.0509, omega);
+		ROS_INFO_THROTTLE(0.2, "Z_error: %f ; \tZ_deltaOmega: %f ; \tOmega: %f->%f", z_error_signal[0], delta_omega[0], omega/0.0509, omega);
 
+	}
+	// X-Y Controller
+	{
+		
 	}
 
 	ROS_INFO_STREAM_THROTTLE(1, "GT Pose:\n" << m_GT_pose);
@@ -97,6 +100,7 @@ bool CrazyfliePositionController::iterate()
 	rotorvelocitiesCallback(ref_rotor_velocities);
 	*/
 
+	attitudeRateMixerRefsCallback(omega, 0.0, 0.0, 0.0);
 	// Control Mixer
 	{
 		Eigen::Vector4d ref_rotor_velocities;
@@ -111,7 +115,8 @@ bool CrazyfliePositionController::iterate()
 	return true;
 }
 
-void CrazyfliePositionController::rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities){
+void CrazyfliePositionController::rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities)
+{
 	// A new mav message, actuator_msg, is used to send to Gazebo the propellers angular velocities.
 	mav_msgs::ActuatorsPtr actuator_msg(new mav_msgs::Actuators);
 
@@ -123,6 +128,19 @@ void CrazyfliePositionController::rotorvelocitiesCallback(const Eigen::Vector4d 
 	actuator_msg->header.stamp = ros::Time::now();
 
 	m_pub_motor_velocity_reference.publish(actuator_msg);
+}
+
+void CrazyfliePositionController::attitudeRateMixerRefsCallback(const double omega, const double pitch, const double roll, const double dyaw)
+{
+	uned_crazyflie_controllers::AttitudeRateMixerRefs ref_msg;
+
+	ref_msg.timestamp = ros::Time::now().toSec();
+	ref_msg.omega = omega;
+	ref_msg.pitch = pitch;
+	ref_msg.roll = roll;
+	ref_msg.dyaw = dyaw;
+
+	m_pub_control_signal.publish(ref_msg);
 }
 
 void CrazyfliePositionController::positionreferenceCallback(const geometry_msgs::Pose::ConstPtr& msg){

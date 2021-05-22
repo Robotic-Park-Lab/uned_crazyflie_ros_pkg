@@ -12,12 +12,12 @@
 #include <chrono>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
-#include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/String.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Point.h>
 #include <mav_msgs/Actuators.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
+#include <uned_crazyflie_controllers/AttitudeRateMixerRefs.h>
 
 class CrazyfliePositionController
 {
@@ -32,7 +32,7 @@ class CrazyfliePositionController
 	ros::NodeHandle m_nh{};
 	ros::NodeHandle m_nh_params{"~"};
 
-	ros::Publisher m_pub_control_signal, m_pub_motor_velocity_reference,m_pub_attitude_rate_references;
+	ros::Publisher m_pub_motor_velocity_reference, m_pub_control_signal;
 
 	ros::Subscriber m_sub_eje_x, m_sub_eje_y, m_sub_GT_pose, m_sub_pos_ref;
 
@@ -46,6 +46,7 @@ class CrazyfliePositionController
 	void ejeyCallback(const std_msgs::Float64::ConstPtr& msg);
     void gtposeCallback(const geometry_msgs::Pose::ConstPtr& msg);
     void rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities);
+    void attitudeRateMixerRefsCallback(const double omega, const double pitch, const double roll, const double dyaw);
     void positionreferenceCallback(const geometry_msgs::Pose::ConstPtr& msg);
     void readTrajectory(const trajectory_msgs::MultiDOFJointTrajectory::ConstPtr& trajectory_reference_msg);
 
