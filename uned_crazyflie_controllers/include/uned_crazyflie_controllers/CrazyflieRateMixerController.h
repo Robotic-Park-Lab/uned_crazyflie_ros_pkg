@@ -45,13 +45,20 @@ class CrazyflieRateMixerController
     std::string m_controller_type, m_robot_id, m_controller_mode;
     geometry_msgs::Pose m_GT_pose;
 
-    double omega, dpitch_ref, droll_ref, dyaw_ref, dpitch_dron, droll_dron;
+    double omega, dpitch_ref, droll_ref, dyaw_ref, dpitch_dron, droll_dron, dyaw_dron;
+    double pitch_dron[2] = {0.0,0.0};
+    double roll_dron[2] = {0.0,0.0};
+    double yaw_dron[2] = {0.0,0.0};
 
-    double pitch_error[3] = {0.0,0.0,0.0};
+    double dpitch_error[3] = {0.0,0.0,0.0};
     double dpitch[2] = {0.0,0.0};
-    double Phi_q[3] = {3.5020,-3.4980,0.0};
+    double Dphi_q[3] = {70.0,-70.0,0.0};
 
-    double roll_error[3] = {0.0,0.0,0.0};
+    double droll_error[3] = {0.0,0.0,0.0};
     double droll[2] = {0.0,0.0};
-    double Theta_q[3] = {3.5020,-3.4980,0.0};
+    double Dtheta_q[3] = {70.0,-70.0,0.0};
+
+    double dyaw_error[3] = {0.0,0.0,0.0};
+    double dyaw[2] = {0.0,0.0};
+    double Dpsi_q[3] = {70.0167,-69.9833,0.0};
 };

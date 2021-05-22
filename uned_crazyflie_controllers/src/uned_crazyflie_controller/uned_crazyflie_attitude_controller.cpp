@@ -5,9 +5,6 @@ bool CrazyflieAttitudeController::initialize()
 	ROS_INFO("CrazyflieAttitudeController::inicialize() ok.");
 
 	// Publisher:
-	// Actuators
-//	m_pub_motor_velocity_reference = m_nh.advertise<mav_msgs::Actuators>("command/motor_speed", 10);
-
 	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::RateMixerRefs>("ratemixer_controller_ref", 10);
 
 	// Subscriber:
@@ -45,10 +42,10 @@ bool CrazyflieAttitudeController::iterate()
 		dpitch[0] = dpitch[1] + Phi_q[0]*pitch_error[0] + Phi_q[1]*pitch_error[1] + Phi_q[2]*pitch_error[2];
 
 		// Saturation
-		if(dpitch[0]>314.1593)
-			dpitch[0] = 314.1593;
-		if(dpitch[0]<-314.1593)
-			dpitch[0] = -314.1593;
+		if(dpitch[0]>180.0)
+			dpitch[0] = 180.0;
+		if(dpitch[0]<-180.0)
+			dpitch[0] = -180.0;
 	}
 	// Roll Controller
 	{
@@ -69,35 +66,9 @@ bool CrazyflieAttitudeController::iterate()
 	}
 
 	rateMixerRefsCallback(omega,dpitch[0],droll[0],dyaw);
-	/*
-	// Control Mixer
-	{
-		Eigen::Vector4d ref_rotor_velocities;
-		ref_rotor_velocities[0] = omega;
-		ref_rotor_velocities[1] = omega;
-		ref_rotor_velocities[2] = omega;
-		ref_rotor_velocities[3] = omega;
 
-		rotorvelocitiesCallback(ref_rotor_velocities);
-	}
-	*/
 	return true;
 }
-
-void CrazyflieAttitudeController::rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities){
-	// A new mav message, actuator_msg, is used to send to Gazebo the propellers angular velocities.
-	mav_msgs::ActuatorsPtr actuator_msg(new mav_msgs::Actuators);
-
-	// The clear method makes sure the actuator_msg is empty (there are no previous values of the propellers angular velocities).
-	actuator_msg->angular_velocities.clear();
-	// for all propellers, we put them into actuator_msg so they will later be used to control the crazyflie.
-	for (int i = 0; i < 4; i++)
-	   actuator_msg->angular_velocities.push_back(rotor_velocities[i]);
-	actuator_msg->header.stamp = ros::Time::now();
-
-	m_pub_motor_velocity_reference.publish(actuator_msg);
-}
-
 
 void CrazyflieAttitudeController::gtposeCallback(const geometry_msgs::Pose::ConstPtr& msg)
 {

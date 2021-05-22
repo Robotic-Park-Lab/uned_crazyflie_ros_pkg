@@ -30,7 +30,7 @@ class CrazyflieAttitudeController
 	ros::NodeHandle m_nh{};
 	ros::NodeHandle m_nh_params{"~"};
 
-	ros::Publisher m_pub_motor_velocity_reference, m_pub_control_signal;
+	ros::Publisher m_pub_control_signal;
 
 	ros::Subscriber m_sub_GT_pose, m_sub_attitude_ref;
 
