@@ -24,8 +24,8 @@ bool CrazyfliePositionController::initialize()
 	// Reference:
 	m_sub_pos_ref = m_nh.subscribe( "position_reference", 10, &CrazyfliePositionController::positionreferenceCallback, this);
 
-	m_ref_pose.position.x = 0;
-	m_ref_pose.position.y = 0;
+	m_ref_pose.position.x = 1;
+	m_ref_pose.position.y = 1;
 	m_ref_pose.position.z = 1;
 	m_ref_pose.orientation.x = 0;
 	m_ref_pose.orientation.y = 0;
@@ -33,20 +33,43 @@ bool CrazyfliePositionController::initialize()
 	m_ref_pose.orientation.w = 1;
 	m_ref_position = m_ref_pose;
 
+	ROS_INFO("In progress ...");
+	ROS_INFO("PID(Z) Parameters: \t%f \t%f \t%f", Z_q[0], Z_q[1], Z_q[2]);
+
 	return true;
 }
 
 bool CrazyfliePositionController::iterate()
 {
-	// Housekeeping -------
-	// TO-DO:
-	ROS_INFO_THROTTLE(10,"In progress ...");
+	// Altitude Controller
+	{
+		// Update error vector
+		z_error_signal[2] = z_error_signal[1];
+		z_error_signal[1] = z_error_signal[0];
+		z_error_signal[0] = m_ref_pose.position.z - m_GT_pose.position.z;
+
+		// Update signal vector
+		delta_omega[2] = delta_omega[1];
+		delta_omega[1] = delta_omega[0];
+		delta_omega[0] = delta_omega[1] + Z_q[0]*z_error_signal[0] + Z_q[1]*z_error_signal[1] + Z_q[2]*z_error_signal[2];
+
+		// Saturation
+		if(delta_omega[0]>15000)
+			delta_omega[0] = 15000;
+		if(delta_omega[0]<-15000)
+			delta_omega[0] = -15000;
+
+		// Output signal
+		omega = (delta_omega[0]+(we-4070.3)/0.2685)*0.0509;
+		ROS_INFO_THROTTLE(0.1, "Z_error: %f ; \tZ_deltaOmega: %f ; \tOmega: %f->%f", z_error_signal[0], delta_omega[0], omega/0.0509, omega);
+
+	}
 
 	ROS_INFO_STREAM_THROTTLE(1, "GT Pose:\n" << m_GT_pose);
 	ROS_INFO_STREAM_THROTTLE(1, "REF Pose:\n" << m_ref_position);
+	/*
 	m_error_pose.position.x = m_ref_pose.position.x - m_GT_pose.position.x;
 	m_error_pose.position.y = m_ref_pose.position.y - m_GT_pose.position.y;
-	m_error_pose.position.z = m_ref_pose.position.z - m_GT_pose.position.z;
 
 	ROS_INFO_STREAM_THROTTLE(1,"Error Pose:\n" << m_error_pose);
 
@@ -62,7 +85,6 @@ bool CrazyfliePositionController::iterate()
 	if(control_signal[0] < 0)
 		control_signal[0] = 0;
 
-	control_signal[0] = 0;
 	//ROS_INFO_THROTTLE(0.1,"Control signal: %f", control_signal[0]);
 	//ROS_INFO_THROTTLE(0.1,"Error signal: %f", error_signal[0]);
 
@@ -73,6 +95,19 @@ bool CrazyfliePositionController::iterate()
 	ref_rotor_velocities[3] = control_signal[0];
 
 	rotorvelocitiesCallback(ref_rotor_velocities);
+	*/
+
+	// Control Mixer
+	{
+		Eigen::Vector4d ref_rotor_velocities;
+		ref_rotor_velocities[0] = omega;
+		ref_rotor_velocities[1] = omega;
+		ref_rotor_velocities[2] = omega;
+		ref_rotor_velocities[3] = omega;
+
+		rotorvelocitiesCallback(ref_rotor_velocities);
+	}
+
 	return true;
 }
 

@@ -57,6 +57,14 @@ class CrazyfliePositionController
     double Kp{1000.0}, Ti{31.14}, Td{0.0}, Tp{0.01};
     double q[3] = {Kp*(1+(Tp/Ti)+(Td/Tp)), Kp*(-1+(Tp/Ti)+(Td/Tp)), Kp*(Td/Tp)};
     double error_signal[3] = {0.0, 0.0, 0.0};
-
+    // Altitude paremeters
+    double Z_T = 1/100;
+    double z_error_signal[3] = {0.0, 0.0, 0.0};
+    double Z_s[3] = {15000.0, 3500.0, 9000.0};
+    //double Z_q[3] = {Z_s[0]+Z_s[1]*Z_T/2.0+Z_s[2]/Z_T, -Z_s[0]+Z_s[1]*Z_T/2.0-2.0*Z_s[2]/Z_T, Z_s[2]/Z_T};
+    double Z_q[3] = {915017.5, -1814982.5, 900000};
+    double delta_omega[3] = {0.0, 0.0, 0.0};
+    double omega = 0.0;
+    double we = 14480.0;
 
 };
