@@ -53,19 +53,31 @@ class CrazyfliePositionController
     double m_joy_x{.0}, m_joy_y{.0}, speed;
     std::string m_controller_type, m_robot_id, m_controller_mode;
     geometry_msgs::Pose m_GT_pose, m_ref_pose, m_error_pose, m_ref_position;
-    double w_equilibrio = 2000.0;
-    double control_signal[2] = {w_equilibrio, w_equilibrio};
-    double Kp{1000.0}, Ti{31.14}, Td{0.0}, Tp{0.01};
-    double q[3] = {Kp*(1+(Tp/Ti)+(Td/Tp)), Kp*(-1+(Tp/Ti)+(Td/Tp)), Kp*(Td/Tp)};
-    double error_signal[3] = {0.0, 0.0, 0.0};
+
     // Altitude paremeters
     double Z_T = 1/100;
     double z_error_signal[3] = {0.0, 0.0, 0.0};
     double Z_s[3] = {15000.0, 3500.0, 9000.0};
     //double Z_q[3] = {Z_s[0]+Z_s[1]*Z_T/2.0+Z_s[2]/Z_T, -Z_s[0]+Z_s[1]*Z_T/2.0-2.0*Z_s[2]/Z_T, Z_s[2]/Z_T};
     double Z_q[3] = {915017.5, -1814982.5, 900000};
-    double delta_omega[3] = {0.0, 0.0, 0.0};
+    double delta_omega[2] = {0.0, 0.0};
     double omega = 0.0;
     double we = 14480.0;
+    // X-Y paremeters
+    double XY_T = 1/100;
+    double x_error_signal[3] = {0.0, 0.0, 0.0};
+    double y_error_signal[3] = {0.0, 0.0, 0.0};
+    double X_q[3] = {1.0, -1.0, 0.0};
+    double Y_q[3] = {1.0, -1.0, 0.0};
+    double uc[2] = {0.0, 0.0};
+    double vc[2] = {0.0, 0.0};
+    double u_feedback[2] = {0.0, 0.0};
+    double v_feedback[2] = {0.0, 0.0};
+    double u_error_signal[3] = {0.0, 0.0, 0.0};
+    double v_error_signal[3] = {0.0, 0.0, 0.0};
+    double U_q[3] = {1.0, -1.0, 0.0};
+    double V_q[3] = {1.0, -1.0, 0.0};
+    double pitch_ref[2] = {0.0, 0.0};
+    double roll_ref[2] = {0.0, 0.0};
 
 };
