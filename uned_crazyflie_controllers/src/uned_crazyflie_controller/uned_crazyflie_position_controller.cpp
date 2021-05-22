@@ -14,9 +14,9 @@ bool CrazyfliePositionController::initialize()
 
 	// Publisher:
 	// Actuators
-	m_pub_motor_velocity_reference = m_nh.advertise<mav_msgs::Actuators>("command/motor_speed", 10);
+	// m_pub_motor_velocity_reference = m_nh.advertise<mav_msgs::Actuators>("command/motor_speed", 10);
 	// Referencias para los controladores PID Attitude y Rate
-	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::AttitudeRateMixerRefs>("attitude_rate_references", 10);
+	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::AttitudeRefs>("attitude_controller_ref", 10);
 
 	// Subscriber:
 	// Crazyflie Pose
@@ -68,8 +68,6 @@ bool CrazyfliePositionController::iterate()
 
 		// Output signal
 		omega = (delta_omega[0]+(we-4070.3)/0.2685)*0.0509;
-		// ROS_INFO_THROTTLE(0.2, "Z_error: %f ; \tZ_deltaOmega: %f ; \tOmega: %f->%f", z_error_signal[0], delta_omega[0], omega/0.0509, omega);
-
 	}
 	// X-Y Controller
 	// Convert quaternion to yw
@@ -140,19 +138,10 @@ bool CrazyfliePositionController::iterate()
 	}
 
 	attitudeRateMixerRefsCallback(omega, pitch_ref[0], roll_ref[0], dyaw_ref[0]);
-	// Control Mixer
-	{
-		Eigen::Vector4d ref_rotor_velocities;
-		ref_rotor_velocities[0] = omega;
-		ref_rotor_velocities[1] = omega;
-		ref_rotor_velocities[2] = omega;
-		ref_rotor_velocities[3] = omega;
 
-		rotorvelocitiesCallback(ref_rotor_velocities);
-	}
 	return true;
 }
-
+/*
 void CrazyfliePositionController::rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities)
 {
 	// A new mav message, actuator_msg, is used to send to Gazebo the propellers angular velocities.
@@ -167,10 +156,10 @@ void CrazyfliePositionController::rotorvelocitiesCallback(const Eigen::Vector4d 
 
 	m_pub_motor_velocity_reference.publish(actuator_msg);
 }
-
+*/
 void CrazyfliePositionController::attitudeRateMixerRefsCallback(const double omega, const double pitch, const double roll, const double dyaw)
 {
-	uned_crazyflie_controllers::AttitudeRateMixerRefs ref_msg;
+	uned_crazyflie_controllers::AttitudeRefs ref_msg;
 
 	ref_msg.timestamp = ros::Time::now().toSec();
 	ref_msg.omega = omega;

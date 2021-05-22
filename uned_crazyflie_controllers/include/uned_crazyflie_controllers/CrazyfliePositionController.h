@@ -14,7 +14,7 @@
 #include <std_msgs/String.h>
 #include <geometry_msgs/Pose.h>
 #include <mav_msgs/Actuators.h>
-#include <uned_crazyflie_controllers/AttitudeRateMixerRefs.h>
+#include <uned_crazyflie_controllers/AttitudeRefs.h>
 
 class CrazyfliePositionController
 {
@@ -31,7 +31,7 @@ class CrazyfliePositionController
 
 	ros::Publisher m_pub_motor_velocity_reference, m_pub_control_signal;
 
-	ros::Subscriber m_sub_eje_x, m_sub_eje_y, m_sub_GT_pose, m_sub_pos_ref;
+	ros::Subscriber m_sub_GT_pose, m_sub_pos_ref;
 
 	bool initialize();
 

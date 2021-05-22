@@ -25,7 +25,8 @@ find_package(
 add_message_files(
   DIRECTORY msg
   FILES
-    AttitudeRateMixerRefs.msg
+    AttitudeRefs.msg
+    RateMixerRefs.msg
 )
 
 generate_messages(DEPENDENCIES std_msgs)
