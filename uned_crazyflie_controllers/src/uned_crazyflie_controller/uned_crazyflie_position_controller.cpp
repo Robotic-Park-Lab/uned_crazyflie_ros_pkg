@@ -19,8 +19,6 @@ bool CrazyfliePositionController::initialize()
 	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::AttitudeRateMixerRefs>("attitude_rate_references", 10);
 
 	// Subscriber:
-	m_sub_eje_x = m_nh.subscribe( "joystick_eje_x", 10, &CrazyfliePositionController::ejexCallback, this);
-	m_sub_eje_y = m_nh.subscribe( "joystick_eje_y", 10, &CrazyfliePositionController::ejeyCallback, this);
 	// Crazyflie Pose
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyfliePositionController::gtposeCallback, this);
 	// Reference:
@@ -36,7 +34,6 @@ bool CrazyfliePositionController::initialize()
 	m_ref_pose.orientation.y = 0;
 	m_ref_pose.orientation.z = 0;
 	m_ref_pose.orientation.w = 1;
-	m_ref_position = m_ref_pose;
 
 	ROS_INFO("In progress ...");
 	ROS_INFO("Altitude PID(Z) Parameters: \t%f \t%f \t%f", Z_q[0], Z_q[1], Z_q[2]);
@@ -153,7 +150,6 @@ bool CrazyfliePositionController::iterate()
 
 		rotorvelocitiesCallback(ref_rotor_velocities);
 	}
-
 	return true;
 }
 
@@ -185,28 +181,14 @@ void CrazyfliePositionController::attitudeRateMixerRefsCallback(const double ome
 	m_pub_control_signal.publish(ref_msg);
 }
 
-void CrazyfliePositionController::positionreferenceCallback(const geometry_msgs::Pose::ConstPtr& msg){
-	m_ref_position.position = msg->position;
-	m_ref_position.orientation = msg->orientation;
-}
-
-void CrazyfliePositionController::ejexCallback(const std_msgs::Float64::ConstPtr& msg)
+void CrazyfliePositionController::positionreferenceCallback(const geometry_msgs::Pose::ConstPtr& msg)
 {
-	m_joy_x = msg->data;
-}
-
-void CrazyfliePositionController::ejeyCallback(const std_msgs::Float64::ConstPtr& msg)
-{
-	m_joy_y = msg->data;
+	m_ref_pose.position = msg->position;
+	m_ref_pose.orientation = msg->orientation;
 }
 
 void CrazyfliePositionController::gtposeCallback(const geometry_msgs::Pose::ConstPtr& msg)
 {
 	m_GT_pose.position = msg->position;
 	m_GT_pose.orientation = msg->orientation;
-}
-
-void CrazyfliePositionController::readTrajectory(const trajectory_msgs::MultiDOFJointTrajectory::ConstPtr& trajectory_reference_msg)
-{
-
 }
