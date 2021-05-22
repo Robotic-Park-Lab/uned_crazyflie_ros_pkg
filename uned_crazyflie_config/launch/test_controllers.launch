@@ -48,6 +48,9 @@
       <param name="CONTROLLER_TYPE" value="$(arg position_controller)" />
       <param name="ROBOT_ID" value="$(arg robot_id)"/>
       <param name="CONTROLLER_MODE" value="close_loop"/>
+      <param name="X_POS" value="$(arg x)"/>
+      <param name="Y_POS" value="$(arg y)"/>
+      <param name="Z_POS" value="$(arg z)"/>
    </node>
 
 <!--<node name="hovering_example" pkg="rotors_gazebo" type="hovering_example" output="screen" />-->

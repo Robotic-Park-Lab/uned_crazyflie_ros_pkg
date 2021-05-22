@@ -50,7 +50,7 @@ class CrazyfliePositionController
     void positionreferenceCallback(const geometry_msgs::Pose::ConstPtr& msg);
     void readTrajectory(const trajectory_msgs::MultiDOFJointTrajectory::ConstPtr& trajectory_reference_msg);
 
-    double m_joy_x{.0}, m_joy_y{.0}, speed;
+    double m_joy_x{.0}, m_joy_y{.0}, speed, m_x_init, m_y_init, m_z_init;
     std::string m_controller_type, m_robot_id, m_controller_mode;
     geometry_msgs::Pose m_GT_pose, m_ref_pose, m_error_pose, m_ref_position;
 
@@ -75,9 +75,13 @@ class CrazyfliePositionController
     double v_feedback[2] = {0.0, 0.0};
     double u_error_signal[3] = {0.0, 0.0, 0.0};
     double v_error_signal[3] = {0.0, 0.0, 0.0};
-    double U_q[3] = {1.0, -1.0, 0.0};
-    double V_q[3] = {1.0, -1.0, 0.0};
+    double U_q[3] = {30.0, -29.99, 0.0};
+    double V_q[3] = {-30.0, 29.99, 0.0};
     double pitch_ref[2] = {0.0, 0.0};
     double roll_ref[2] = {0.0, 0.0};
-
+    // Yaw Controller
+    double yaw_T = 1/100;
+    double yaw_error_signal[3] = {0.0, 0.0, 0.0};
+    double Yaw_q[3] = {3.0, -3.0, 0.0};
+    double dyaw_ref[2] = {0.0, 0.0};
 };

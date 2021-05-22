@@ -8,6 +8,9 @@ bool CrazyfliePositionController::initialize()
 	m_nh_params.getParam("CONTROLLER_TYPE", m_controller_type);
 	m_nh_params.getParam("ROBOT_ID", m_robot_id);
 	m_nh_params.getParam("CONTROLLER_MODE", m_controller_mode);
+	m_nh_params.getParam("X_POS", m_x_init);
+	m_nh_params.getParam("Y_POS", m_y_init);
+	m_nh_params.getParam("Z_POS", m_z_init);
 
 	// Publisher:
 	// Actuators
@@ -23,6 +26,9 @@ bool CrazyfliePositionController::initialize()
 	// Reference:
 	m_sub_pos_ref = m_nh.subscribe( "position_reference", 10, &CrazyfliePositionController::positionreferenceCallback, this);
 
+	u_feedback[0] = m_x_init;
+	v_feedback[0] = m_y_init;
+
 	m_ref_pose.position.x = 1;
 	m_ref_pose.position.y = 1;
 	m_ref_pose.position.z = 1;
@@ -33,8 +39,14 @@ bool CrazyfliePositionController::initialize()
 	m_ref_position = m_ref_pose;
 
 	ROS_INFO("In progress ...");
-	ROS_INFO("PID(Z) Parameters: \t%f \t%f \t%f", Z_q[0], Z_q[1], Z_q[2]);
-
+	ROS_INFO("Altitude PID(Z) Parameters: \t%f \t%f \t%f", Z_q[0], Z_q[1], Z_q[2]);
+	ROS_INFO("X PID(Z) Parameters: \t%f \t%f \t%f", X_q[0], X_q[1], X_q[2]);
+	ROS_INFO("U PID(Z) Parameters: \t%f \t%f \t%f", U_q[0], U_q[1], U_q[2]);
+	ROS_INFO("Y PID(Z) Parameters: \t%f \t%f \t%f", Y_q[0], Y_q[1], Y_q[2]);
+	ROS_INFO("V PID(Z) Parameters: \t%f \t%f \t%f", V_q[0], V_q[1], V_q[2]);
+	ROS_INFO("Yaw PID(Z) Parameters: \t%f \t%f \t%f", Yaw_q[0], Yaw_q[1], Yaw_q[2]);
+	ROS_ERROR("Hay que esperar a que gazebo esté listo para lanzar el nodo");
+  ros::Duration(0.5).sleep();
 	return true;
 }
 
@@ -63,13 +75,15 @@ bool CrazyfliePositionController::iterate()
 
 	}
 	// X-Y Controller
+	// Convert quaternion to yw
+	double siny_cosp_ref = 2 * (m_ref_pose.orientation.w*m_ref_pose.orientation.z+m_ref_pose.orientation.x*m_ref_pose.orientation.y);
+	double cosy_cosp_ref = 1 - 2 * (m_ref_pose.orientation.y*m_ref_pose.orientation.y + m_ref_pose.orientation.z*m_ref_pose.orientation.z);
+	double yaw_ref = std::atan2(siny_cosp_ref,cosy_cosp_ref);
+	double siny_cosp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.z+m_GT_pose.orientation.x*m_GT_pose.orientation.y);
+	double cosy_cosp = 1 - 2 * (m_GT_pose.orientation.y*m_GT_pose.orientation.y + m_GT_pose.orientation.z*m_GT_pose.orientation.z);
+	double yaw = std::atan2(siny_cosp,cosy_cosp);
 	{
 		// Position
-		// Convert quaternion to yw
-		double siny_cosp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.z+m_GT_pose.orientation.x*m_GT_pose.orientation.y);
-		double cosy_cosp = 1 - 2 * (m_GT_pose.orientation.y*m_GT_pose.orientation.y + m_GT_pose.orientation.z*m_GT_pose.orientation.z);
-		double yaw = std::atan2(siny_cosp,cosy_cosp);
-
 		// Update local error
 		x_error_signal[2] = x_error_signal[1];
 		x_error_signal[1] = x_error_signal[0];
@@ -116,41 +130,19 @@ bool CrazyfliePositionController::iterate()
 		if(roll_ref[0]<-30)
 			roll_ref[0] = -30;
 	}
+	// Yaw Controller
+	{
+		// Update error
+		yaw_error_signal[2] = yaw_error_signal[1];
+		yaw_error_signal[1] = yaw_error_signal[0];
+		yaw_error_signal[0] = (yaw_ref-yaw)*180/3.14159265;
 
-	
-	ROS_INFO_STREAM_THROTTLE(1, "GT Pose:\n" << m_GT_pose);
-	ROS_INFO_STREAM_THROTTLE(1, "REF Pose:\n" << m_ref_position);
-	/*
-	m_error_pose.position.x = m_ref_pose.position.x - m_GT_pose.position.x;
-	m_error_pose.position.y = m_ref_pose.position.y - m_GT_pose.position.y;
+		// Update signal vector
+		dyaw_ref[1] = dyaw_ref[0];
+		dyaw_ref[0] = dyaw_ref[1] + Yaw_q[0]*yaw_error_signal[0] + Yaw_q[1]*yaw_error_signal[1] + Yaw_q[2]*yaw_error_signal[2];
+	}
 
-	ROS_INFO_STREAM_THROTTLE(1,"Error Pose:\n" << m_error_pose);
-
-	// Calculo señal de control
-	error_signal[2] = error_signal[1];
-	error_signal[1] = error_signal[0];
-	error_signal[0] = m_error_pose.position.z;
-	control_signal[1] = control_signal[0];
-	control_signal[0] = control_signal[1]+q[0]*error_signal[0]+q[1]*error_signal[1]+q[2]*error_signal[2];
-
-	if(control_signal[0]>3500)
-		control_signal[0] = 3500;
-	if(control_signal[0] < 0)
-		control_signal[0] = 0;
-
-	//ROS_INFO_THROTTLE(0.1,"Control signal: %f", control_signal[0]);
-	//ROS_INFO_THROTTLE(0.1,"Error signal: %f", error_signal[0]);
-
-	Eigen::Vector4d ref_rotor_velocities;
-	ref_rotor_velocities[0] = control_signal[0];
-	ref_rotor_velocities[1] = control_signal[0];
-	ref_rotor_velocities[2] = control_signal[0];
-	ref_rotor_velocities[3] = control_signal[0];
-
-	rotorvelocitiesCallback(ref_rotor_velocities);
-	*/
-
-	attitudeRateMixerRefsCallback(omega, pitch_ref[0], roll_ref[0], 0.0);
+	attitudeRateMixerRefsCallback(omega, pitch_ref[0], roll_ref[0], dyaw_ref[0]);
 	// Control Mixer
 	{
 		Eigen::Vector4d ref_rotor_velocities;
