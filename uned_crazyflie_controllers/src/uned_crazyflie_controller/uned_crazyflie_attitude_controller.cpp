@@ -1,8 +1,8 @@
-#include <uned_crazyflie_controllers/CrazyflieController.h>
+#include <uned_crazyflie_controllers/CrazyfliePositionController.h>
 
-bool CrazyflieController::initialize()
+bool CrazyfliePositionController::initialize()
 {
-	ROS_INFO("CrazyflieController::inicialize() ok.");
+	ROS_INFO("CrazyfliePositionController::inicialize() ok.");
 
 	// Publisher:
 	// Actuators
@@ -10,13 +10,13 @@ bool CrazyflieController::initialize()
 
 	// Subscriber:
 	// Crazyflie Pose
-	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyflieController::gtposeCallback, this);
+	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyfliePositionController::gtposeCallback, this);
 	// Reference
 
 	return true;
 }
 
-bool CrazyflieController::iterate()
+bool CrazyfliePositionController::iterate()
 {
 	// Housekeeping -------
 	// TO-DO:
@@ -31,11 +31,11 @@ bool CrazyflieController::iterate()
 
 	ROS_INFO_STREAM_THROTTLE(1, "GT Pose:\n" << m_GT_pose);
 	ROS_INFO_STREAM_THROTTLE(1, "REF Pose:\n" << m_ref_pose);
-	
+
 	return true;
 }
 
-void CrazyflieController::rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities){
+void CrazyfliePositionController::rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities){
 	// A new mav message, actuator_msg, is used to send to Gazebo the propellers angular velocities.
 	mav_msgs::ActuatorsPtr actuator_msg(new mav_msgs::Actuators);
 
@@ -50,7 +50,7 @@ void CrazyflieController::rotorvelocitiesCallback(const Eigen::Vector4d rotor_ve
 }
 
 
-void CrazyflieController::gtposeCallback(const geometry_msgs::Pose::ConstPtr& msg)
+void CrazyfliePositionController::gtposeCallback(const geometry_msgs::Pose::ConstPtr& msg)
 {
 	m_GT_pose.position = msg->position;
 	m_GT_pose.orientation = msg->orientation;

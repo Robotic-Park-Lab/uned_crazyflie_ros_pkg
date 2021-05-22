@@ -2,7 +2,6 @@
 <launch>
   <arg name="robot_id" default="dron"/>
   <arg name="mav_name" default="crazyflie2"/>
-  <arg name="position_controller" default="PID" />
   <arg name="enable_logging" default="false" />
   <arg name="enable_ground_truth" default="true" />
   <arg name="enable_state_estimator" default="false" />
@@ -44,10 +43,14 @@
       <arg name="z" default="$(arg z)"/>
     </include>
    <!-- The Crazyflie position controller -->
-   <node name="position_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_position_controller_node" output="screen">
-      <param name="CONTROLLER_TYPE" value="$(arg position_controller)" />
-      <param name="ROBOT_ID" value="$(arg robot_id)"/>
-      <param name="CONTROLLER_MODE" value="close_loop"/>
+   <node name="position_controller_node" pkg="rotors_control" type="position_controller_node" output="screen">
+      <param name="enable_state_estimator" value="$(arg enable_state_estimator)" />
+      <param name="csvFilesStoring" value="$(arg csvFilesStoring)"/>
+      <param name="csvFilesStoringTime" value="$(arg csvFilesStoringTime)"/>
+      <param name="user_account" value="$(arg user_account)"/>
+      <rosparam unless="$(arg enable_state_estimator)" command="load" file="$(find rotors_gazebo)/resource/controller_$(arg mav_name).yaml" />
+      <rosparam if="$(arg enable_state_estimator)" command="load" file="$(find rotors_gazebo)/resource/controller_$(arg mav_name)_with_stateEstimator.yaml" />
+      <rosparam command="load" file="$(find rotors_gazebo)/resource/$(arg mav_name).yaml" />
    </node>
 
 <!--<node name="hovering_example" pkg="rotors_gazebo" type="hovering_example" output="screen" />-->

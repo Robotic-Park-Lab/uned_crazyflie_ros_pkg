@@ -1,4 +1,4 @@
-#include <uned_crazyflie_controllers/CrazyflieController.h>
+#include <uned_crazyflie_controllers/CrazyfliePositionController.h>
 #include <ros/console.h>
 
 
@@ -8,7 +8,7 @@ int main(int argc, char **argv)
 	{
 		ros::init(argc, argv, "crazyflie_position_controller");
 
-		CrazyflieController crazyflie_position_controller;
+		CrazyfliePositionController crazyflie_position_controller;
 		crazyflie_position_controller.initialize();
 
 		ros::Rate loop_rate(100); // f : 100Hz => T = 10 ms
