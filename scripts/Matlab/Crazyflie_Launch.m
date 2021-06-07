@@ -1,77 +1,70 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CRAZYFLIE 2.1 Set up
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear variables;
-% clc;
 close all;
 
 disp('***********************')
 disp('*    Crazyflie 2.1    *')
 disp('***********************')
 disp('')
-% PIDc  -> PID continuo
-% PIDd  -> PID discreto
-% PIDeb -> PID Basado en Eventos
-controller = "PIDeb";
 %% Model
 disp('Modelling ...')
-tic
 Crazyflie_Model
-tm = toc;
-fprintf('\tModelling time: %f\n', tm)
 %% Controller
-% PID Continuo
-if(controller == "PIDc")
-    disp('Continuous PID controller')
-    disp('Loading parameters ... ')
-    tic
-    Crazyflie_PIDs
-    tm = toc;
-    fprintf('\tLoading parameters time: %f\n', tm)
-    disp('Simulating ... ')
-    tic
-    sim('Crazyflie_NoLinealModel_S')
-    tm = toc;
-    fprintf('\tSimulation time: %f\n', tm)
-    fprintf('\tSamples: \n\t\tAltitude Controller: %d\n\t\tRate Controller: %d\n\t\tAttitude Controller: %d\n\t\tX-Y Position Controller: %d\n\t\tYaw Controller: %d\n', length(altitude_controller.omega.Data), length(rate_controller.Droll.Data),length(attitude_controller.dpitch_ref.Data),length(x_controller.pitch_ref.Data),length(yaw_controller.control_signal.Data))
+disp(' ')
+comparative=input('Select the numbers of controllers to test: ');
+controllers = zeros(comparative,1);
+disp(' ')
+cd('Controladores')
+archivos = dir(fullfile(pwd,'*Crazyflie_PID*'));
+controladores = strings(length(archivos),1);
+disp('Controllers:')
+for k=1:length(archivos)
+    controladores(k,1) = cellstr(archivos(k).name);
+    fprintf('\t%i. %s\n',k,archivos(k).name);
 end
-% PID Discreto
-if(controller == "PIDd")
-    disp('Discrete PID controller')
-    disp('Loading parameters ... ')
-    tic
-    Crazyflie_PIDz
-    tm = toc;
-    fprintf('\tLoading parameters time: %f\n', tm)
-    disp('Simulating ... ')
-    tic
-    sim('Crazyflie_NoLinealModel_Z')
-    tm = toc;
-    fprintf('\tSimulation time: %f\n', tm)
-    fprintf('\tSamples: \n\t\tAltitude Controller: %d\n\t\tRate Controller: %d\n\t\tAttitude Controller: %d\n\t\tX-Y Position Controller: %d\n\t\tYaw Controller: %d\n', length(altitude_controller.omega.Data), length(rate_controller.Droll.Data),length(attitude_controller.dpitch_ref.Data),length(x_controller.pitch_ref.Data),length(yaw_controller.control_signal.Data))
+disp(' ')
+for i = 1:comparative
+    if(comparative>1 && i==1)
+        str = ['Select controller ' num2str(i) ' (Reference)[Number]: '];
+    else
+        str = ['Select controller ' num2str(i) ' [Number]: '];
+    end
+    controllers(i)=input(str);
 end
-% PID Basado en Eventos
-if(controller == "PIDeb")
-    disp('Event based PID controller')
-    disp('Loading parameters ... ')
-    tic
-    Crazyflie_PIDeb
-    tm = toc;
-    fprintf('\tLoading parameters time: %f\n', tm)
+disp(' ')
+cd ..
+for i = 1:comparative
+    cd('Controladores')
+    run(controladores(controllers(i),1))
+    cd ..
+    %% Simulation
     disp('Simulating ... ')
-    tic
-    sim('Crazyflie_NoLinealModel_EB')
-    tm = toc;
-    figure
-    aux = diff(altitude_controller.omega.Time);
-    plot(aux)
-    plot(altitude_controller.omega.Time(1:end-1),aux,'.')
-    fprintf('\tSimulation time: %f\n', tm)
-    fprintf('\tSamples: \n\t\tAltitude Controller: %d\n\t\tRate Controller: %d\n\t\tAttitude Controller: %d\n\t\tX-Y Position Controller: %d\n\t\tYaw Controller: %d\n', length(altitude_controller.omega.Data), length(rate_controller.Droll.Data),length(attitude_controller.dpitch_ref.Data),length(x_controller.pitch_ref.Data),length(yaw_controller.control_signal.Data))
+    % PID Continuo
+    if(contains(controladores(controllers(i),1),'PIDs'))
+        modelo = 'Crazyflie_NoLinealModel_S';
+    end
+    % PID Discreto
+    if(contains(controladores(controllers(i),1),'PIDz'))
+        modelo = 'Crazyflie_NoLinealModel_Z';
+    end
+    % PID Basado en Eventos
+    if(contains(controladores(controllers(i),1),'PIDeb'))
+        modelo = 'Crazyflie_NoLinealModel_EB';
+    end
+    % Matlab version
+    vmatlab = version('-release');
+    modelo = strcat(modelo,'_',vmatlab);
+    cd('Modelos')
+    sim(modelo)
+    cd ..
+    %% Stats, Results & Graphs
+    Crazyflie_Stats
+    Crazyflie_Graphs
 end
-%% Graphs
-disp('Graphs ... ')
-tic
-Crazyflie_Graphs
-tm = toc;
-fprintf('\tGraphs time: %f\n', tm)
+
+for i = comparative+2:comparative*2
+    title = strcat('<strong>',controladores(controllers(1),2), " vs ", controladores(controllers(i-comparative),2),'</strong>');
+    disp(title)
+    disp(results.(['controller',num2str(i)]))
+end
