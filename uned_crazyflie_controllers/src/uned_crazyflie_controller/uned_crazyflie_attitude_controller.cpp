@@ -4,9 +4,20 @@ bool CrazyflieAttitudeController::initialize()
 {
 	ROS_INFO("CrazyflieAttitudeController::inicialize() ok.");
 
+	// Lectura de parámetros
+	if(m_nh_params.hasParam("Phiq1") && m_nh_params.hasParam("Phiq2") && m_nh_params.hasParam("Phiq3")){
+		m_nh_params.getParam("Phiq1", Phi_q[0]);
+		m_nh_params.getParam("Phiq2", Phi_q[1]);
+		m_nh_params.getParam("Phiq3", Phi_q[2]);
+	}
+	if(m_nh_params.hasParam("Thetaq1") && m_nh_params.hasParam("Thetaq2") && m_nh_params.hasParam("Thetaq3")){
+		m_nh_params.getParam("Thetaq1", Theta_q[0]);
+		m_nh_params.getParam("Thetaq2", Theta_q[1]);
+		m_nh_params.getParam("Thetaq3", Theta_q[2]);
+	}
+
 	// Publisher:
 	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::RateMixerRefs>("ratemixer_controller_ref", 10);
-
 	// Subscriber:
 	// Crazyflie Pose
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyflieAttitudeController::gtposeCallback, this);

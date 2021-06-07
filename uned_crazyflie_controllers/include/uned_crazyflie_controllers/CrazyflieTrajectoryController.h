@@ -17,7 +17,7 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Point.h>
 #include <mav_msgs/Actuators.h>
-#include <trajectory_msgs/MultiDOFJointTrajectory.h>
+#include <geometry_msgs/Pose.h>
 
 class CrazyflieTrajectoryController
 {

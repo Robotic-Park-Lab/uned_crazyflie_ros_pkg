@@ -5,6 +5,7 @@ bool CrazyfliePositionController::initialize()
 {
 	ROS_INFO("CrazyfliePositionController::inicialize() ok.");
 
+	// Lectura de parámetros
 	m_nh_params.getParam("CONTROLLER_TYPE", m_controller_type);
 	m_nh_params.getParam("ROBOT_ID", m_robot_id);
 	m_nh_params.getParam("CONTROLLER_MODE", m_controller_mode);
@@ -12,10 +13,40 @@ bool CrazyfliePositionController::initialize()
 	m_nh_params.getParam("Y_POS", m_y_init);
 	m_nh_params.getParam("Z_POS", m_z_init);
 
+
+	if(m_nh_params.hasParam("Zq1") && m_nh_params.hasParam("Zq2") && m_nh_params.hasParam("Zq3")){
+		m_nh_params.getParam("Zq1", Z_q[0]);
+		m_nh_params.getParam("Zq2", Z_q[1]);
+		m_nh_params.getParam("Zq3", Z_q[2]);
+	}
+	if(m_nh_params.hasParam("Xq1") && m_nh_params.hasParam("Xq2") && m_nh_params.hasParam("Xq3")){
+		m_nh_params.getParam("Xq1", X_q[0]);
+		m_nh_params.getParam("Xq2", X_q[1]);
+		m_nh_params.getParam("Xq3", X_q[2]);
+	}
+	if(m_nh_params.hasParam("Yq1") && m_nh_params.hasParam("Yq2") && m_nh_params.hasParam("Yq3")){
+		m_nh_params.getParam("Yq1", Y_q[0]);
+		m_nh_params.getParam("Yq2", Y_q[1]);
+		m_nh_params.getParam("Yq3", Y_q[2]);
+	}
+	if(m_nh_params.hasParam("Uq1") && m_nh_params.hasParam("Uq2") && m_nh_params.hasParam("Uq3")){
+		m_nh_params.getParam("Uq1", U_q[0]);
+		m_nh_params.getParam("Uq2", U_q[1]);
+		m_nh_params.getParam("Uq3", U_q[2]);
+	}
+	if(m_nh_params.hasParam("Vq1") && m_nh_params.hasParam("Vq2") && m_nh_params.hasParam("Vq3")){
+		m_nh_params.getParam("Vq1", V_q[0]);
+		m_nh_params.getParam("Vq2", V_q[1]);
+		m_nh_params.getParam("Vq3", V_q[2]);
+	}
+	if(m_nh_params.hasParam("Yawq1") && m_nh_params.hasParam("Yawq2") && m_nh_params.hasParam("Yawq3")){
+		m_nh_params.getParam("Yawq1", Yaw_q[0]);
+		m_nh_params.getParam("Yawq2", Yaw_q[1]);
+		m_nh_params.getParam("Yawq3", Yaw_q[2]);
+	}
 	// Publisher:
 	// Referencias para los controladores PID Attitude y Rate
 	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::AttitudeRefs>("attitude_controller_ref", 10);
-
 	// Subscriber:
 	// Crazyflie Pose
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyfliePositionController::gtposeCallback, this);
@@ -25,15 +56,16 @@ bool CrazyfliePositionController::initialize()
 	u_feedback[0] = m_x_init;
 	v_feedback[0] = m_y_init;
 
-	m_ref_pose.position.x = 1;
-	m_ref_pose.position.y = 1;
-	m_ref_pose.position.z = 1;
+	m_ref_pose.position.x = m_x_init;
+	m_ref_pose.position.y = m_y_init;
+	m_ref_pose.position.z = m_z_init;
 	m_ref_pose.orientation.x = 0;
 	m_ref_pose.orientation.y = 0;
 	m_ref_pose.orientation.z = 0;
 	m_ref_pose.orientation.w = 1;
 
 	ROS_INFO("In progress ...");
+	ROS_INFO_STREAM("Goal Pose: " << m_ref_pose);
 	ROS_INFO("Altitude PID(Z) Parameters: \t%f \t%f \t%f", Z_q[0], Z_q[1], Z_q[2]);
 	ROS_INFO("X PID(Z) Parameters: \t%f \t%f \t%f", X_q[0], X_q[1], X_q[2]);
 	ROS_INFO("U PID(Z) Parameters: \t%f \t%f \t%f", U_q[0], U_q[1], U_q[2]);
@@ -41,7 +73,7 @@ bool CrazyfliePositionController::initialize()
 	ROS_INFO("V PID(Z) Parameters: \t%f \t%f \t%f", V_q[0], V_q[1], V_q[2]);
 	ROS_INFO("Yaw PID(Z) Parameters: \t%f \t%f \t%f", Yaw_q[0], Yaw_q[1], Yaw_q[2]);
 	ROS_ERROR("Hay que esperar a que gazebo esté listo para lanzar el nodo");
-  ros::Duration(0.5).sleep();
+
 	return true;
 }
 
@@ -157,6 +189,7 @@ void CrazyfliePositionController::positionreferenceCallback(const geometry_msgs:
 {
 	m_ref_pose.position = msg->position;
 	m_ref_pose.orientation = msg->orientation;
+	ROS_INFO("New Pose: x: %f \ty: %f \tz: %f", m_ref_pose.position.x, m_ref_pose.position.y, m_ref_pose.position.z);
 }
 
 void CrazyfliePositionController::gtposeCallback(const geometry_msgs::Pose::ConstPtr& msg)

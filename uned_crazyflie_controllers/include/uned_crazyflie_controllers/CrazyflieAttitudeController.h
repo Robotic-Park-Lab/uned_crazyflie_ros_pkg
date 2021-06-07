@@ -49,11 +49,7 @@ class CrazyflieAttitudeController
 
     double omega, pitch_ref, roll_ref, dyaw, pitch_dron, roll_dron;
 
-    double pitch_error[3] = {0.0,0.0,0.0};
-    double dpitch[2] = {0.0,0.0};
-    double Phi_q[3] = {3.5020,-3.4980,0.0};
+    double pitch_error[3], dpitch[2], Phi_q[3];
 
-    double roll_error[3] = {0.0,0.0,0.0};
-    double droll[2] = {0.0,0.0};
-    double Theta_q[3] = {3.5020,-3.4980,0.0};
+    double roll_error[3], droll[2], Theta_q[3];
 };

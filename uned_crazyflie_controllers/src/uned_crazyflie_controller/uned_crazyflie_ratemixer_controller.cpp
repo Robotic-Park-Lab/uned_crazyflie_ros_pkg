@@ -4,10 +4,24 @@ bool CrazyflieRateMixerController::initialize()
 {
 	ROS_INFO("CrazyflieRateMixerController::inicialize() ok.");
 
+	if(m_nh_params.hasParam("Dphiq1") && m_nh_params.hasParam("Dphiq2") && m_nh_params.hasParam("Dphiq3")){
+		m_nh_params.getParam("Dphiq1", Dphi_q[0]);
+		m_nh_params.getParam("Dphiq2", Dphi_q[1]);
+		m_nh_params.getParam("Dphiq3", Dphi_q[2]);
+	}
+	if(m_nh_params.hasParam("Dthetaq1") && m_nh_params.hasParam("Dthetaq2") && m_nh_params.hasParam("Dthetaq3")){
+		m_nh_params.getParam("Dthetaq1", Dtheta_q[0]);
+		m_nh_params.getParam("Dthetaq2", Dtheta_q[1]);
+		m_nh_params.getParam("Dthetaq3", Dtheta_q[2]);
+	}
+	if(m_nh_params.hasParam("Dpsiq1") && m_nh_params.hasParam("Dpsiq2") && m_nh_params.hasParam("Dpsiq3")){
+		m_nh_params.getParam("Dpsiq1", Dpsi_q[0]);
+		m_nh_params.getParam("Dpsiq2", Dpsi_q[1]);
+		m_nh_params.getParam("Dpsiq3", Dpsi_q[2]);
+	}
 	// Publisher:
 	// Actuators
 	m_pub_motor_velocity_reference = m_nh.advertise<mav_msgs::Actuators>("command/motor_speed", 10);
-
 	// Subscriber:
 	// Crazyflie Pose
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyflieRateMixerController::gtposeCallback, this);
@@ -19,16 +33,13 @@ bool CrazyflieRateMixerController::initialize()
 
 bool CrazyflieRateMixerController::iterate()
 {
-  ROS_INFO_THROTTLE(1, "In progress ...");
-	ROS_INFO_THROTTLE(0.1, "Omega: %f \tDPitch: %f \tDRoll: %f \tDYaw; %f", omega, dpitch_ref, droll_ref, dyaw_ref);
-
 	// DPitch Controller
 	pitch_dron[1] = pitch_dron[0];
 	double sinp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.y+m_GT_pose.orientation.y*m_GT_pose.orientation.z);
 	if(std::abs(sinp) >= 1)
-		pitch_dron[0] = std::copysign(M_PI/2, sinp)*180/3.14159265;
+		pitch_dron[0] = std::copysign(M_PI/2, sinp)*180/PI;
 	else
-		pitch_dron[0] = std::asin(sinp)*180/3.14159265;
+		pitch_dron[0] = std::asin(sinp)*180/PI;
 	dpitch_dron = (pitch_dron[0]-pitch_dron[1])/0.002;
 	{
 		// Update error vector
@@ -45,7 +56,7 @@ bool CrazyflieRateMixerController::iterate()
 	roll_dron[1] = roll_dron[0];
 	double sinr_cosp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.x+m_GT_pose.orientation.y*m_GT_pose.orientation.z);
 	double cosr_cosp = 1 - 2 * (m_GT_pose.orientation.x*m_GT_pose.orientation.x+m_GT_pose.orientation.y*m_GT_pose.orientation.y);
-	roll_dron[0] = std::atan2(sinr_cosp,cosr_cosp)*180/3.14159265;
+	roll_dron[0] = std::atan2(sinr_cosp,cosr_cosp)*180/PI;
 	droll_dron = (roll_dron[0]-roll_dron[1])/0.002;
 	{
 		// Update error vector
@@ -61,7 +72,7 @@ bool CrazyflieRateMixerController::iterate()
 	yaw_dron[1] = yaw_dron[0];
 	double siny_cosp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.z+m_GT_pose.orientation.x*m_GT_pose.orientation.y);
 	double cosy_cosp = 1 - 2 * (m_GT_pose.orientation.y*m_GT_pose.orientation.y + m_GT_pose.orientation.z*m_GT_pose.orientation.z);
-	yaw_dron[0] = std::atan2(siny_cosp,cosy_cosp)*180/3.14159265;
+	yaw_dron[0] = std::atan2(siny_cosp,cosy_cosp)*180/PI;
 	dyaw_dron = (yaw_dron[0]-yaw_dron[1])/0.002;
 	{
 		// Update error vector
@@ -75,11 +86,10 @@ bool CrazyflieRateMixerController::iterate()
 	}
 	// Control Mixer
 	{
-		Eigen::Vector4d ref_rotor_velocities;
-		ref_rotor_velocities[0] = (omega - 0.5*dpitch[0] - 0.5*droll[0] - dyaw[0])*0.0509;
-		ref_rotor_velocities[1] = (omega + 0.5*dpitch[0] - 0.5*droll[0] + dyaw[0])*0.0509;
-		ref_rotor_velocities[2] = (omega + 0.5*dpitch[0] + 0.5*droll[0] - dyaw[0])*0.0509;
-		ref_rotor_velocities[3] = (omega - 0.5*dpitch[0] + 0.5*droll[0] + dyaw[0])*0.0509;
+		ref_rotor_velocities[0] = (omega - 0.5*dpitch[0] - 0.5*droll[0] - dyaw[0])*0.056+C;
+		ref_rotor_velocities[1] = (omega + 0.5*dpitch[0] - 0.5*droll[0] + dyaw[0])*0.056+C;
+		ref_rotor_velocities[2] = (omega + 0.5*dpitch[0] + 0.5*droll[0] - dyaw[0])*0.056+C;
+		ref_rotor_velocities[3] = (omega - 0.5*dpitch[0] + 0.5*droll[0] + dyaw[0])*0.056+C;
 
 		rotorvelocitiesCallback(ref_rotor_velocities);
 	}
