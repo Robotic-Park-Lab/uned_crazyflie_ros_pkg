@@ -31,7 +31,7 @@ class CrazyflieRateMixerController
 
 	ros::Publisher m_pub_motor_velocity_reference;
 
-	ros::Subscriber m_sub_GT_pose, m_sub_ratemixer_ref;
+	ros::Subscriber m_sub_GT_pose, m_sub_ratemixer_ref, m_sub_omega, m_sub_dyaw;
 
 	bool initialize();
 
@@ -41,6 +41,8 @@ class CrazyflieRateMixerController
     void gtposeCallback(const geometry_msgs::Pose::ConstPtr& msg);
     void rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities);
     void rateMixerRefsCallback(const uned_crazyflie_controllers::RateMixerRefs::ConstPtr& msg);
+    void omegaCallback(const std_msgs::Float64::ConstPtr& msg);
+    void dyawCallback(const std_msgs::Float64::ConstPtr& msg);
 
     std::string m_controller_type, m_robot_id, m_controller_mode;
     geometry_msgs::Pose m_GT_pose;

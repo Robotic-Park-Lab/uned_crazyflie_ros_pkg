@@ -47,6 +47,10 @@ bool CrazyfliePositionController::initialize()
 	// Publisher:
 	// Referencias para los controladores PID Attitude y Rate
 	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::AttitudeRefs>("attitude_controller_ref", 10);
+
+	m_pub_omega = m_nh.advertise<std_msgs::Float64>("omega_signal", 10);
+
+	m_pub_dyaw = m_nh.advertise<std_msgs::Float64>("dyaw_controller_ref", 10);
 	// Subscriber:
 	// Crazyflie Pose
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyfliePositionController::gtposeCallback, this);
@@ -98,6 +102,9 @@ bool CrazyfliePositionController::iterate()
 
 		// Output signal
 		omega = delta_omega[0]+(we-4070.3)/0.2685;
+		std_msgs::Float64 msg_omega;
+		msg_omega.data = omega;
+		m_pub_omega.publish(msg_omega);
 	}
 	// X-Y Controller
 	// Convert quaternion to yw
@@ -165,6 +172,9 @@ bool CrazyfliePositionController::iterate()
 		// Update signal vector
 		dyaw_ref[1] = dyaw_ref[0];
 		dyaw_ref[0] = dyaw_ref[1] + Yaw_q[0]*yaw_error_signal[0] + Yaw_q[1]*yaw_error_signal[1] + Yaw_q[2]*yaw_error_signal[2];
+		std_msgs::Float64 msg_dyaw;
+		msg_dyaw.data = dyaw_ref[0];
+		m_pub_dyaw.publish(msg_dyaw);
 	}
 
 	attitudeRateMixerRefsCallback(omega, pitch_ref[0], roll_ref[0], dyaw_ref[0]);
@@ -177,10 +187,8 @@ void CrazyfliePositionController::attitudeRateMixerRefsCallback(const double ome
 	uned_crazyflie_controllers::AttitudeRefs ref_msg;
 
 	ref_msg.timestamp = ros::Time::now().toSec();
-	ref_msg.omega = omega;
 	ref_msg.pitch = pitch;
 	ref_msg.roll = roll;
-	ref_msg.dyaw = dyaw;
 
 	m_pub_control_signal.publish(ref_msg);
 }

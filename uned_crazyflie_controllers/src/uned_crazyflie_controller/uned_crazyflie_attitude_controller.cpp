@@ -89,20 +89,16 @@ void CrazyflieAttitudeController::gtposeCallback(const geometry_msgs::Pose::Cons
 
 void CrazyflieAttitudeController::attitudeRefsCallback(const uned_crazyflie_controllers::AttitudeRefs::ConstPtr& msg)
 {
-	omega = msg->omega;
 	pitch_ref = msg->pitch;
 	roll_ref = msg->roll;
-	dyaw = msg->dyaw;
 }
 void CrazyflieAttitudeController::rateMixerRefsCallback(const double omega, const double dpitch, const double droll, const double dyaw)
 {
 	uned_crazyflie_controllers::RateMixerRefs ref_msg;
 
 	ref_msg.timestamp = ros::Time::now().toSec();
-	ref_msg.omega = omega;
 	ref_msg.dpitch = dpitch;
 	ref_msg.droll = droll;
-	ref_msg.dyaw = dyaw;
 
 	m_pub_control_signal.publish(ref_msg);
 }

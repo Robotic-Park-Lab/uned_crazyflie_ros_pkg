@@ -28,6 +28,10 @@ bool CrazyflieRateMixerController::initialize()
 	// Reference
 	m_sub_ratemixer_ref = m_nh.subscribe( "ratemixer_controller_ref", 10, &CrazyflieRateMixerController::rateMixerRefsCallback, this);
 
+	m_sub_omega = m_nh.subscribe( "omega_signal", 10, &CrazyflieRateMixerController::omegaCallback, this);
+
+	m_sub_dyaw = m_nh.subscribe( "dyaw_controller_ref", 10, &CrazyflieRateMixerController::dyawCallback, this);
+
 	return true;
 }
 
@@ -120,8 +124,16 @@ void CrazyflieRateMixerController::gtposeCallback(const geometry_msgs::Pose::Con
 
 void CrazyflieRateMixerController::rateMixerRefsCallback(const uned_crazyflie_controllers::RateMixerRefs::ConstPtr& msg)
 {
-	omega = msg->omega;
 	dpitch_ref = msg->dpitch;
 	droll_ref = msg->droll;
-	dyaw_ref = msg->dyaw;
+}
+
+void CrazyflieRateMixerController::omegaCallback(const std_msgs::Float64::ConstPtr& msg)
+{
+	omega = msg->data;
+}
+
+void CrazyflieRateMixerController::dyawCallback(const std_msgs::Float64::ConstPtr& msg)
+{
+	dyaw_ref = msg->data;
 }
