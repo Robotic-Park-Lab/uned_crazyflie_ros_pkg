@@ -1,0 +1,154 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="robot_id" default="dron"/>
+  <arg name="mav_name" default="crazyflie2"/>
+  <arg name="position_controller" default="PID" />
+  <arg name="enable_logging" default="false" />
+  <arg name="enable_ground_truth" default="true" />
+  <arg name="enable_state_estimator" default="false" />
+  <arg name="log_file" default="$(arg mav_name)" />
+  <arg name="x" default="0.0"/>
+  <arg name="y" default="0.0"/>
+  <arg name="z" default="0.0"/>
+  <arg name="user_account" default="kiko"/>
+  <arg name="world_name" default="basic_crazyflie.world"/>
+  <arg name="paused" value="false"/>
+  <arg name="debug" default="false"/>
+  <arg name="gui" default="true"/>
+  <arg name="verbose" default="false"/>
+  <!-- Altitude Controller Params -->
+  <arg name="Zq1" default="915017.5"/>
+  <arg name="Zq2" default="-1814982.5"/>
+  <arg name="Zq3" default="900000"/>
+  <!-- X-Y Controller Params -->
+  <arg name="Xq1" default="1.0"/>
+  <arg name="Xq2" default="-1.0"/>
+  <arg name="Xq3" default="0.0"/>
+  <arg name="Yq1" default="1.0"/>
+  <arg name="Yq2" default="-1.0"/>
+  <arg name="Yq3" default="0.0"/>
+  <!-- dX-dY Controller Params -->
+  <arg name="Uq1" default="30.0"/>
+  <arg name="Uq2" default="-29.99"/>
+  <arg name="Uq3" default="0.0"/>
+  <arg name="Vq1" default="-30.0"/>
+  <arg name="Vq2" default="29.99"/>
+  <arg name="Vq3" default="0.0"/>
+  <!-- Yaw Controller Params -->
+  <arg name="Yawq1" default="3.0"/>
+  <arg name="Yawq2" default="-3.0"/>
+  <arg name="Yawq3" default="0.0"/>
+  <!-- Phi Controller Params -->
+  <arg name="Phiq1" default="3.5020"/>
+  <arg name="Phiq2" default="-3.4980"/>
+  <arg name="Phiq3" default="0.0"/>
+  <!-- Theta Controller Params -->
+  <arg name="Thetaq1" default="3.5020"/>
+  <arg name="Thetaq2" default="-3.4980"/>
+  <arg name="Thetaq3" default="0.0"/>
+  <!-- dYaw Controller Params -->
+  <arg name="Dpsiq1" default="70.0167"/>
+  <arg name="Dpsiq2" default="-69.9833"/>
+  <arg name="Dpsiq3" default="0.0"/>
+  <!-- Phi Controller Params -->
+  <arg name="Dphiq1" default="70.0"/>
+  <arg name="Dphiq2" default="-70.0"/>
+  <arg name="Dphiq3" default="0.0"/>
+  <!-- Theta Controller Params -->
+  <arg name="Dthetaq1" default="70.0"/>
+  <arg name="Dthetaq2" default="-70.0"/>
+  <arg name="Dthetaq3" default="0.0"/>
+
+  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find uned_interface)/Config/models"/>
+  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find uned_interface)/Config/models"/>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find uned_interface)/Config/worlds/$(arg world_name)" />
+    <arg name="debug" value="$(arg debug)" />
+    <arg name="paused" value="$(arg paused)"/>
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="verbose" value="$(arg verbose)"/>
+  </include>
+
+  <group ns="$(arg robot_id)">
+  <!-- The following lines simulate the Crazyflie dynamics -->
+    <include file="$(find uned_crazyflie_config)/launch/spawn_mav_crazyflie.launch">
+      <arg name="mav_name" value="$(arg mav_name)" />
+      <arg name="namespace" value="$(arg robot_id)" />
+      <arg name="model" value="$(find uned_crazyflie_drone)/urdf/mav_generic_odometry_sensor.gazebo" />
+      <arg name="enable_logging" value="$(arg enable_logging)" />
+      <arg name="enable_ground_truth" value="$(arg enable_ground_truth)" />
+      <arg name="enable_state_estimator" value="$(arg enable_state_estimator)" />
+      <arg name="log_file" value="$(arg log_file)"/>
+      <arg name="x" default="$(arg x)"/>
+      <arg name="y" default="$(arg y)"/>
+      <arg name="z" default="$(arg z)"/>
+    </include>
+   <!-- The Crazyflie position controller -->
+   <node name="position_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_position_controller_node" output="screen">
+      <param name="CONTROLLER_TYPE" value="$(arg position_controller)" />
+      <param name="ROBOT_ID" value="$(arg robot_id)"/>
+      <param name="CONTROLLER_MODE" value="close_loop"/>
+      <param name="X_POS" value="$(arg x)"/>
+      <param name="Y_POS" value="$(arg y)"/>
+      <param name="Z_POS" value="$(arg z)"/>
+      <!-- Altitude Controller Params -->
+      <param name="Zq1" value="$(arg Zq1)"/>
+      <param name="Zq2" value="$(arg Zq2)"/>
+      <param name="Zq3" value="$(arg Zq3)"/>
+      <!-- X-Y Controller Params -->
+      <param name="Xq1" value="$(arg Xq1)"/>
+      <param name="Xq2" value="$(arg Xq2)"/>
+      <param name="Xq3" value="$(arg Xq3)"/>
+      <param name="Yq1" value="$(arg Yq1)"/>
+      <param name="Yq2" value="$(arg Yq2)"/>
+      <param name="Yq3" value="$(arg Yq3)"/>
+      <!-- dX-dY Controller Params -->
+      <param name="Uq1" value="$(arg Uq1)"/>
+      <param name="Uq2" value="$(arg Uq2)"/>
+      <param name="Uq3" value="$(arg Uq3)"/>
+      <param name="Vq1" value="$(arg Vq1)"/>
+      <param name="Vq2" value="$(arg Vq2)"/>
+      <param name="Vq3" value="$(arg Vq3)"/>
+      <!-- Yaw Controller Params -->
+      <param name="Yawq1" value="$(arg Yawq1)"/>
+      <param name="Yawq2" value="$(arg Yawq2)"/>
+      <param name="Yawq3" value="$(arg Yawq3)"/>
+   </node>
+
+   <node name="attitude_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_attitude_controller_node" output="screen">
+     <!-- Phi Controller Params -->
+      <param name="Phiq1" value="$(arg Phiq1)"/>
+      <param name="Phiq2" value="$(arg Phiq2)"/>
+      <param name="Phiq3" value="$(arg Phiq3)"/>
+      <!-- Theta Controller Params -->
+      <param name="Thetaq1" value="$(arg Thetaq1)"/>
+      <param name="Thetaq2" value="$(arg Thetaq2)"/>
+      <param name="Thetaq3" value="$(arg Thetaq3)"/>
+   </node>
+
+   <node name="ratemixer_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_ratemixer_controller_node" output="screen">
+     <!-- dYaw Controller Params -->
+     <param name="Dpsiq1" value="$(arg Dpsiq1)"/>
+     <param name="Dpsiq2" value="$(arg Dpsiq2)"/>
+     <param name="Dpsiq3" value="$(arg Dpsiq3)"/>
+     <!-- Phi Controller Params -->
+     <param name="Dphiq1" value="$(arg Dphiq1)"/>
+     <param name="Dphiq2" value="$(arg Dphiq2)"/>
+     <param name="Dphiq3" value="$(arg Dphiq3)"/>
+     <!-- Theta Controller Params -->
+     <param name="Dthetaq1" value="$(arg Dthetaq1)"/>
+     <param name="Dthetaq2" value="$(arg Dthetaq2)"/>
+     <param name="Dthetaq3" value="$(arg Dthetaq3)"/>
+   </node>
+
+<!--<node name="hovering_example" pkg="rotors_gazebo" type="hovering_example" output="screen" />-->
+   <node name="uned_crazyflie_trajectory_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_trajectory_controller_node" output="screen" />
+
+   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+   <node name="quaternion_to_rpy" pkg="rotors_gazebo" type="quaternion_to_rpy" output="screen" >
+       <remap from="odometry" to="odometry_sensor1/odometry" />
+   </node>
+
+  </group>
+</launch>
