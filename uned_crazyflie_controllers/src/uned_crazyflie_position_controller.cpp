@@ -51,9 +51,9 @@ bool PositionController::initialize(){
 
   // Publisher:
 	// Referencias para los controladores PID Attitude y Rate
-  auto pub_omega = this->create_publisher<std_msgs::msg::Float64>("omega_signal",10);
-  auto pub_dyaw = this->create_publisher<std_msgs::msg::Float64>("dyaw_controller_ref", 10);
-  auto pub_control_signal = this->create_publisher<std_msgs::msg::Float64MultiArray>("attitude_controller_ref", 10);
+  pub_omega = this->create_publisher<std_msgs::msg::Float64>("omega_signal",10);
+  pub_dyaw = this->create_publisher<std_msgs::msg::Float64>("dyaw_controller_ref", 10);
+  pub_control_signal = this->create_publisher<std_msgs::msg::Float64MultiArray>("attitude_controller_ref", 10);
 
   // Subscriber:
 	// Crazyflie Pose
@@ -65,12 +65,9 @@ bool PositionController::initialize(){
   u_feedback[0] = m_x_init;
 	v_feedback[0] = m_y_init;
 
-  //ref_pose.position.x = m_x_init;
-	//ref_pose.position.y = m_y_init;
-	//ref_pose.position.z = m_z_init;
-  ref_pose.position.x = 0;
-	ref_pose.position.y = 1;
-	ref_pose.position.z = 2;
+  ref_pose.position.x = m_x_init;
+	ref_pose.position.y = m_y_init;
+	ref_pose.position.z = m_z_init;
 	ref_pose.orientation.x = 0;
 	ref_pose.orientation.y = 0;
 	ref_pose.orientation.z = 0;
@@ -81,46 +78,12 @@ bool PositionController::initialize(){
 }
 
 bool PositionController::iterate(){
-  RCLCPP_INFO(this->get_logger(),"PositionController::iterate() ok.");
-  return true;
-}
-
-int main(int argc, char ** argv)
-{
-  try{
-    rclcpp::init(argc, argv);
-
-    auto crazyflie_position_controller = std::make_shared<PositionController>();
-
-    rclcpp::Rate loop_rate(10);
-
-    crazyflie_position_controller->initialize();
-
-    while (rclcpp::ok()){
-      rclcpp::spin_some(crazyflie_position_controller);
-
-      crazyflie_position_controller->iterate();
-
-      loop_rate.sleep();
-    }
-
-    return 0;
-  } catch (std::exception &e){
-		RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Exception: %s",e.what());
-	}
-
-}
-
-/*
-
-bool CrazyfliePositionController::iterate()
-{
-	// Altitude Controller
+  // Altitude Controller
 	{
 		// Update error vector
 		z_error_signal[2] = z_error_signal[1];
 		z_error_signal[1] = z_error_signal[0];
-		z_error_signal[0] = m_ref_pose.position.z - m_GT_pose.position.z;
+		z_error_signal[0] = ref_pose.position.z - GT_pose.position.z;
 
 		// Update signal vector
 		delta_omega[1] = delta_omega[0];
@@ -134,27 +97,28 @@ bool CrazyfliePositionController::iterate()
 
 		// Output signal
 		omega = delta_omega[0]+(we-4070.3)/0.2685;
-		std_msgs::Float64 msg_omega;
+		std_msgs::msg::Float64 msg_omega;
 		msg_omega.data = omega;
-		m_pub_omega.publish(msg_omega);
+		pub_omega->publish(msg_omega);
 	}
-	// X-Y Controller
+
+  // X-Y Controller
 	// Convert quaternion to yw
-	double siny_cosp_ref = 2 * (m_ref_pose.orientation.w*m_ref_pose.orientation.z+m_ref_pose.orientation.x*m_ref_pose.orientation.y);
-	double cosy_cosp_ref = 1 - 2 * (m_ref_pose.orientation.y*m_ref_pose.orientation.y + m_ref_pose.orientation.z*m_ref_pose.orientation.z);
+	double siny_cosp_ref = 2 * (ref_pose.orientation.w*ref_pose.orientation.z+ref_pose.orientation.x*ref_pose.orientation.y);
+	double cosy_cosp_ref = 1 - 2 * (ref_pose.orientation.y*ref_pose.orientation.y + ref_pose.orientation.z*ref_pose.orientation.z);
 	double yaw_ref = std::atan2(siny_cosp_ref,cosy_cosp_ref);
-	double siny_cosp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.z+m_GT_pose.orientation.x*m_GT_pose.orientation.y);
-	double cosy_cosp = 1 - 2 * (m_GT_pose.orientation.y*m_GT_pose.orientation.y + m_GT_pose.orientation.z*m_GT_pose.orientation.z);
+	double siny_cosp = 2 * (GT_pose.orientation.w*GT_pose.orientation.z+GT_pose.orientation.x*GT_pose.orientation.y);
+	double cosy_cosp = 1 - 2 * (GT_pose.orientation.y*GT_pose.orientation.y + GT_pose.orientation.z*GT_pose.orientation.z);
 	double yaw = std::atan2(siny_cosp,cosy_cosp);
 	{
 		// Position
 		// Update local error
 		x_error_signal[2] = x_error_signal[1];
 		x_error_signal[1] = x_error_signal[0];
-		x_error_signal[0] = (m_ref_pose.position.x - m_GT_pose.position.x)*cos(yaw)+(m_ref_pose.position.y - m_GT_pose.position.y)*sin(yaw);
+		x_error_signal[0] = (ref_pose.position.x - GT_pose.position.x)*cos(yaw)+(ref_pose.position.y - GT_pose.position.y)*sin(yaw);
 		y_error_signal[2] = y_error_signal[1];
 		y_error_signal[1] = y_error_signal[0];
-		y_error_signal[0] = -(m_ref_pose.position.x - m_GT_pose.position.x)*sin(yaw)+(m_ref_pose.position.y - m_GT_pose.position.y)*cos(yaw);
+		y_error_signal[0] = -(ref_pose.position.x - GT_pose.position.x)*sin(yaw)+(ref_pose.position.y - GT_pose.position.y)*cos(yaw);
 
 		// Update signal vector
 		uc[1] = uc[0];
@@ -164,10 +128,10 @@ bool CrazyfliePositionController::iterate()
 
 		// Speed
 		u_feedback[1] = u_feedback[0];
-		u_feedback[0] = m_GT_pose.position.x;
+		u_feedback[0] = GT_pose.position.x;
 		double u_signal = (u_feedback[0]-u_feedback[1])/0.01;
 		v_feedback[1] = v_feedback[0];
-		v_feedback[0] = m_GT_pose.position.y;
+		v_feedback[0] = GT_pose.position.y;
 		double v_signal = (v_feedback[0]-v_feedback[1])/0.01;
 
 		// Update error
@@ -193,8 +157,11 @@ bool CrazyfliePositionController::iterate()
 			roll_ref[0] = 30;
 		if(roll_ref[0]<-30)
 			roll_ref[0] = -30;
+
+    this->attitudeRateMixerRefsCallback(pitch_ref[0], roll_ref[0]);
 	}
-	// Yaw Controller
+
+  // Yaw Controller
 	{
 		// Update error
 		yaw_error_signal[2] = yaw_error_signal[1];
@@ -204,25 +171,35 @@ bool CrazyfliePositionController::iterate()
 		// Update signal vector
 		dyaw_ref[1] = dyaw_ref[0];
 		dyaw_ref[0] = dyaw_ref[1] + Yaw_q[0]*yaw_error_signal[0] + Yaw_q[1]*yaw_error_signal[1] + Yaw_q[2]*yaw_error_signal[2];
-		std_msgs::Float64 msg_dyaw;
+		std_msgs::msg::Float64 msg_dyaw;
 		msg_dyaw.data = dyaw_ref[0];
-		m_pub_dyaw.publish(msg_dyaw);
+		pub_dyaw->publish(msg_dyaw);
 	}
 
-	attitudeRateMixerRefsCallback(omega, pitch_ref[0], roll_ref[0], dyaw_ref[0]);
-
-	return true;
+  return true;
 }
 
-void CrazyfliePositionController::attitudeRateMixerRefsCallback(const double omega, const double pitch, const double roll, const double dyaw)
-{
-	uned_crazyflie_controllers::AttitudeRefs ref_msg;
+int main(int argc, char ** argv){
+  try{
+    rclcpp::init(argc, argv);
 
-	ref_msg.timestamp = ros::Time::now().toSec();
-	ref_msg.pitch = pitch;
-	ref_msg.roll = roll;
+    auto crazyflie_position_controller = std::make_shared<PositionController>();
 
-	m_pub_control_signal.publish(ref_msg);
+    rclcpp::Rate loop_rate(10);
+
+    crazyflie_position_controller->initialize();
+
+    while (rclcpp::ok()){
+      rclcpp::spin_some(crazyflie_position_controller);
+
+      crazyflie_position_controller->iterate();
+
+      loop_rate.sleep();
+    }
+
+    return 0;
+  } catch (std::exception &e){
+		RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Exception: %s",e.what());
+	}
+
 }
-
-*/

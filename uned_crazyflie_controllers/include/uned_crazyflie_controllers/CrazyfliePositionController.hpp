@@ -27,6 +27,10 @@ public:
   bool iterate();
 
 private:
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_omega;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_dyaw;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_control_signal;
+
   rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
   void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
     GT_pose.position = msg->position;
@@ -41,7 +45,21 @@ private:
   }
 
   void rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities);
-  void attitudeRateMixerRefsCallback(const double omega, const double pitch, const double roll, const double dyaw);
+  void attitudeRateMixerRefsCallback(const double pitch, const double roll){
+    /*
+    uned_crazyflie_controllers::AttitudeRefs ref_msg;
+
+  	ref_msg.timestamp = ros::Time::now().toSec();
+  	ref_msg.pitch = pitch;
+  	ref_msg.roll = roll;
+    */
+    std_msgs::msg::Float64MultiArray ref_msg;
+
+    ref_msg.data[0] = pitch;
+    ref_msg.data[1] = roll;
+
+  	pub_control_signal->publish(ref_msg);
+  };
 
   double m_x_init, m_y_init, m_z_init;
   std::string  m_controller_type, m_robot_id, m_controller_mode;
