@@ -158,6 +158,11 @@ bool PositionController::iterate(){
 		if(roll_ref[0]<-30)
 			roll_ref[0] = -30;
 
+    auto msg_attitude = std_msgs::msg::Float64MultiArray();
+    msg_attitude.data.resize(2);
+    msg_attitude.data[0] = pitch_ref[0];
+    msg_attitude.data[1] = roll_ref[0];
+    pub_control_signal_->publish(msg_attitude);
     // this->attitudeRateMixerRefsCallback(pitch_ref[0], roll_ref[0]);
 	}
 
