@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <chrono>
+#include <cmath>
 #include <array>
 #include <cstring>
 #include <iostream>
@@ -9,11 +10,8 @@
 #include <Eigen/Eigen>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/logger.hpp>
-#include <std_msgs/msg/bool.hpp>
-#include <std_msgs/msg/float64.hpp>
-#include <std_msgs/msg/float64_multi_array.hpp>
-#include <std_msgs/msg/string.hpp>
 #include <geometry_msgs/msg/pose.hpp>
+#include <uned_crazyflie_config/msg/triggering.hpp>
 
 using namespace std::chrono_literals;
 
@@ -26,8 +24,7 @@ public:
   bool iterate();
 
 private:
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr event_;
-
+  rclcpp::Publisher<uned_crazyflie_config::msg::Triggering>::SharedPtr events_;
 
   rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
   void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
@@ -37,10 +34,25 @@ private:
 
   rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr ref_pose_;
   void positionreferenceCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
-    RCLCPP_INFO(this->get_logger(),"New Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
     ref_pose.position = msg->position;
   	ref_pose.orientation = msg->orientation;
   }
 
   geometry_msgs::msg::Pose GT_pose, ref_pose;
+  // Umbral
+  double fthreshold[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  // Cota
+  double threshold[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  // Error tolerable en estado estacionario
+  double c0[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  // Factor proporcional al error de la señal
+  double a[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  // Error
+  double error[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  // Ajuste al nivel de ruido
+  double cn[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  // double noiseEstimation(){}
+  bool events[5] = {false, false, false, false, false};
+
+  double x_error, y_error;
 };
