@@ -84,10 +84,32 @@ bool PositionController::iterate(){
   RCLCPP_INFO(this->get_logger(),"TO-DO: Altitude Controller.");
   // Altitude Controller
 	if(0){
+    /*
+    z_error[0] = ref_pose.position.z - GT_pose.position.z;
+
+    outP = Kp*z_error[0];
+    Ki = Kp/Ti;
+    z_i[0] = z_i[1] + Ki*dt*z_error[1];
+    Kd = Kp*Td;
+    z_d[0] = (Td/(Td+Nd+dt))*z_d[1]+(Kd*Nd/(Td+Nd*dt))*(z_error[0]-z_error[1]);
+    out = outP+z_i[0]+z_d[0];
+    outr = out;
+    if(outr>15000){
+      outr = 150000;
+    }
+    if(outr<-20000){
+      outr = -20000;
+    }
+    // Antiwindup
+    z_i[0] = z_i[0] + dt*(outr-out)/sqrt(Ti);
+
+    // Update vectors
+    z_error[1] = z_error[0];
+    z_i[1] = z_i[0];
+    z_d[1] = z_d[0];
+    */
 		// Update error vector
-		z_error_signal[2] = z_error_signal[1];
 		z_error_signal[1] = z_error_signal[0];
-		z_error_signal[0] = ref_pose.position.z - GT_pose.position.z;
 
 		// Update signal vector
 		delta_omega[1] = delta_omega[0];

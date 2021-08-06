@@ -5,13 +5,13 @@ bool EventTriggering::initialize(){
   RCLCPP_INFO(this->get_logger(),"EventTriggering::inicialize() ok.");
 
   if(this->has_parameter("ThZ") && this->has_parameter("ThXY") && this->has_parameter("ThYaw")){
-		this->get_parameter("ThZ", threshold[0]);
-		this->get_parameter("ThXY", threshold[1]);
-		this->get_parameter("ThYaw", threshold[2]);
+		this->get_parameter("ThZ", Co[0]);
+		this->get_parameter("ThXY", Co[1]);
+		this->get_parameter("ThYaw", Co[2]);
 	}
   if(this->has_parameter("ThAttitude") && this->has_parameter("ThRate")){
-		this->get_parameter("ThAttitude", threshold[3]);
-		this->get_parameter("ThRate", threshold[4]);
+		this->get_parameter("ThAttitude", Co[3]);
+		this->get_parameter("ThRate", Co[4]);
 	}
   // Triggering
   events_ = this->create_publisher<uned_crazyflie_config::msg::Triggering>("events",10);
@@ -27,11 +27,27 @@ bool EventTriggering::initialize(){
 bool EventTriggering::iterate(){
   // Altitude Controller
   {
+    if(events[0]){
+      events[0] = false;
+    }
+    // Cn
+    for(int i = 0; i<19; i++){
+      z_value[i] = z_value[i+1];
+    }
+    z_value[19] = GT_pose.position.z;
+    cn[0] = noiseEstimation(z_value, 20);
+    // a
     error[0] = ref_pose.position.z - GT_pose.position.z;
-    // cn[0] = noiseEstimation();
-    fthreshold[0] = c0[0] + a[0]*abs(error[0]) + cn[0];
-    if(abs(fthreshold[0])>abs(threshold[0])){
+    // Threshold
+    threshold[0] = c0[0] + a[0]*abs(error[0]) + cn[0];
+    // Signal
+    signal = abs(error[0]-lastZSignal);
+    // signal = abs(GT_pose.position.z-lastZSignal);
+    // Check
+    if(signal >= threshold[0]){
       events[0] = true;
+      lastZSignal = error[0];
+      // lastZSignal = GT_pose.position.z;
     }
   }
   // X-Y Controller
@@ -43,28 +59,40 @@ bool EventTriggering::iterate(){
 	double cosy_cosp = 1 - 2 * (GT_pose.orientation.y*GT_pose.orientation.y + GT_pose.orientation.z*GT_pose.orientation.z);
 	double yaw = std::atan2(siny_cosp,cosy_cosp);
   {
+    if(events[1]){
+      events[1] = false;
+    }
     x_error = (ref_pose.position.x - GT_pose.position.x)*cos(yaw)+(ref_pose.position.y - GT_pose.position.y)*sin(yaw);
     y_error = -(ref_pose.position.x - GT_pose.position.x)*sin(yaw)+(ref_pose.position.y - GT_pose.position.y)*cos(yaw);
-    // cn[1] = noiseEstimation();
+    cn[1] = noiseEstimation(xy_signal, 20);
     error[1] = sqrt(pow(x_error,2)+pow(y_error,2));
-    fthreshold[1] = c0[1] + a[1]*abs(error[1]) + cn[1];
+    threshold[1] = c0[1] + a[1]*abs(error[1]) + cn[1];
     events[1] = false;
   }
   // Yaw Controller
   {
+    if(events[2]){
+      events[2] = false;
+    }
     error[2] = (yaw_ref-yaw)*180/3.14159265;
-    // cn[2] = noiseEstimation();
-    fthreshold[2] = c0[2] + a[2]*abs(error[2]) + cn[2];
+    cn[2] = noiseEstimation(yaw_signal, 20);
+    threshold[2] = c0[2] + a[2]*abs(error[2]) + cn[2];
     events[2] = false;
   }
   // Attitude Controller
   {
-    fthreshold[3] = c0[3] + a[3]*abs(error[3]) + cn[3];
+    if(events[3]){
+      events[3] = false;
+    }
+    threshold[3] = c0[3] + a[3]*abs(error[3]) + cn[3];
     events[3] = true;
   }
   // Rate Controller
   {
-    fthreshold[4] = c0[4] + a[4]*abs(error[4]) + cn[4];
+    if(events[4]){
+      events[4] = false;
+    }
+    threshold[4] = c0[4] + a[4]*abs(error[4]) + cn[4];
     events[4] = true;
   }
 
@@ -79,6 +107,21 @@ bool EventTriggering::iterate(){
   }
 
   return true;
+}
+
+double EventTriggering::noiseEstimation(double signal[], int len){
+  double sum = 0;
+  for(int i =0; i<len; i++){
+    sum += signal[i];
+  }
+  double mean = sum/len;
+  double noise = 0.0;
+  for(int i =0; i<len; i++){
+    if(abs(signal[i]-mean)>noise){
+      noise = abs(signal[i]-mean);
+    }
+  }
+  return noise;
 }
 
 int main(int argc, char ** argv){

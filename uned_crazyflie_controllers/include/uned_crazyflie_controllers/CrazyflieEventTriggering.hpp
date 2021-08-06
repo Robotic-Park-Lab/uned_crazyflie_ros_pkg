@@ -38,11 +38,13 @@ private:
   	ref_pose.orientation = msg->orientation;
   }
 
+  double noiseEstimation(double signal[], int len);
+
   geometry_msgs::msg::Pose GT_pose, ref_pose;
   // Umbral
-  double fthreshold[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
-  // Cota
   double threshold[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  // Cota
+  double Co[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
   // Error tolerable en estado estacionario
   double c0[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
   // Factor proporcional al error de la señal
@@ -54,5 +56,12 @@ private:
   // double noiseEstimation(){}
   bool events[5] = {false, false, false, false, false};
 
+  //
+  double z_value[20] = {0.0};
+  double xy_signal[20] = {0.0};
+  double yaw_signal[20] = {0.0};
+  double lastZSignal = 0.0;
+  double signal = 0.0;
   double x_error, y_error;
+
 };
