@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="robot_id" default="dron"/>
+  <arg name="mav_name" default="crazyflie2"/>
+  <arg name="position_controller" default="PID" />
+  <arg name="enable_logging" default="false" />
+  <arg name="enable_ground_truth" default="true" />
+  <arg name="enable_state_estimator" default="false" />
+  <arg name="log_file" default="$(arg mav_name)" />
+  <arg name="x" default="0.0"/>
+  <arg name="y" default="0.0"/>
+  <arg name="z" default="0.0"/>
+  <arg name="user_account" default="kiko"/>
+  <arg name="world_name" default="basic_crazyflie.world"/>
+  <arg name="paused" value="false"/>
+  <arg name="debug" default="false"/>
+  <arg name="gui" default="true"/>
+  <arg name="verbose" default="false"/>
+
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <let name="world_name" value="$(find uned_interface)/Config/worlds/$(arg world_name)" />
+    <let name="debug" value="$(arg debug)" />
+    <let name="paused" value="$(arg paused)"/>
+    <let name="gui" value="$(arg gui)" />
+    <let name="verbose" value="$(arg verbose)"/>
+  </include>
+
+  <group>
+    <push-ros-namespace namespace="$(arg robot_id)"/>
+    <include file="$(find uned_crazyflie_config)/launch/spawn_mav_crazyflie.launch">
+      <let name="mav_name" value="$(arg mav_name)" />
+      <let name="namespace" value="$(arg robot_id)" />
+      <let name="model" value="$(find uned_crazyflie_drone)/urdf/mav_generic_odometry_sensor.gazebo" />
+      <let name="enable_logging" value="$(arg enable_logging)" />
+      <let name="enable_ground_truth" value="$(arg enable_ground_truth)" />
+      <let name="enable_state_estimator" value="$(arg enable_state_estimator)" />
+      <let name="log_file" value="$(arg log_file)"/>
+      <let name="x" default="$(arg x)"/>
+      <let name="y" default="$(arg y)"/>
+      <let name="z" default="$(arg z)"/>
+    </include>
+
+  </group>
+</launch>
