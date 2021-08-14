@@ -129,3 +129,4 @@ Ejecutar el scritp de Matlab `script.m`
 * **[Francisco José Mañas Álvarez](https://github.com/FranciscoJManasAlvarez)** :envelope: fjmanas@dia.uned.es
 
 ## Publicaciones asociadas :paperclip:
+- F.J. Mañas-Álvarez, M. Guinaldo, R. Dormido, R. Socas, S. Dormido, "Control basado en eventos mediante umbral relativo aplicado alcontrol de altitud de cuadric ́opteros Crazyflie 2.1", presentado en 42º Jornadas de Automática, Castellón, España, 2021
