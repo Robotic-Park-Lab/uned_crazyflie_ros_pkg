@@ -1,55 +1,45 @@
 # uned_crazyflie_ros_pkg
-Repositorio con los paquetes de ROS2 y ficheros de configuración para la teleoperación y simulación del dron crazyflie 2.1 en ROS, Gazebo y Matlab. La finalidad es obtener una herramienta Hardware-in-the-Loop que sea facilmente escalable y mantenible.
+Repositorio con los paquetes de ROS2 y ficheros de configuración para la teleoperación y simulación del dron crazyflie 2.1 en ROS2, Gazebo y Matlab. La finalidad es obtener una herramienta Hardware-in-the-Loop que sea facilmente escalable y mantenible.
 
 #### Estructura 
 - **doc**. Contiene un fichero _.tex_ que aborda más en detalle toda la información relacionada con el repositorio: esquemas de ROS, búsquedas bibliográficas, enlaces de interés, etc.
 - **scripts**. Contiene aquellos ficheros auxiliares que no forman parte de ningún paquete de ROS. Por ejemplo, ficheros _.sh_ para automatizar procesos repetitivos como la conversión de los ficheros _.bag_ a txt o los scripts de Matlab para representar datasets.
 - **submodules**. En este directorio están vinculados otros repositorios que se reutilizan, o se toman de base, para tareas ya abordadas por otros usuarios.
-- **uned_crazyflie_config**. Paquete de ROS. Contiene aquellos elementos auxiliares para la configuración del entorno, así como los _.launch.py_ para la ejecución en bloque de las diferentes estructuras del sistema.
-- **uned_crazyflie_test_ros2**. Paquete de ROS. Paquete en el que se incluyen todos los elementos destinados a realizar comprobaciones en el sistema de forma rápida. Por ejemplo los nodos _talker_ y _listener_ que se desarrollan al empezar a usar ROS, que en este caso se usan para comprobar la correcta comunicación entre máquinas en el sistema distribuido.
+- **uned_crazyflie_config**. Paquete de ROS2. Contiene aquellos elementos auxiliares para la configuración del entorno, así como los _.launch.py_ para la ejecución en bloque de las diferentes estructuras del sistema.
+- **uned_crazyflie_test_ros2**. Paquete de ROS2. Paquete en el que se incluyen todos los elementos destinados a realizar comprobaciones en el sistema de forma rápida. Por ejemplo los nodos _talker_ y _listener_ que se desarrollan al empezar a usar ROS, que en este caso se usan para comprobar la correcta comunicación entre máquinas en el sistema distribuido.
 
 ## Instalación :book:
-El objetivo es implementar todo el sistema en [ROS2 Galactic Geochelone](https://docs.ros.org/en/galactic/index.html) y [Ubuntu 20.04 LTS (Focal Fossa)](https://releases.ubuntu.com/20.04/)  a fin de prolongar el mantenimiento y vigencia de la plataforma.
+El objetivo es implementar una versión del sistema en [ROS2 Galactic Geochelone](https://docs.ros.org/en/galactic/index.html) y [Windows 10](https://www.microsoft.com/es-es/windows/features?activetab=NewPopular) para poder ejecutar todo el sistema sobre el PC (Windows) en el que está instalado el sistema de posicionamiento de [Vicon](TO-DO:enlace).
 
 ### Pre-requisitos 📋
-##### ROS
-Lo primero debe ser tener instalada la correspondiente versión de ROS para el sistema operativo del dispositivo ([Galactic](https://docs.ros.org/en/galactic/Installation/Ubuntu-Install-Debians.html)). 
+##### ROS2
+Lo primero debe ser tener instalada la correspondiente versión de ROS2 para el sistema operativo del dispositivo. Se recomienda seguir las instrucciones disponibles en la documentación oficial ([Galactic](https://docs.ros.org/en/galactic/Installation/Windows-Install-Binary.html)). 
 
 ##### Matlab
-
+TO-DO.
 
 ##### Dependencias
- - **Octomap**. TO-DO: Especificar los paquetes que dependen
- ```
- sudo apt-get install ros-<rosdistro>-octomap
- ```
-  - **Xacro**. TO-DO: Especificar los paquetes que dependen
- ```
- sudo apt-get install ros-<rosdistro>-xacro 
- ```
- - **Joy**. Paquete para realizar la lectura del joystick para teleoperación.
- ```
-sudo apt-get install ros-<rosdistro>-joystick-drivers
-```
+TO-DO. Referenciar el resto de repositorios.
+- Crazyflie python library: [Robotic-Park-Lab branch](https://github.com/Robotic-Park-Lab/crazyflie-lib-python)
 
 
-### - Ubuntu 20.04 - ROS Galactic Gochelone
+### - Windows 10 - ROS2 Galactic Gochelone
 La configuración del entorno de trabajo para el paquete desarrollado se muestra a continuación.
 ```
-mkdir -p crazyflie_ws/src
-cd crazyflie/src
-git clone -b ros2-galactic https://github.com/FranciscoJManasAlvarez/uned_crazyflie_ros_pkg 
+md \dev_ws\src
+cd \dev_ws\src
+git clone -b ros2-galactic-windows https://github.com/Robotic-Park-Lab/uned_crazyflie_ros_pkg.git
 cd uned_crazyflie_ros_pkg
 git submodules init
 git submodules update
 cd ..
-colcon build
-echo "source install/setup.bash" >> ~/.bashrc
+colcon build --merge-install
 ```
 
 ## Uso 🔧
 ### Simulador
-Las simulaciones se hacen sobre Gazebo. El modelo sdf está operativo en el paquete uned_crazyflie_config pero los plugins para los actuadores y sensores aún no se han actualizado. 
+Las simulaciones se hacen sobre Gazebo.
+
 #### Exclusivo en ROS
 TO-DO
 
@@ -63,4 +53,4 @@ TO-DO: Micro-ROS
 * **[Francisco José Mañas Álvarez](https://github.com/FranciscoJManasAlvarez)** :envelope: fjmanas@dia.uned.es
 
 ## Publicaciones asociadas :paperclip:
-- F.J. Mañas-Álvarez, M. Guinaldo, R. Dormido, R. Socas, S. Dormido, "Control basado en eventos mediante umbral relativo aplicado alcontrol de altitud de cuadric ́opteros Crazyflie 2.1", presentado en 42º Jornadas de Automática, Castellón, España, 2021
+- Mañas-Álvarez, F.J., Guinaldo, M., Dormido, R., Socas, R., Dormido, S. Control basado en eventos mediante umbral relativo aplicado al control de altitud de cuadricópteros Crazyflie 2.1. En XLII Jornadas de Automática: libro de actas. Castelló, 1-3 de septiembre de 2021 (pp. 341-348). DOI capítulo: https://doi.org/10.17979/spudc.9788497498043.341 DOI libro: https://doi.org/10.17979/spudc.9788497498043
