@@ -1,9 +1,35 @@
+# -*- coding: utf-8 -*-
+#
+#     ||          ____  _ __
+#  +------+      / __ )(_) /_______________ _____  ___
+#  | 0xBC |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
+#  +------+    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
+#   ||  ||    /_____/_/\__/\___/_/   \__,_/ /___/\___/
+#
+#  Copyright (C) 2014 Bitcraze AB
+#
+#  Crazyflie Nano Quadcopter Client
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA  02110-1301, USA.
+"""
+Simple example that connects to the first Crazyflie found, logs the Stabilizer
+and prints it to the console. After 10s the application disconnects and exits.
+"""
 import logging
 import time
-import rclpy
 from threading import Timer
-from rclpy.node import Node
-from std_msgs.msg import String
 
 import cflib.crtp  # noqa
 from cflib.crazyflie import Crazyflie
@@ -14,6 +40,7 @@ uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 
 # Only output errors from the logging framework
 logging.basicConfig(level=logging.ERROR)
+
 
 class LoggingExample:
     """
@@ -105,53 +132,14 @@ class LoggingExample:
         self.is_connected = False
 
 
-class CFDriver(Node):
-    def __init__(self):
-        super().__init__('cf_driver')
-        self._cf = Crazyflie(rw_cache='./cache')
-        self.initialize()
-        timer_period = 0.1  # seconds
-        self.publisher_ = self.create_publisher(String, 'topic', 10)
-        # self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.iterate_loop = self.create_timer(timer_period, self.iterate)
-        self.i = 0
-
-
-    def timer_callback(self):
-        msg = String()
-        msg.data = 'Hello World: %d' % self.i
-        self.publisher_.publish(msg)
-        self.get_logger().info('CF: "%s"' % msg.data)
-        self.i += 1
-
-    def initialize(self):
-        self.get_logger().info('CrazyflieDriver::inicialize() ok.')
-        cflib.crtp.init_drivers()
-
-        le = LoggingExample(uri)
-
-        # The Crazyflie lib doesn't contain anything to keep the application alive,
-        # so this is where your application should do something. In our case we
-        # are just waiting until we are disconnected.
-        while le.is_connected:
-            time.sleep(1)
-
-    def iterate(self):
-        self.get_logger().info('Iterate:')
-
-
-def main(args=None):
-
-    rclpy.init(args=args)
-    cf_driver = CFDriver()
-    rclpy.spin(cf_driver)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    minimal_subscriber.destroy_node()
-    rclpy.shutdown()
-
-
 if __name__ == '__main__':
-    main()
+    # Initialize the low-level drivers
+    cflib.crtp.init_drivers()
+
+    le = LoggingExample(uri)
+
+    # The Crazyflie lib doesn't contain anything to keep the application alive,
+    # so this is where your application should do something. In our case we
+    # are just waiting until we are disconnected.
+    while le.is_connected:
+        time.sleep(1)
