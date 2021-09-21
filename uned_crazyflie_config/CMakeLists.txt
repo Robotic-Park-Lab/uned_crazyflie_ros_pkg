@@ -22,7 +22,6 @@ find_package(std_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(urdf REQUIRED)
-find_package(xacro REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Triggering.msg"
