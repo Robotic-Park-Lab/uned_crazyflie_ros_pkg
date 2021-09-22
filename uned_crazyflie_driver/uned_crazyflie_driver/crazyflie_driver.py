@@ -15,24 +15,20 @@ uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 # Only output errors from the logging framework
 logging.basicConfig(level=logging.ERROR)
 
-class LoggingExample:
-    """
-    Simple logging example class that logs the Stabilizer from a supplied
-    link uri and disconnects after 5s.
-    """
 
-    def __init__(self, link_uri):
+class Logging:
+    def __init__(self, link_uri, parent):
         """ Initialize and run the example with the specified link_uri """
 
         self._cf = Crazyflie(rw_cache='./cache')
-
+        self.parent = parent
         # Connect some callbacks from the Crazyflie API
         self._cf.connected.add_callback(self._connected)
         self._cf.disconnected.add_callback(self._disconnected)
         self._cf.connection_failed.add_callback(self._connection_failed)
         self._cf.connection_lost.add_callback(self._connection_lost)
 
-        print('Connecting to %s' % link_uri)
+        self.parent.get_logger().info('Connecting to %s' % link_uri)
 
         # Try to connect to the Crazyflie
         self._cf.open_link(link_uri)
@@ -43,8 +39,7 @@ class LoggingExample:
     def _connected(self, link_uri):
         """ This callback is called form the Crazyflie API when a Crazyflie
         has been connected and the TOCs have been downloaded."""
-        print('Connected to %s' % link_uri)
-
+        self.parent.get_logger().info('Connected to %s' % link_uri)
         # The definition of the logconfig can be made before connecting
         self._lg_stab = LogConfig(name='Stabilizer', period_in_ms=100)
         self._lg_stab.add_variable('stateEstimate.x', 'float')
@@ -74,17 +69,19 @@ class LoggingExample:
             print('Could not add Stabilizer log config, bad configuration.')
 
         # Start a timer to disconnect in 10s
-        t = Timer(5, self._cf.close_link)
+        t = Timer(10, self._cf.close_link)
         t.start()
 
     def _stab_log_error(self, logconf, msg):
         """Callback from the log API when an error occurs"""
-        print('Error when logging %s: %s' % (logconf.name, msg))
+        self.parent.get_logger().info('Error when logging %s: %s' % (logconf.name, msg))
 
     def _stab_log_data(self, timestamp, data, logconf):
         """Callback from a the log API when data arrives"""
         print(f'[{timestamp}][{logconf.name}]: ', end='')
         for name, value in data.items():
+            print(value)
+            self.parent.data_callback(value)
             print(f'{name}: {value:3.3f} ', end='')
         print()
 
@@ -103,23 +100,21 @@ class LoggingExample:
         """Callback when the Crazyflie is disconnected (called in all cases)"""
         print('Disconnected from %s' % link_uri)
         self.is_connected = False
-
+        rclpy.shutdown()
 
 class CFDriver(Node):
     def __init__(self):
         super().__init__('cf_driver')
-        self._cf = Crazyflie(rw_cache='./cache')
         self.initialize()
         timer_period = 0.1  # seconds
-        self.publisher_ = self.create_publisher(String, 'topic', 10)
+        self.publisher_ = self.create_publisher(String, 'cf_data', 10)
         # self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.iterate_loop = self.create_timer(timer_period, self.iterate)
+        # self.iterate_loop = self.create_timer(timer_period, self.iterate)
         self.i = 0
 
-
-    def timer_callback(self):
+    def data_callback(self, data):
         msg = String()
-        msg.data = 'Hello World: %d' % self.i
+        msg.data = str(data)
         self.publisher_.publish(msg)
         self.get_logger().info('CF: "%s"' % msg.data)
         self.i += 1
@@ -127,21 +122,9 @@ class CFDriver(Node):
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
         cflib.crtp.init_drivers()
-
-        le = LoggingExample(uri)
-
-        # The Crazyflie lib doesn't contain anything to keep the application alive,
-        # so this is where your application should do something. In our case we
-        # are just waiting until we are disconnected.
-        while le.is_connected:
-            time.sleep(1)
-
-    def iterate(self):
-        self.get_logger().info('Iterate:')
-
+        self.CF = Logging(uri, self)
 
 def main(args=None):
-
     rclpy.init(args=args)
     cf_driver = CFDriver()
     rclpy.spin(cf_driver)
@@ -149,7 +132,7 @@ def main(args=None):
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    minimal_subscriber.destroy_node()
+    cf_driver.destroy_node()
     rclpy.shutdown()
 
 
