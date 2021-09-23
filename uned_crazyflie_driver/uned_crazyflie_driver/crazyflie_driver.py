@@ -4,6 +4,7 @@ import rclpy
 from threading import Timer
 from rclpy.node import Node
 from std_msgs.msg import String
+from uned_crazyflie_config.msg import StateEstimate
 
 import cflib.crtp  # noqa
 from cflib.crazyflie import Crazyflie
@@ -69,8 +70,8 @@ class Logging:
             print('Could not add Stabilizer log config, bad configuration.')
 
         # Start a timer to disconnect in 10s
-        t = Timer(10, self._cf.close_link)
-        t.start()
+        # t = Timer(10, self._cf.close_link)
+        # t.start()
 
     def _stab_log_error(self, logconf, msg):
         """Callback from the log API when an error occurs"""
@@ -78,10 +79,9 @@ class Logging:
 
     def _stab_log_data(self, timestamp, data, logconf):
         """Callback from a the log API when data arrives"""
+        self.parent.data_callback(timestamp, data)
         print(f'[{timestamp}][{logconf.name}]: ', end='')
         for name, value in data.items():
-            print(value)
-            self.parent.data_callback(value)
             print(f'{name}: {value:3.3f} ', end='')
         print()
 
@@ -100,6 +100,7 @@ class Logging:
         """Callback when the Crazyflie is disconnected (called in all cases)"""
         print('Disconnected from %s' % link_uri)
         self.is_connected = False
+        self.parent.destroy_node()
         rclpy.shutdown()
 
 class CFDriver(Node):
@@ -107,17 +108,17 @@ class CFDriver(Node):
         super().__init__('cf_driver')
         self.initialize()
         timer_period = 0.1  # seconds
-        self.publisher_ = self.create_publisher(String, 'cf_data', 10)
+        self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
         # self.timer = self.create_timer(timer_period, self.timer_callback)
         # self.iterate_loop = self.create_timer(timer_period, self.iterate)
-        self.i = 0
 
-    def data_callback(self, data):
-        msg = String()
-        msg.data = str(data)
+    def data_callback(self, timestamp, data):
+        msg = StateEstimate()
+        msg.timestamp = timestamp
+        msg.x = data['stateEstimate.x']
+        msg.y = data['stateEstimate.y']
+        msg.z = data['stateEstimate.z']
         self.publisher_.publish(msg)
-        self.get_logger().info('CF: "%s"' % msg.data)
-        self.i += 1
 
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
