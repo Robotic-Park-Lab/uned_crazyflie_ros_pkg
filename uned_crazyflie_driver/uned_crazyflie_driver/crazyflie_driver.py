@@ -9,10 +9,14 @@ from uned_crazyflie_config.msg import StateEstimate
 import cflib.crtp  # noqa
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
+from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
+from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
 
 uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
-
+DEFAULT_HEIGHT = 0.5
+is_deck_attached = False
+position_estimate = [0, 0]
 # Only output errors from the logging framework
 logging.basicConfig(level=logging.ERROR)
 
@@ -51,12 +55,27 @@ class Logging:
         self._lg_stab.add_variable('stabilizer.yaw', 'float')
         # The fetch-as argument can be set to FP16 to save space in the log packet
         self._lg_stab.add_variable('pm.vbat', 'FP16')
-
+        """
+        Groups:
+        - range: front(uint16), back(uint16), up(uint16), left(uint16),
+                 right(uint16), zranger(uint16)
+        - motor: m1(uint32), m2(uint32), m3(uint32), m4(uint32)
+        - stabilizer: estimator, controller[Type], stop,
+                      roll(float), pith(float), yaw(float), thrust(float)
+        - ctrltarget:  x(float),  y(float),  z(float),
+                      vx(float), vy(float), vz(float),
+                      ax(float), ay(float), az(float),
+                      roll(float), pitch(float), yaw(float)
+        - acc:  x(float),  y(float),  z(float),
+        - accSec:  x(float),  y(float),  z(float), [IMU]
+        https://www.bitcraze.io/documentation/repository/crazyflie-firmware/master/api/logs/
+        """
         # Adding the configuration cannot be done until a Crazyflie is
         # connected, since we need to check that the variables we
         # would like to log are in the TOC.
         try:
             self._cf.log.add_config(self._lg_stab)
+            # crazyflie.log.add_config([logconf1, logconfig2])
             # This callback will receive the data
             self._lg_stab.data_received_cb.add_callback(self._stab_log_data)
             # This callback will be called on errors
@@ -109,6 +128,7 @@ class CFDriver(Node):
         self.initialize()
         timer_period = 0.1  # seconds
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
+        self.take_off_simple(self.CF)
         # self.timer = self.create_timer(timer_period, self.timer_callback)
         # self.iterate_loop = self.create_timer(timer_period, self.iterate)
 
@@ -124,15 +144,19 @@ class CFDriver(Node):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
         cflib.crtp.init_drivers()
         self.CF = Logging(uri, self)
+        #
+
+
+    def take_off_simple(self, scf):
+        with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
+            time.sleep(3)
+            mc.stop()
 
 def main(args=None):
     rclpy.init(args=args)
     cf_driver = CFDriver()
     rclpy.spin(cf_driver)
 
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
     cf_driver.destroy_node()
     rclpy.shutdown()
 
