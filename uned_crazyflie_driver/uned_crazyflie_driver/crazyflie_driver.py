@@ -1,6 +1,8 @@
 import logging
 import time
 import rclpy
+import sys
+
 from threading import Timer
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -37,7 +39,6 @@ def param_deck_flow(name, value_str):
     else:
         is_deck_attached = False
         print('Flow2 deck is NOT attached!')
-
 class Logging:
     def __init__(self, link_uri, parent):
         """ Initialize and run the example with the specified link_uri """
@@ -93,12 +94,10 @@ class Logging:
 
     def _stab_log_data(self, timestamp, data, logconf):
         self.parent.data_callback(timestamp, data)
-        """
         print(f'[{timestamp}][{logconf.name}]: ', end='')
         for name, value in data.items():
             print(f'{name}: {value:3.3f} ', end='')
         print()
-        """
 
     def _connection_failed(self, link_uri, msg):
         print('Connection to %s failed: %s' % (link_uri, msg))
@@ -124,30 +123,23 @@ class CFDriver(Node):
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
         cflib.crtp.init_drivers()
         self.initialize()
+        # self.mc.take_off()
+        # t = Timer(2, self.aterrizaje)
+        # t.start()
 
-        # self.take_off_simple(self.scf)
-        """
-        with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
-            self.initialize(scf)
-            if is_deck_attached:
-                if CONTROL_MODE == 'Null':
-                    self.get_logger().info('Null Mode Control')
-                if CONTROL_MODE == 'Test':
-                    self.take_off_simple(scf)
-                if CONTROL_MODE == 'HighLevel':
-                    self.get_logger().info('High Level Mode Control')
-                    self.mc = MotionCommander(scf, default_height=DEFAULT_HEIGHT)
-                    self.high_level_control()
-            while not end_test:
-                time.sleep(0.5)
-        """
 
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
         self.scf = Logging(uri, self)
         time.sleep(1.0)
-        self.mc = MotionCommander(self.scf, default_height=DEFAULT_HEIGHT)
-        self.mc.mc.up(0.3)
+
+        self.mc = MotionCommander(self.scf.cf, default_height=DEFAULT_HEIGHT)
+
+    def despegue(self):
+        self.mc.take_off()
+
+    def aterrizaje(self):
+        self.mc.land()
 
     def iterate(self):
         self.get_logger().info('In progress ...')
@@ -160,8 +152,18 @@ class CFDriver(Node):
         msg.z = data['stateEstimate.z']
         self.publisher_.publish(msg)
 
-    def order_callback(self):
+    def order_callback(self, msg):
         self.get_logger().info('I heard: "%s"' % msg.data)
+        if msg.data == 'take_off':
+            if self.mc._is_flying:
+                self.get_logger().info('Already flying')
+            else:
+                self.despegue()
+        if msg.data == 'land':
+            if self.mc._is_flying:
+                self.aterrizaje()
+            else:
+                self.get_logger().info('In land')
 
     def take_off_simple(self, scf):
         self.get_logger().info('Test Mode Control')
