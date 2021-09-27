@@ -21,6 +21,16 @@ position_estimate = [0, 0]
 # Only output errors from the logging framework
 logging.basicConfig(level=logging.ERROR)
 
+def param_deck_flow(name, value_str):
+    value = int(value_str)
+    global is_deck_attached
+    if value:
+        is_deck_attached = True
+        print('Flow2 deck is attached!')
+    else:
+        is_deck_attached = False
+        print('Flow2 deck is NOT attached!')
+
 class CFDriver(Node):
     def __init__(self):
         super().__init__('cf_driver')
@@ -32,6 +42,8 @@ class CFDriver(Node):
         cflib.crtp.init_drivers()
         with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
             self.initialize(scf)
+            if is_deck_attached:
+                self.take_off_simple(scf)
             while not end_test:
                 time.sleep(0.5)
             # self.iterate()
@@ -41,6 +53,9 @@ class CFDriver(Node):
         self.log_async(scf)
 
     def log_async(self, scf):
+        scf.cf.param.add_update_callback(group='deck', name='bcFlow2',
+                                         cb=param_deck_flow)
+        time.sleep(1)
         cf = scf.cf
         self.get_logger().info('Connected to %s' % uri)
         scf.cf.disconnected.add_callback(self.disconnected)
@@ -89,27 +104,11 @@ class CFDriver(Node):
         msg.z = data['stateEstimate.z']
         self.publisher_.publish(msg)
 
-    def param_deck_flow(name, value_str):
-        value = int(value_str)
-        print(value)
-        global is_deck_attached
-        if value:
-            is_deck_attached = True
-            print('Deck is attached!')
-        else:
-            is_deck_attached = False
-            print('Deck is NOT attached!')
 
-    def iterate(self):
-        self.CF._cf.param.add_update_callback(group='deck', name='bcFlow2',
-                                              cb=self.param_deck_flow)
-        time.sleep(1)
-        if is_deck_attached:
-            self.take_off_simple(self.CF)
 
     def take_off_simple(self, scf):
         with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
-            time.sleep(3)
+            time.sleep(1)
             mc.stop()
 
 
