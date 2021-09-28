@@ -37,17 +37,29 @@ colcon build --merge-install
 ```
 
 ## Uso 🔧
-### Simulador
-Las simulaciones se hacen sobre Gazebo.
+### Variables
+https://www.bitcraze.io/documentation/repository/crazyflie-firmware/master/api/logs/#pm
 
-#### Exclusivo en ROS
-TO-DO
+#### ROS2
+```
+cd \dev_ws
+colcon build --merge-install --packages-select uned_crazyflie_driver
+call install/setup.bat
+ros2 run uned_crazyflie_driver crazyflie_driver
+```
+Actualmente (2021-09-28), solo está implementada la función de despegue y aterrizaje mediante un topic. Las instrucciones para ello son:
+```
+ros2 topic pub /cf_order std_msgs/String "{data: 'take_off'}"
+```
+```
+ros2 topic pub /cf_order std_msgs/String "{data: 'land'}"
+```
 
 #### Controlador en Matlab
 TO-DO
 
 ### Hardware-in-the-Loop
-TO-DO: Micro-ROS
+TO-DO
 
 ## Autores ✒️
 * **[Francisco José Mañas Álvarez](https://github.com/FranciscoJManasAlvarez)** :envelope: fjmanas@dia.uned.es
