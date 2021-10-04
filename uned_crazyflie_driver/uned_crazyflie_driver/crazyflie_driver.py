@@ -1,17 +1,15 @@
 import logging
 import time
 import rclpy
-import sys
 
-from threading import Timer
 from rclpy.node import Node
 from std_msgs.msg import String
 from uned_crazyflie_config.msg import StateEstimate
 
 import cflib.crtp  # noqa
 from cflib.crazyflie import Crazyflie
+from cflib.crazyflie.commander import Commander
 from cflib.crazyflie.log import LogConfig
-from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
 
@@ -30,6 +28,7 @@ is_deck_attached = False
 # Only output errors from the logging framework
 logging.basicConfig(level=logging.ERROR)
 
+
 def param_deck_flow(name, value_str):
     value = int(value_str)
     global is_deck_attached
@@ -39,6 +38,8 @@ def param_deck_flow(name, value_str):
     else:
         is_deck_attached = False
         print('Flow2 deck is NOT attached!')
+
+
 class Logging:
     def __init__(self, link_uri, parent):
         """ Initialize and run the example with the specified link_uri """
@@ -71,7 +72,8 @@ class Logging:
         self._lg_stab.add_variable('stabilizer.roll', 'float')
         self._lg_stab.add_variable('stabilizer.pitch', 'float')
         self._lg_stab.add_variable('stabilizer.yaw', 'float')
-        # The fetch-as argument can be set to FP16 to save space in the log packet
+        # The fetch-as argument can be set to FP16 to save space
+        # in the log packet
         self._lg_stab.add_variable('pm.vbat', 'FP16')
 
         try:
@@ -90,7 +92,8 @@ class Logging:
             print('Could not add Stabilizer log config, bad configuration.')
 
     def _stab_log_error(self, logconf, msg):
-        self.parent.get_logger().info('Error when logging %s: %s' % (logconf.name, msg))
+        self.parent.get_logger().info('Error when logging %s: %s'
+                                      % (logconf.name, msg))
 
     def _stab_log_data(self, timestamp, data, logconf):
         self.parent.data_callback(timestamp, data)
@@ -110,15 +113,20 @@ class Logging:
         print('Disconnected from %s' % link_uri)
         self.is_connected = False
         rclpy.shutdown()
+
+
 """
 """
+
+
 class CFDriver(Node):
     def __init__(self):
         super().__init__('cf_driver')
 
         timer_period = 0.1  # seconds
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
-        self.subscription = self.create_subscription(String, 'cf_order', self.order_callback, 10)
+        self.subscription = self.create_subscription(String, 'cf_order',
+                                                     self.order_callback, 10)
         # self.timer = self.create_timer(timer_period, self.timer_callback)
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
         cflib.crtp.init_drivers()
@@ -127,13 +135,15 @@ class CFDriver(Node):
         # t = Timer(2, self.aterrizaje)
         # t.start()
 
-
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
         self.scf = Logging(uri, self)
         time.sleep(1.0)
 
         self.mc = MotionCommander(self.scf.cf, default_height=DEFAULT_HEIGHT)
+        self.cmd = Commander(self.scf.cf)
+        self.cmd.set_client_xmode(True)
+        # send_setpoint(self, roll, pitch, yaw, thrust)
 
     def despegue(self):
         self.mc.take_off()
@@ -176,7 +186,6 @@ class CFDriver(Node):
         self.mc.take_off()
         time.sleep(1)
         self.mc.land()
-
 
 
 def main(args=None):
