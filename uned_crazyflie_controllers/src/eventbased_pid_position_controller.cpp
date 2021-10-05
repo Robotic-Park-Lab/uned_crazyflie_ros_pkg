@@ -126,7 +126,7 @@ bool PositionController::iterate(){
     omega = 2600;
 		auto msg_omega = std_msgs::msg::Float64();
 		msg_omega.data = omega;
-		pub_omega_->publish(msg_omega);
+        pub_omega_->publish(msg_omega);
 
 	}
   return true;

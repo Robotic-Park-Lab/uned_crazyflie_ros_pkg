@@ -14,7 +14,7 @@
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <geometry_msgs/msg/pose.hpp>
-// #include <uned_crazyflie_config/msg/cfcmdsignal.hpp>
+#include <uned_crazyflie_config/msg/cmdsignal.hpp>
 
 using namespace std::chrono_literals;
 
@@ -27,21 +27,20 @@ public:
   bool iterate();
 
 private:
+  rclcpp::Publisher<uned_crazyflie_config::msg::Cmdsignal>::SharedPtr pub_cmd_;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_omega_;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_dyaw_;
-  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_control_signal_;
 
   rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
   void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
     GT_pose.position = msg->position;
-  	GT_pose.orientation = msg->orientation;
+    GT_pose.orientation = msg->orientation;
   }
 
   rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr ref_pose_;
   void positionreferenceCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
     RCLCPP_INFO(this->get_logger(),"New Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
     ref_pose.position = msg->position;
-  	ref_pose.orientation = msg->orientation;
+    ref_pose.orientation = msg->orientation;
   }
 
   void rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities);

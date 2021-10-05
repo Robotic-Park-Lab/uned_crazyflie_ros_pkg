@@ -1,5 +1,5 @@
-# Lectura de datos estimados por el CF
-int64     timestamp     #
+# Description
+
 float64   thrust        #
 float64   roll          #
 float64   pitch         #

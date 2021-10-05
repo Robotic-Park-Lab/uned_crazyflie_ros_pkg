@@ -6,7 +6,7 @@ from threading import Timer
 from rclpy.node import Node
 from std_msgs.msg import String
 from uned_crazyflie_config.msg import StateEstimate
-from uned_crazyflie_config.msg import CFCmdSignal
+from uned_crazyflie_config.msg import Cmdsignal
 
 import cflib.crtp  # noqa
 from cflib.crazyflie import Crazyflie
@@ -129,7 +129,7 @@ class CFDriver(Node):
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
         self.sub_order = self.create_subscription(String, 'cf_order',
                                                   self.order_callback, 10)
-        self.sub_cmd = self.create_subscription(CFCmdSignal, 'cf_cmd_control',
+        self.sub_cmd = self.create_subscription(Cmdsignal, 'cf_cmd_control',
                                                      self.cmd_control_callback, 10)
 
         # self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -184,7 +184,8 @@ class CFDriver(Node):
     def cmd_control_callback(self, msg):
         self.get_logger().info('New CMD Control')
         # send_setpoint(self, roll, pitch, yaw, thrust)
-        self.scf._cf.commander.send_setpoint(msg.roll, msg.pitch, msg.yaw, msg.thrust)
+        # self.scf._cf.commander.send_setpoint(msg.roll, msg.pitch, msg.yaw, msg.thrust)
+        self.scf._cf.commander.send_setpoint(0.0, 0.0, 0.0, 0.0)
 
 
     def take_off_simple(self, scf):

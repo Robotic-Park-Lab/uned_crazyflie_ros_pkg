@@ -12,8 +12,7 @@ def generate_launch_description():
         Node(
             package='uned_vicon_bridge',
             executable='vicon_tracker',
-            name='vicon_tracker',
-            output='screen'
+            name='vicon_tracker'
         ),
         Node(
             package='uned_crazyflie_controllers',
