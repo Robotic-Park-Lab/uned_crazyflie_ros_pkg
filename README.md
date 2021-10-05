@@ -55,6 +55,11 @@ ros2 topic pub /cf_order std_msgs/String "{data: 'take_off'}"
 ros2 topic pub /cf_order std_msgs/String "{data: 'land'}"
 ```
 
+```
+ros2 launch uned_crazyflie_config test.launch.py
+```
+
+![Alt text](doc/figs/rosgraph_ROS2.png?raw=true "rqt_graph")
 #### Controlador en Matlab
 TO-DO
 
