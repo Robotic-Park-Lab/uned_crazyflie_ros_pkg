@@ -26,6 +26,7 @@ find_package(urdf REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Triggering.msg"
   "msg/StateEstimate.msg"
+  "msg/CFCmdSignal.msg"
 )
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)

@@ -1,10 +1,12 @@
 import logging
 import time
 import rclpy
+from threading import Timer
 
 from rclpy.node import Node
 from std_msgs.msg import String
 from uned_crazyflie_config.msg import StateEstimate
+from uned_crazyflie_config.msg import CFCmdSignal
 
 import cflib.crtp  # noqa
 from cflib.crazyflie import Crazyflie
@@ -44,18 +46,18 @@ class Logging:
     def __init__(self, link_uri, parent):
         """ Initialize and run the example with the specified link_uri """
 
-        self.cf = Crazyflie(rw_cache='./cache')
+        self._cf = Crazyflie(rw_cache='./cache')
         self.parent = parent
         # Connect some callbacks from the Crazyflie API
-        self.cf.connected.add_callback(self._connected)
-        self.cf.disconnected.add_callback(self._disconnected)
-        self.cf.connection_failed.add_callback(self._connection_failed)
-        self.cf.connection_lost.add_callback(self._connection_lost)
+        self._cf.connected.add_callback(self._connected)
+        self._cf.disconnected.add_callback(self._disconnected)
+        self._cf.connection_failed.add_callback(self._connection_failed)
+        self._cf.connection_lost.add_callback(self._connection_lost)
 
         self.parent.get_logger().info('Connecting to %s' % link_uri)
 
         # Try to connect to the Crazyflie
-        self.cf.open_link(link_uri)
+        self._cf.open_link(link_uri)
 
         # Variable used to keep main loop occupied until disconnect
         self.is_connected = True
@@ -70,14 +72,14 @@ class Logging:
         self._lg_stab.add_variable('stateEstimate.y', 'float')
         self._lg_stab.add_variable('stateEstimate.z', 'float')
         self._lg_stab.add_variable('stabilizer.roll', 'float')
-        self._lg_stab.add_variable('stabilizer.pitch', 'float')
+        self._lg_stab.add_variable('controller.cmd_thrust', 'float')
         self._lg_stab.add_variable('stabilizer.yaw', 'float')
         # The fetch-as argument can be set to FP16 to save space
         # in the log packet
         self._lg_stab.add_variable('pm.vbat', 'FP16')
 
         try:
-            self.cf.log.add_config(self._lg_stab)
+            self._cf.log.add_config(self._lg_stab)
             # crazyflie.log.add_config([logconf1, logconfig2])
             # This callback will receive the data
             self._lg_stab.data_received_cb.add_callback(self._stab_log_data)
@@ -125,14 +127,17 @@ class CFDriver(Node):
 
         timer_period = 0.1  # seconds
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
-        self.subscription = self.create_subscription(String, 'cf_order',
-                                                     self.order_callback, 10)
+        self.sub_order = self.create_subscription(String, 'cf_order',
+                                                  self.order_callback, 10)
+        self.sub_cmd = self.create_subscription(CFCmdSignal, 'cf_cmd_control',
+                                                     self.cmd_control_callback, 10)
+
         # self.timer = self.create_timer(timer_period, self.timer_callback)
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
         cflib.crtp.init_drivers()
         self.initialize()
-        # self.mc.take_off()
-        # t = Timer(2, self.aterrizaje)
+        # self.despegue()
+        # t = Timer(1.5, self.aterrizaje)
         # t.start()
 
     def initialize(self):
@@ -140,10 +145,11 @@ class CFDriver(Node):
         self.scf = Logging(uri, self)
         time.sleep(1.0)
 
-        self.mc = MotionCommander(self.scf.cf, default_height=DEFAULT_HEIGHT)
-        self.cmd = Commander(self.scf.cf)
-        self.cmd.set_client_xmode(True)
-        # send_setpoint(self, roll, pitch, yaw, thrust)
+        self.scf._cf.commander.send_setpoint(0, 0, 0, 0)
+        self.mc = MotionCommander(self.scf._cf, default_height=DEFAULT_HEIGHT)
+        # self.cmd = Commander(self.scf._cf)
+        # self.cmd.set_client_xmode(True)
+        # self.ramp_motors()
 
     def despegue(self):
         self.mc.take_off()
@@ -174,6 +180,12 @@ class CFDriver(Node):
                 self.aterrizaje()
             else:
                 self.get_logger().info('In land')
+
+    def cmd_control_callback(self, msg):
+        self.get_logger().info('New CMD Control')
+        # send_setpoint(self, roll, pitch, yaw, thrust)
+        self.scf._cf.commander.send_setpoint(msg.roll, msg.pitch, msg.yaw, msg.thrust)
+
 
     def take_off_simple(self, scf):
         self.get_logger().info('Test Mode Control')

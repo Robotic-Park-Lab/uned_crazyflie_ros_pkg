@@ -14,7 +14,7 @@
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <geometry_msgs/msg/pose.hpp>
-// #include <uned_crazyflie_controllers/msg/attitude_refs.hpp>
+// #include <uned_crazyflie_config/msg/cfcmdsignal.hpp>
 
 using namespace std::chrono_literals;
 
@@ -55,7 +55,7 @@ private:
   // Altitude paremeters
   double z_error_signal[3], delta_omega[2];
   double omega = 0.0;
-  double we = 16073.0; //14480.0;
+  double we = 14480.0;
   // X-Y paremeters
   double x_error_signal[3], y_error_signal[3], uc[2], vc[2], u_feedback[2], v_feedback[2];
   double u_error_signal[3], v_error_signal[3], pitch_ref[2], roll_ref[2];

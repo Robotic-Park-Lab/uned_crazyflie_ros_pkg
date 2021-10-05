@@ -1,5 +1,5 @@
 # Lectura de datos estimados por el CF
-int64    timestamp   # stateEstimate.x
+int64     timestamp   #
 float64   x           # stateEstimate.x
 float64   y           # stateEstimate.y
 float64   z           # stateEstimate.z

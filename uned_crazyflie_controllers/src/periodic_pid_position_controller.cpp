@@ -57,9 +57,10 @@ bool PositionController::initialize(){
 
   // Subscriber:
 	// Crazyflie Pose
-  GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("ground_truth/pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
+  // GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("ground_truth/pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
+  GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
 	// Reference:
-  ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("position_reference", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
+  ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose_ref", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
 
   // Init values
   u_feedback[0] = m_x_init;
@@ -72,7 +73,7 @@ bool PositionController::initialize(){
 	ref_pose.orientation.y = 0;
 	ref_pose.orientation.z = 0;
 	ref_pose.orientation.w = 1;
-  RCLCPP_INFO(this->get_logger(),"New Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
+  RCLCPP_INFO(this->get_logger(),"Init Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
 
   return true;
 }
@@ -92,8 +93,8 @@ bool PositionController::iterate(){
 		// Saturation
 		if(delta_omega[0]>15000)
 			delta_omega[0] = 15000;
-		if(delta_omega[0]<-15000)
-			delta_omega[0] = -15000;
+        if(delta_omega[0]<-20000)
+            delta_omega[0] = -20000;
 
 		// Output signal
 		omega = delta_omega[0]+(we-4070.3)/0.2685;
@@ -166,7 +167,7 @@ bool PositionController::iterate(){
     // this->attitudeRateMixerRefsCallback(pitch_ref[0], roll_ref[0]);
 	}
 
-  // Yaw Controller
+    // Yaw Controller
 	{
 		// Update error
 		yaw_error_signal[2] = yaw_error_signal[1];
@@ -180,6 +181,8 @@ bool PositionController::iterate(){
 		msg_dyaw.data = dyaw_ref[0];
 		pub_dyaw_->publish(msg_dyaw);
 	}
+    // Publish Control CMD
+
 
   return true;
 }
