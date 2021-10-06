@@ -2,78 +2,64 @@
 using std::placeholders::_1;
 
 bool PositionController::initialize(){
-  RCLCPP_INFO(this->get_logger(),"PositionController::inicialize() ok.");
+    RCLCPP_INFO(this->get_logger(),"PositionController::inicialize() ok.");
 
-  // Lectura de parámetros
-    this->get_parameter("CONTROLLER_TYPE", m_controller_type);
-    this->get_parameter("ROBOT_ID", m_robot_id);
-    this->get_parameter("CONTROLLER_MODE", m_controller_mode);
-    this->get_parameter("X_POS", m_x_init);
-    this->get_parameter("Y_POS", m_y_init);
-    this->get_parameter("Z_POS", m_z_init);
+    // Lectura de parámetros
+    RCLCPP_INFO(this->get_logger(),"TO-DO: Read Params.");
+    m_controller_type = "PID";
+    m_robot_id = "dron_test";
+    m_controller_mode = "close loop";
+    RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s, \tMode: %s", m_controller_type, m_robot_id, m_controller_mode);
+    m_x_init = 0.0;
+    m_y_init = 0.0;
+    m_z_init = 0.0;
 
-  if(this->has_parameter("Zq1") && this->has_parameter("Zq2") && this->has_parameter("Zq3")){
-        this->get_parameter("Zq1", Z_q[0]);
-        this->get_parameter("Zq2", Z_q[1]);
-        this->get_parameter("Zq3", Z_q[2]);
-    RCLCPP_INFO(this->get_logger(),"Altitude PID(Z) Parameters: \t%f \t%f \t%f", Z_q[0], Z_q[1], Z_q[2]);
-    }
-  if(this->has_parameter("Xq1") && this->has_parameter("Xq2") && this->has_parameter("Xq3")){
-        this->get_parameter("Xq1", X_q[0]);
-        this->get_parameter("Xq2", X_q[1]);
-        this->get_parameter("Xq3", X_q[2]);
-    RCLCPP_INFO(this->get_logger(),"X PID(Z) Parameters: \t%f \t%f \t%f", X_q[0], X_q[1], X_q[2]);
-    }
-  if(this->has_parameter("Uq1") && this->has_parameter("Uq2") && this->has_parameter("Uq3")){
-        this->get_parameter("Uq1", U_q[0]);
-        this->get_parameter("Uq2", U_q[1]);
-        this->get_parameter("Uq3", U_q[2]);
-    RCLCPP_INFO(this->get_logger(),"U PID(Z) Parameters: \t%f \t%f \t%f", U_q[0], U_q[1], U_q[2]);
-    }
-    if(this->has_parameter("Yq1") && this->has_parameter("Yq2") && this->has_parameter("Yq3")){
-        this->get_parameter("Yq1", Y_q[0]);
-        this->get_parameter("Yq2", Y_q[1]);
-        this->get_parameter("Yq3", Y_q[2]);
-    RCLCPP_INFO(this->get_logger(),"Y PID(Z) Parameters: \t%f \t%f \t%f", Y_q[0], Y_q[1], Y_q[2]);
-    }
-    if(this->has_parameter("Vq1") && this->has_parameter("Vq2") && this->has_parameter("Vq3")){
-        this->get_parameter("Vq1", V_q[0]);
-        this->get_parameter("Vq2", V_q[1]);
-        this->get_parameter("Vq3", V_q[2]);
-    RCLCPP_INFO(this->get_logger(),"V PID(Z) Parameters: \t%f \t%f \t%f", V_q[0], V_q[1], V_q[2]);
-    }
-    if(this->has_parameter("Yawq1") && this->has_parameter("Yawq2") && this->has_parameter("Yawq3")){
-        this->get_parameter("Yawq1", Yaw_q[0]);
-        this->get_parameter("Yawq2", Yaw_q[1]);
-        this->get_parameter("Yawq3", Yaw_q[2]);
-    RCLCPP_INFO(this->get_logger(),"Yaw PID(Z) Parameters: \t%f \t%f \t%f", Yaw_q[0], Yaw_q[1], Yaw_q[2]);
-    }
+    Z_q[0] = 915017.5;
+    Z_q[1] = -1814982.5;
+    Z_q[2] = 900000;
+    RCLCPP_INFO(this->get_logger(),"Z PID(Z): \t%.2f \t%.2f \t%.2f", Z_q[0], Z_q[1], Z_q[2]);
 
-  // Publisher:
+    X_q[0] = 1.0;
+    X_q[1] = -1.0;
+    X_q[2] = 0.0;
+    RCLCPP_INFO(this->get_logger(),"X PID(Z): \t%.2f \t%.2f \t%.2f", X_q[0], X_q[1], X_q[2]);
+
+    U_q[0] = 30.0;
+    U_q[1] = -29.99;
+    U_q[2] = 0.0;
+    RCLCPP_INFO(this->get_logger(),"U PID(Z): \t%.2f \t%.2f \t%.2f", U_q[0], U_q[1], U_q[2]);
+
+    Y_q[0] = 1.0;
+    Y_q[1] = -1.0;
+    Y_q[2] = 0.0;
+    RCLCPP_INFO(this->get_logger(),"Y PID(Z): \t%.2f \t%.2f \t%.2f", Y_q[0], Y_q[1], Y_q[2]);
+
+    V_q[0] = -30.0;
+    V_q[1] = 29.99;
+    V_q[2] = 0.0;
+    RCLCPP_INFO(this->get_logger(),"V PID(Z): \t%.2f \t%.2f \t%.2f", V_q[0], V_q[1], V_q[2]);
+
+    Yaw_q[0] = 3.0;
+    Yaw_q[1] = -3.0;
+    Yaw_q[2] = 0.0;
+    RCLCPP_INFO(this->get_logger(),"Yaw PID(Z): \t%.2f \t%.2f \t%.2f", Yaw_q[0], Yaw_q[1], Yaw_q[2]);
+
+    // Publisher:
     // Referencias para los controladores PID Attitude y Rate
-  pub_cmd_ = this->create_publisher<uned_crazyflie_config::msg::Cmdsignal>("cf_cmd_control", 10);
+    pub_cmd_ = this->create_publisher<uned_crazyflie_config::msg::Cmdsignal>("cf_cmd_control", 10);
 
-  // Subscriber:
+    // Subscriber:
     // Crazyflie Pose
-  // GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("ground_truth/pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
-  GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
+    // GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("ground_truth/pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
+    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
     // Reference:
-  ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose_ref", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
+    ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose_ref", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
 
-  // Init values
-  u_feedback[0] = m_x_init;
+    // Init values
+    u_feedback[0] = m_x_init;
     v_feedback[0] = m_y_init;
 
-  ref_pose.position.x = m_x_init;
-    ref_pose.position.y = m_y_init;
-    ref_pose.position.z = m_z_init;
-    ref_pose.orientation.x = 0;
-    ref_pose.orientation.y = 0;
-    ref_pose.orientation.z = 0;
-    ref_pose.orientation.w = 1;
-  RCLCPP_INFO(this->get_logger(),"Init Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
-
-  return true;
+    return true;
 }
 
 bool PositionController::iterate(){
