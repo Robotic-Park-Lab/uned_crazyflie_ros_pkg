@@ -101,7 +101,7 @@ class Logging:
         self.parent.data_callback(timestamp, data)
         print(f'[{timestamp}][{logconf.name}]: ', end='')
         for name, value in data.items():
-            print(f'{name}: {value:3.3f} ', end='')
+           print(f'{name}: {value:3.3f} ', end='')
         print()
 
     def _connection_failed(self, link_uri, msg):
@@ -130,10 +130,10 @@ class CFDriver(Node):
         self.sub_order = self.create_subscription(String, 'cf_order',
                                                   self.order_callback, 10)
         self.sub_cmd = self.create_subscription(Cmdsignal, 'cf_cmd_control',
-                                                     self.cmd_control_callback, 10)
+                                                self.cmd_control_callback, 10)
 
         # self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.iterate_loop = self.create_timer(timer_period, self.iterate)
+        # self.iterate_loop = self.create_timer(timer_period, self.iterate)
         cflib.crtp.init_drivers()
         self.initialize()
         # self.despegue()
@@ -184,9 +184,9 @@ class CFDriver(Node):
     def cmd_control_callback(self, msg):
         self.get_logger().info('New CMD Control')
         # send_setpoint(self, roll, pitch, yaw, thrust)
-        # self.scf._cf.commander.send_setpoint(msg.roll, msg.pitch, msg.yaw, msg.thrust)
-        self.scf._cf.commander.send_setpoint(0.0, 0.0, 0.0, 0.0)
-
+        self.scf._cf.commander.send_setpoint(msg.roll, msg.pitch, msg.yaw, 10000)
+        print(msg.thrust)
+        # self.scf._cf.commander.send_setpoint(0.0, 0.0, 0.0, 0.0)
 
     def take_off_simple(self, scf):
         self.get_logger().info('Test Mode Control')

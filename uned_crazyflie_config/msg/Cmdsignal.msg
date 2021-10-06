@@ -1,6 +1,6 @@
 # Description
 
-float64   thrust        #
+int32   thrust        #
 float64   roll          #
 float64   pitch         #
 float64   yaw           #

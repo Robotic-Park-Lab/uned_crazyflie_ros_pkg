@@ -38,6 +38,8 @@ private:
         ref_pose.position = msg->position;
         ref_pose.orientation = msg->orientation;
         first_pose_received = true;
+        u_feedback[0] = ref_pose.position.x;
+        v_feedback[0] = ref_pose.position.y;
         RCLCPP_INFO(this->get_logger(),"Init Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
     }
   }
@@ -47,6 +49,7 @@ private:
     RCLCPP_INFO(this->get_logger(),"New Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
     ref_pose.position = msg->position;
     ref_pose.orientation = msg->orientation;
+    first_ref_received = true;
   }
 
   void rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities);
@@ -55,6 +58,7 @@ private:
   std::string  m_controller_type, m_robot_id, m_controller_mode;
   geometry_msgs::msg::Pose GT_pose, ref_pose;
   bool first_pose_received = false;
+  bool first_ref_received = false;
 
   // Controllers
   double Z_q[3], X_q[3], Y_q[3], U_q[3], V_q[3], Yaw_q[3];

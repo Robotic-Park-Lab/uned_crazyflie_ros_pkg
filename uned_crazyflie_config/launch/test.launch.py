@@ -6,7 +6,6 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='uned_crazyflie_controllers',
-            namespace='dron01',
             executable='periodic_pid_position_controller',
             name='position_controller'
         ),

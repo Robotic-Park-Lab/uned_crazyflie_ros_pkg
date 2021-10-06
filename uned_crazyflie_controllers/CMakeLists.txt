@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.8)
 project(uned_crazyflie_controllers)
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+    set(CMAKE_CXX_STANDARD 14)
 endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+    add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
 
@@ -25,26 +25,30 @@ find_package(Eigen3)
 ament_export_include_directories(include/${PROJECT_NAME} ${Eigen3_INCLUDE_DIRS})
 ament_export_dependencies(rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
 include_directories(
-  include/${PROJECT_NAME}
-  ${${PROJECT_NAME}_SOURCE_DIR}/include
+    include/${PROJECT_NAME}
+    ${${PROJECT_NAME}_SOURCE_DIR}/include
 )
 
 add_executable(eventbased_pid_position_controller src/eventbased_pid_position_controller.cpp)
 ament_target_dependencies(eventbased_pid_position_controller
-  rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+    rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
 
 add_executable(periodic_pid_position_controller src/periodic_pid_position_controller.cpp)
 ament_target_dependencies(periodic_pid_position_controller
-  rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+    rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
 
 add_executable(event_triggering src/event_triggering.cpp)
 ament_target_dependencies(event_triggering
-  rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+    rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
 
-install(TARGETS eventbased_pid_position_controller periodic_pid_position_controller event_triggering
-  DESTINATION lib/${PROJECT_NAME})
+add_executable(trajectory_controller src/trajectory_controller.cpp)
+ament_target_dependencies(trajectory_controller
+    rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+
+install(TARGETS eventbased_pid_position_controller periodic_pid_position_controller event_triggering trajectory_controller
+    DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION include)
+    DESTINATION include)
 
 ament_package()
