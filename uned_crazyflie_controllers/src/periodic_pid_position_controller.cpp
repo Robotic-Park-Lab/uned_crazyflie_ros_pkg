@@ -76,7 +76,7 @@ bool PositionController::iterate(){
             // Saturation
             if(delta_omega[0]>15000)
                 delta_omega[0] = 15000;
-            if(delta_omega[0]<-20000)
+            if(delta_omega[0]<-2000)
                 delta_omega[0] = -20000;
 
             // Output signal

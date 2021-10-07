@@ -1,7 +1,7 @@
 import logging
 import time
 import rclpy
-from threading import Timer
+# from threading import Timer
 
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -10,13 +10,15 @@ from uned_crazyflie_config.msg import Cmdsignal
 
 import cflib.crtp  # noqa
 from cflib.crazyflie import Crazyflie
-from cflib.crazyflie.commander import Commander
+# from cflib.crazyflie.commander import Commander
 from cflib.crazyflie.log import LogConfig
 from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
 
 uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
+thrust = 0
 CONTROL_MODE = 'Null'
+
 """
 Null:
 Test:
@@ -29,6 +31,18 @@ end_test = False
 is_deck_attached = False
 # Only output errors from the logging framework
 logging.basicConfig(level=logging.ERROR)
+
+
+class CMD_Motion():
+    def __init__(self):
+        self.roll = 0.0
+        self.pitch = 0.0
+        self.yaw = 0
+        self.thrust = 0
+
+    def str_(self):
+        return ('Thrust: ' + str(self.thrust) + ' Roll: ' + str(self.roll) +
+                ' Pitch: ' + str(self.pitch)+' Yaw: ' + str(self.yaw))
 
 
 def param_deck_flow(name, value_str):
@@ -71,12 +85,12 @@ class Logging:
         self._lg_stab.add_variable('stateEstimate.x', 'float')
         self._lg_stab.add_variable('stateEstimate.y', 'float')
         self._lg_stab.add_variable('stateEstimate.z', 'float')
-        self._lg_stab.add_variable('stabilizer.roll', 'float')
+        # self._lg_stab.add_variable('stabilizer.roll', 'float')
         self._lg_stab.add_variable('controller.cmd_thrust', 'float')
-        self._lg_stab.add_variable('stabilizer.yaw', 'float')
+        # self._lg_stab.add_variable('stabilizer.yaw', 'float')
         # The fetch-as argument can be set to FP16 to save space
         # in the log packet
-        self._lg_stab.add_variable('pm.vbat', 'FP16')
+        # self._lg_stab.add_variable('pm.vbat', 'FP16')
 
         try:
             self._cf.log.add_config(self._lg_stab)
@@ -99,10 +113,10 @@ class Logging:
 
     def _stab_log_data(self, timestamp, data, logconf):
         self.parent.data_callback(timestamp, data)
-        print(f'[{timestamp}][{logconf.name}]: ', end='')
-        for name, value in data.items():
-           print(f'{name}: {value:3.3f} ', end='')
-        print()
+        # print(f'[{timestamp}][{logconf.name}]: ', end='')
+        # for name, value in data.items():
+        #    print(f'{name}: {value:3.3f} ', end='')
+        # print()
 
     def _connection_failed(self, link_uri, msg):
         print('Connection to %s failed: %s' % (link_uri, msg))
@@ -132,10 +146,10 @@ class CFDriver(Node):
         self.sub_cmd = self.create_subscription(Cmdsignal, 'cf_cmd_control',
                                                 self.cmd_control_callback, 10)
 
-        # self.timer = self.create_timer(timer_period, self.timer_callback)
-        # self.iterate_loop = self.create_timer(timer_period, self.iterate)
+        self.iterate_loop = self.create_timer(timer_period, self.iterate)
         cflib.crtp.init_drivers()
         self.initialize()
+        self.cmd_motion_.thrust = 10004
         # self.despegue()
         # t = Timer(1.5, self.aterrizaje)
         # t.start()
@@ -143,12 +157,28 @@ class CFDriver(Node):
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
         self.scf = Logging(uri, self)
-        time.sleep(1.0)
+        self.cmd_motion_ = CMD_Motion()
+        self.scf._cf.commander.set_client_xmode(True)
+        time.sleep(3.0)
+        '''
+        print('Init Test')
+        self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
+        time.sleep(0.01)
+        for i in range(300):
+            self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 10009)
+            time.sleep(0.01)  # send the setpoint once every 10 ms as per the user guide
+        self.scf._cf.commander.send_stop_setpoint()
+        print('End Test')
+        '''
+        self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll,
+                                             self.cmd_motion_.pitch,
+                                             self.cmd_motion_.yaw,
+                                             self.cmd_motion_.thrust)
 
-        self.scf._cf.commander.send_setpoint(0, 0, 0, 0)
-        self.mc = MotionCommander(self.scf._cf, default_height=DEFAULT_HEIGHT)
+        time.sleep(0.01)
+
+        # self.mc = MotionCommander(self.scf._cf, default_height=0.5)
         # self.cmd = Commander(self.scf._cf)
-        # self.cmd.set_client_xmode(True)
         # self.ramp_motors()
 
     def despegue(self):
@@ -158,7 +188,13 @@ class CFDriver(Node):
         self.mc.land()
 
     def iterate(self):
-        self.get_logger().info('In progress ...')
+        self.get_logger().info(self.cmd_motion_.str_())
+        '''
+        self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll,
+                                             self.cmd_motion_.pitch,
+                                             self.cmd_motion_.yaw,
+                                             self.cmd_motion_.thrust)
+        '''
 
     def data_callback(self, timestamp, data):
         msg = StateEstimate()
@@ -182,11 +218,10 @@ class CFDriver(Node):
                 self.get_logger().info('In land')
 
     def cmd_control_callback(self, msg):
-        self.get_logger().info('New CMD Control')
-        # send_setpoint(self, roll, pitch, yaw, thrust)
-        self.scf._cf.commander.send_setpoint(msg.roll, msg.pitch, msg.yaw, 10000)
-        print(msg.thrust)
-        # self.scf._cf.commander.send_setpoint(0.0, 0.0, 0.0, 0.0)
+        self.cmd_motion_.roll = msg.roll
+        self.cmd_motion_.pitch = msg.pitch
+        self.cmd_motion_.yaw = msg.yaw
+        self.cmd_motion_.thrust = msg.thrust
 
     def take_off_simple(self, scf):
         self.get_logger().info('Test Mode Control')

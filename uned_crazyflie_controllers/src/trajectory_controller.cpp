@@ -25,7 +25,7 @@ bool TrajectoryController::iterate(){
         start = time(NULL);
         end = time(NULL);
         t = end-start;
-        while(t<2){
+        while(t<4){
             end = time(NULL);
             t = end-start;
         }
@@ -35,7 +35,7 @@ bool TrajectoryController::iterate(){
     }
     end = time(NULL);
     t = end-start;
-    if(t>7 && !new_ref && !end_dataset){
+    if(t>15 && !new_ref && !end_dataset){
         ref_pose.position.z = ref_pose.position.z - 0.5;
         auto msg = geometry_msgs::msg::Pose();
         msg = ref_pose;
