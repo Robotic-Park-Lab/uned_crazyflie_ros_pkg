@@ -149,7 +149,6 @@ class CFDriver(Node):
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
         cflib.crtp.init_drivers()
         self.initialize()
-        self.cmd_motion_.thrust = 10004
         # self.despegue()
         # t = Timer(1.5, self.aterrizaje)
         # t.start()
@@ -160,16 +159,18 @@ class CFDriver(Node):
         self.cmd_motion_ = CMD_Motion()
         self.scf._cf.commander.set_client_xmode(True)
         time.sleep(3.0)
+        self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
         '''
         print('Init Test')
-        self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
+
         time.sleep(0.01)
         for i in range(300):
-            self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 10009)
-            time.sleep(0.01)  # send the setpoint once every 10 ms as per the user guide
+            self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 46000)
+            time.sleep(0.01)  # send the setpoint once every 10 ms
         self.scf._cf.commander.send_stop_setpoint()
         print('End Test')
         '''
+        self.cmd_motion_.thrust = 10004
         self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll,
                                              self.cmd_motion_.pitch,
                                              self.cmd_motion_.yaw,
@@ -189,12 +190,8 @@ class CFDriver(Node):
 
     def iterate(self):
         self.get_logger().info(self.cmd_motion_.str_())
-        '''
-        self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll,
-                                             self.cmd_motion_.pitch,
-                                             self.cmd_motion_.yaw,
-                                             self.cmd_motion_.thrust)
-        '''
+
+        self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll, self.cmd_motion_.pitch, self.cmd_motion_.yaw, self.cmd_motion_.thrust)
 
     def data_callback(self, timestamp, data):
         msg = StateEstimate()

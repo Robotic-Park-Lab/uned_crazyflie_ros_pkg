@@ -76,11 +76,12 @@ bool PositionController::iterate(){
             // Saturation
             if(delta_omega[0]>15000)
                 delta_omega[0] = 15000;
-            if(delta_omega[0]<-2000)
+            if(delta_omega[0]<-20000)
                 delta_omega[0] = -20000;
 
             // Output signal
             omega = delta_omega[0]+(we-4070.3)/0.2685;
+            RCLCPP_INFO(this->get_logger(),"Omega: \t%.2f \tDOmega%.2f \tError:%.2f", omega, delta_omega[0], z_error_signal[0]);
         }
 
         // Convert quaternion to yw
