@@ -1,10 +1,11 @@
 import logging
 import time
 import rclpy
-# from threading import Timer
+from threading import Timer
 
 from rclpy.node import Node
 from std_msgs.msg import String
+from geometry_msgs.msg import Pose
 from uned_crazyflie_config.msg import StateEstimate
 from uned_crazyflie_config.msg import Cmdsignal
 
@@ -14,6 +15,7 @@ from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
+from cflib.crazyflie.extpos import Extpos
 
 uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 thrust = 0
@@ -81,13 +83,14 @@ class Logging:
         has been connected and the TOCs have been downloaded."""
         self.parent.get_logger().info('Connected to %s' % link_uri)
         # The definition of the logconfig can be made before connecting
-        self._lg_stab = LogConfig(name='Stabilizer', period_in_ms=100)
+        self._lg_stab = LogConfig(name='Stabilizer', period_in_ms=50)
         self._lg_stab.add_variable('stateEstimate.x', 'float')
         self._lg_stab.add_variable('stateEstimate.y', 'float')
         self._lg_stab.add_variable('stateEstimate.z', 'float')
-        # self._lg_stab.add_variable('stabilizer.roll', 'float')
-        self._lg_stab.add_variable('controller.cmd_thrust', 'float')
+        self._lg_stab.add_variable('stabilizer.roll', 'float')
+        self._lg_stab.add_variable('stabilizer.pitch', 'float')
         # self._lg_stab.add_variable('stabilizer.yaw', 'float')
+        self._lg_stab.add_variable('controller.cmd_thrust', 'float')
         # The fetch-as argument can be set to FP16 to save space
         # in the log packet
         # self._lg_stab.add_variable('pm.vbat', 'FP16')
@@ -113,10 +116,10 @@ class Logging:
 
     def _stab_log_data(self, timestamp, data, logconf):
         self.parent.data_callback(timestamp, data)
-        # print(f'[{timestamp}][{logconf.name}]: ', end='')
-        # for name, value in data.items():
-        #    print(f'{name}: {value:3.3f} ', end='')
-        # print()
+        print(f'[{timestamp}][{logconf.name}]: ', end='')
+        for name, value in data.items():
+           print(f'{name}: {value:3.3f} ', end='')
+        print()
 
     def _connection_failed(self, link_uri, msg):
         print('Connection to %s failed: %s' % (link_uri, msg))
@@ -139,27 +142,38 @@ class CFDriver(Node):
     def __init__(self):
         super().__init__('cf_driver')
 
-        timer_period = 0.1  # seconds
+        timer_period = 0.001  # seconds
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
+
         self.sub_order = self.create_subscription(String, 'cf_order',
                                                   self.order_callback, 10)
+        self.sub_pose = self.create_subscription(Pose, 'dron01/pose',
+                                                 self.new_pose, 10)
         self.sub_cmd = self.create_subscription(Cmdsignal, 'cf_cmd_control',
                                                 self.cmd_control_callback, 10)
 
-        self.iterate_loop = self.create_timer(timer_period, self.iterate)
+        # self.iterate_loop = self.create_timer(timer_period, self.iterate)
         cflib.crtp.init_drivers()
         self.initialize()
-        # self.despegue()
-        # t = Timer(1.5, self.aterrizaje)
-        # t.start()
+        self.despegue()
+        t = Timer(1, self.aterrizaje)
+        t.start()
 
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
         self.scf = Logging(uri, self)
-        self.cmd_motion_ = CMD_Motion()
-        self.scf._cf.commander.set_client_xmode(True)
-        time.sleep(3.0)
-        self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
+        # self.cmd_motion_ = CMD_Motion()
+        # self.scf._cf.commander.set_client_xmode(True)
+        time.sleep(2.0)
+        self.scf._cf.param.set_value('stabilizer.estimator', '2')
+        # Set the std deviation for the quaternion data pushed into the
+        # kalman filter. The default value seems to be a bit too low.
+        self.scf._cf.param.set_value('locSrv.extQuatStdDev', 0.06)
+        # Reset Estimator
+        self.scf._cf.param.set_value('kalman.resetEstimation', '1')
+        time.sleep(0.1)
+        self.scf._cf.param.set_value('kalman.resetEstimation', '0')
+        # self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
         '''
         print('Init Test')
 
@@ -170,6 +184,7 @@ class CFDriver(Node):
         self.scf._cf.commander.send_stop_setpoint()
         print('End Test')
         '''
+        '''
         self.cmd_motion_.thrust = 10004
         self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll,
                                              self.cmd_motion_.pitch,
@@ -177,8 +192,8 @@ class CFDriver(Node):
                                              self.cmd_motion_.thrust)
 
         time.sleep(0.01)
-
-        # self.mc = MotionCommander(self.scf._cf, default_height=0.5)
+        '''
+        self.mc = MotionCommander(self.scf._cf, default_height=1.0)
         # self.cmd = Commander(self.scf._cf)
         # self.ramp_motors()
 
@@ -191,7 +206,7 @@ class CFDriver(Node):
     def iterate(self):
         self.get_logger().info(self.cmd_motion_.str_())
 
-        self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll, self.cmd_motion_.pitch, self.cmd_motion_.yaw, self.cmd_motion_.thrust)
+        # self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll, self.cmd_motion_.pitch, self.cmd_motion_.yaw, self.cmd_motion_.thrust)
 
     def data_callback(self, timestamp, data):
         msg = StateEstimate()
@@ -199,6 +214,10 @@ class CFDriver(Node):
         msg.x = data['stateEstimate.x']
         msg.y = data['stateEstimate.y']
         msg.z = data['stateEstimate.z']
+        msg.roll = data['stabilizer.roll']
+        msg.pitch = data['stabilizer.pitch']
+        # msg.yaw = data['stabilizer.yaw']
+        msg.thrust = data['controller.cmd_thrust']
         self.publisher_.publish(msg)
 
     def order_callback(self, msg):
@@ -219,6 +238,12 @@ class CFDriver(Node):
         self.cmd_motion_.pitch = msg.pitch
         self.cmd_motion_.yaw = msg.yaw
         self.cmd_motion_.thrust = msg.thrust
+
+    def new_pose(self, msg):
+        self.scf._cf.extpos.send_extpose(msg.position.x, msg.position.y,
+                                         msg.position.z, msg.orientation.x,
+                                         msg.orientation.y, msg.orientation.z,
+                                         msg.orientation.w)
 
     def take_off_simple(self, scf):
         self.get_logger().info('Test Mode Control')
