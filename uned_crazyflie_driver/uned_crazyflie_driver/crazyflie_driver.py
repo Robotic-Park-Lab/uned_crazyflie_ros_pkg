@@ -9,24 +9,21 @@ from geometry_msgs.msg import Pose
 from uned_crazyflie_config.msg import StateEstimate
 from uned_crazyflie_config.msg import Cmdsignal
 
-import cflib.crtp  # noqa
+import cflib.crtp
 from cflib.crazyflie import Crazyflie
-# from cflib.crazyflie.commander import Commander
 from cflib.crazyflie.log import LogConfig
-from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
-from cflib.crazyflie.extpos import Extpos
 
 uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
-thrust = 0
 CONTROL_MODE = 'Null'
-
+goal_pose = Pose()
+goal_pose.position.x = 0.0
+goal_pose.position.y = 0.0
 """
-Null:
 Test:
-HighLevel:
-OffBoard:
-LowLevel:
+HighLevel: Trajectory
+OffBoard: Trajectory + Position
+LowLevel: Trajectory + Position + Attitude
 """
 DEFAULT_HEIGHT = 1.0
 end_test = False
@@ -45,17 +42,7 @@ class CMD_Motion():
     def str_(self):
         return ('Thrust: ' + str(self.thrust) + ' Roll: ' + str(self.roll) +
                 ' Pitch: ' + str(self.pitch)+' Yaw: ' + str(self.yaw))
-
-
-def param_deck_flow(name, value_str):
-    value = int(value_str)
-    global is_deck_attached
-    if value:
-        is_deck_attached = True
-        print('Flow2 deck is attached!')
-    else:
-        is_deck_attached = False
-        print('Flow2 deck is NOT attached!')
+#
 
 
 class Logging:
@@ -116,10 +103,12 @@ class Logging:
 
     def _stab_log_data(self, timestamp, data, logconf):
         self.parent.data_callback(timestamp, data)
+        '''
         print(f'[{timestamp}][{logconf.name}]: ', end='')
         for name, value in data.items():
            print(f'{name}: {value:3.3f} ', end='')
         print()
+        '''
 
     def _connection_failed(self, link_uri, msg):
         print('Connection to %s failed: %s' % (link_uri, msg))
@@ -134,15 +123,14 @@ class Logging:
         rclpy.shutdown()
 
 
-"""
-"""
+#
 
 
 class CFDriver(Node):
     def __init__(self):
         super().__init__('cf_driver')
 
-        timer_period = 0.001  # seconds
+        timer_period = 0.01  # seconds
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
 
         self.sub_order = self.create_subscription(String, 'cf_order',
@@ -152,19 +140,20 @@ class CFDriver(Node):
         self.sub_cmd = self.create_subscription(Cmdsignal, 'cf_cmd_control',
                                                 self.cmd_control_callback, 10)
 
-        # self.iterate_loop = self.create_timer(timer_period, self.iterate)
+        self.iterate_loop = self.create_timer(timer_period, self.iterate)
         cflib.crtp.init_drivers()
         self.initialize()
         self.despegue()
-        t = Timer(1, self.aterrizaje)
+        t = Timer(5, self.descenso)
         t.start()
 
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
         self.scf = Logging(uri, self)
-        # self.cmd_motion_ = CMD_Motion()
-        # self.scf._cf.commander.set_client_xmode(True)
+        self.cmd_motion_ = CMD_Motion()
+        self.scf._cf.commander.set_client_xmode(True)
         time.sleep(2.0)
+        # Init Kalman Filter
         self.scf._cf.param.set_value('stabilizer.estimator', '2')
         # Set the std deviation for the quaternion data pushed into the
         # kalman filter. The default value seems to be a bit too low.
@@ -173,38 +162,38 @@ class CFDriver(Node):
         self.scf._cf.param.set_value('kalman.resetEstimation', '1')
         time.sleep(0.1)
         self.scf._cf.param.set_value('kalman.resetEstimation', '0')
-        # self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
-        '''
-        print('Init Test')
-
-        time.sleep(0.01)
-        for i in range(300):
-            self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 46000)
-            time.sleep(0.01)  # send the setpoint once every 10 ms
-        self.scf._cf.commander.send_stop_setpoint()
-        print('End Test')
-        '''
-        '''
-        self.cmd_motion_.thrust = 10004
-        self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll,
-                                             self.cmd_motion_.pitch,
-                                             self.cmd_motion_.yaw,
-                                             self.cmd_motion_.thrust)
-
-        time.sleep(0.01)
-        '''
-        self.mc = MotionCommander(self.scf._cf, default_height=1.0)
+        # Init Move
+        self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
+        # self.mc = MotionCommander(self.scf._cf, default_height=1.0)
         # self.cmd = Commander(self.scf._cf)
         # self.ramp_motors()
 
     def despegue(self):
-        self.mc.take_off()
+        global goal_pose
+        goal_pose.position.z = 1.0
+        self.get_logger().info('CrazyflieDriver::Despegue.')
+
+    def descenso(self):
+        global goal_pose
+        goal_pose.position.z = 0.1
+        self.get_logger().info('CrazyflieDriver::Descenso.')
+        t0 = Timer(2, self.aterrizaje)
+        t0.start()
 
     def aterrizaje(self):
-        self.mc.land()
+        self.get_logger().info('CrazyflieDriver::Aterrizaje.')
+        goal_pose.position.z = 0.0
+        self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
+        self.scf._cf.commander.send_stop_setpoint()
 
     def iterate(self):
-        self.get_logger().info(self.cmd_motion_.str_())
+        global goal_pose
+        # self.get_logger().info(self.cmd_motion_.str_())
+        if (goal_pose.position.z > 0.05):
+            self.scf._cf.commander.send_position_setpoint(goal_pose.position.x,
+                                                          goal_pose.position.y,
+                                                          goal_pose.position.z,
+                                                          0)
 
         # self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll, self.cmd_motion_.pitch, self.cmd_motion_.yaw, self.cmd_motion_.thrust)
 
@@ -244,18 +233,7 @@ class CFDriver(Node):
                                          msg.position.z, msg.orientation.x,
                                          msg.orientation.y, msg.orientation.z,
                                          msg.orientation.w)
-
-    def take_off_simple(self, scf):
-        self.get_logger().info('Test Mode Control')
-        with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
-            mc.up(0.3)
-            time.sleep(1)
-            mc.stop()
-
-    def high_level_control(self):
-        self.mc.take_off()
-        time.sleep(1)
-        self.mc.land()
+#
 
 
 def main(args=None):
