@@ -17,8 +17,6 @@ from cflib.utils import uri_helper
 uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 CONTROL_MODE = 'Null'
 goal_pose = Pose()
-goal_pose.position.x = 0.0
-goal_pose.position.y = 0.0
 """
 Test:
 HighLevel: Trajectory
