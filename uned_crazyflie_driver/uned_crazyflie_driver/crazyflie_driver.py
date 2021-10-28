@@ -15,8 +15,9 @@ from cflib.crazyflie.log import LogConfig
 from cflib.utils import uri_helper
 
 uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
-CONTROL_MODE = 'Null'
+CONTROL_MODE = 'HighLevel'
 goal_pose = Pose()
+end_test = False
 """
 Test:
 HighLevel: Trajectory
@@ -24,8 +25,7 @@ OffBoard: Trajectory + Position
 LowLevel: Trajectory + Position + Attitude
 """
 DEFAULT_HEIGHT = 1.0
-end_test = False
-is_deck_attached = False
+
 # Only output errors from the logging framework
 logging.basicConfig(level=logging.ERROR)
 
@@ -36,10 +36,20 @@ class CMD_Motion():
         self.pitch = 0.0
         self.yaw = 0
         self.thrust = 0
+        self.x = 0.0
+        self.y = 0.0
+        self.z = 0.0
 
     def str_(self):
         return ('Thrust: ' + str(self.thrust) + ' Roll: ' + str(self.roll) +
                 ' Pitch: ' + str(self.pitch)+' Yaw: ' + str(self.yaw))
+
+    def pose_str_(self):
+        return ('X: ' + str(self.x) + ' Y: ' + str(self.y) +
+                ' Z: ' + str(self.z)+' Yaw: ' + str(self.yaw))
+
+    def send_pose_data_(self, cf):
+        cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
 #
 
 
@@ -127,27 +137,28 @@ class Logging:
 class CFDriver(Node):
     def __init__(self):
         super().__init__('cf_driver')
-
-        timer_period = 0.01  # seconds
+        # Publisher
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
-
+        # Subscription
         self.sub_order = self.create_subscription(String, 'cf_order',
                                                   self.order_callback, 10)
         self.sub_pose = self.create_subscription(Pose, 'dron01/pose',
-                                                 self.new_pose, 10)
+                                                 self.newpose_callback, 10)
+        self.sub_goal_pose = self.create_subscription(Pose, 'dron01/goal_pose',
+                                                      self.goalpose_callback,
+                                                      10)
         self.sub_cmd = self.create_subscription(Cmdsignal, 'cf_cmd_control',
                                                 self.cmd_control_callback, 10)
-
+        timer_period = 0.01  # seconds
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
-        cflib.crtp.init_drivers()
         self.initialize()
-        self.despegue()
-        t = Timer(5, self.descenso)
-        t.start()
 
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
+        cflib.crtp.init_drivers()
         self.scf = Logging(uri, self)
+        self.scf.init_pose = False
+        self.scf._is_flying = False
         self.cmd_motion_ = CMD_Motion()
         self.scf._cf.commander.set_client_xmode(True)
         time.sleep(2.0)
@@ -160,39 +171,45 @@ class CFDriver(Node):
         self.scf._cf.param.set_value('kalman.resetEstimation', '1')
         time.sleep(0.1)
         self.scf._cf.param.set_value('kalman.resetEstimation', '0')
-        # Init Move
+        # Init Motors
         self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
-        # self.mc = MotionCommander(self.scf._cf, default_height=1.0)
-        # self.cmd = Commander(self.scf._cf)
-        # self.ramp_motors()
 
     def despegue(self):
-        global goal_pose
-        goal_pose.position.z = 1.0
         self.get_logger().info('CrazyflieDriver::Despegue.')
+        self.cmd_motion_.z = self.cmd_motion_.z + 0.75
+        self.scf._is_flying = True
 
     def descenso(self):
-        global goal_pose
-        goal_pose.position.z = 0.1
+        self.cmd_motion_.z = 0.1
         self.get_logger().info('CrazyflieDriver::Descenso.')
         t0 = Timer(2, self.aterrizaje)
         t0.start()
 
     def aterrizaje(self):
         self.get_logger().info('CrazyflieDriver::Aterrizaje.')
-        goal_pose.position.z = 0.0
+        self.cmd_motion_.z = 0.0
         self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
         self.scf._cf.commander.send_stop_setpoint()
+        self.scf.init_pose = False
+        self.scf._is_flying = False
 
     def iterate(self):
-        global goal_pose
+        global end_test
+        if self.scf.init_pose and not self.scf._is_flying and not end_test:
+            end_test = True
+            self.despegue()
+            t = Timer(5, self.descenso)
+            t.start()
+        if CONTROL_MODE == 'HighLevel':
+            if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
+                self.cmd_motion_.send_pose_data_(self.scf._cf)
+                '''
+                self.scf._cf.commander.send_position_setpoint(self.cmd_motion_.x,
+                                                              self.cmd_motion_.y,
+                                                              self.cmd_motion_.z,
+                                                              0)
+                '''
         # self.get_logger().info(self.cmd_motion_.str_())
-        if (goal_pose.position.z > 0.05):
-            self.scf._cf.commander.send_position_setpoint(goal_pose.position.x,
-                                                          goal_pose.position.y,
-                                                          goal_pose.position.z,
-                                                          0)
-
         # self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll, self.cmd_motion_.pitch, self.cmd_motion_.yaw, self.cmd_motion_.thrust)
 
     def data_callback(self, timestamp, data):
@@ -226,11 +243,22 @@ class CFDriver(Node):
         self.cmd_motion_.yaw = msg.yaw
         self.cmd_motion_.thrust = msg.thrust
 
-    def new_pose(self, msg):
+    def newpose_callback(self, msg):
         self.scf._cf.extpos.send_extpose(msg.position.x, msg.position.y,
                                          msg.position.z, msg.orientation.x,
                                          msg.orientation.y, msg.orientation.z,
                                          msg.orientation.w)
+        if not self.scf.init_pose:
+            self.scf.init_pose = True
+            self.cmd_motion_.x = msg.position.x
+            self.cmd_motion_.y = msg.position.y
+            self.cmd_motion_.z = msg.position.z
+            self.get_logger().info(self.cmd_motion_.pose_str_())
+
+    def goalpose_callback(self, msg):
+        self.cmd_motion_.x = msg.position.x
+        self.cmd_motion_.y = msg.position.y
+        self.cmd_motion_.z = msg.position.z
 #
 
 
