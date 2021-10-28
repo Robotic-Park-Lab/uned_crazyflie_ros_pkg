@@ -16,22 +16,21 @@ from cflib.utils import uri_helper
 
 uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 CONTROL_MODE = 'HighLevel'
-goal_pose = Pose()
-end_test = False
 """
 Test:
 HighLevel: Trajectory
 OffBoard: Trajectory + Position
 LowLevel: Trajectory + Position + Attitude
 """
-DEFAULT_HEIGHT = 1.0
-
+end_test = False
+xy_warn = 1.0
+xy_lim = 1.3
 # Only output errors from the logging framework
 logging.basicConfig(level=logging.ERROR)
 
 
 class CMD_Motion():
-    def __init__(self):
+    def __init__(self, logger):
         self.roll = 0.0
         self.pitch = 0.0
         self.yaw = 0
@@ -39,6 +38,31 @@ class CMD_Motion():
         self.x = 0.0
         self.y = 0.0
         self.z = 0.0
+        self.logger = logger
+
+    def ckeck_pose(self):
+        # X Check
+        if abs(self.x) > xy_warn:
+            if abs(self.x) > xy_warn:
+                self.logger.error('X: Error')
+                if self.x > 0:
+                    self.x = 0.9
+                else:
+                    self.x = -0.9
+                self.logger.warning('New Point: %s' % self.pose_str_())
+            else:
+                self.logger.warning('X: Warning')
+        # Y Check
+        if abs(self.y) > xy_warn:
+            if abs(self.y) > xy_warn:
+                self.logger.error('Y: Error')
+                if self.y > 0:
+                    self.y = 0.9
+                else:
+                    self.y = -0.9
+                self.logger.warning('New Point: %s' % self.pose_str_())
+            else:
+                self.logger.warning('Y: Warning')
 
     def str_(self):
         return ('Thrust: ' + str(self.thrust) + ' Roll: ' + str(self.roll) +
@@ -50,7 +74,10 @@ class CMD_Motion():
 
     def send_pose_data_(self, cf):
         cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
-#
+
+    def send_offboard_setpoint_(self, cf):
+        cf.commander.send_setpoint(self.roll, self.pitch, self.yaw,
+                                   self.thrust)
 
 
 class Logging:
@@ -159,7 +186,7 @@ class CFDriver(Node):
         self.scf = Logging(uri, self)
         self.scf.init_pose = False
         self.scf._is_flying = False
-        self.cmd_motion_ = CMD_Motion()
+        self.cmd_motion_ = CMD_Motion(self.get_logger())
         self.scf._cf.commander.set_client_xmode(True)
         time.sleep(2.0)
         # Init Kalman Filter
@@ -174,19 +201,27 @@ class CFDriver(Node):
         # Init Motors
         self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
 
-    def despegue(self):
-        self.get_logger().info('CrazyflieDriver::Despegue.')
-        self.cmd_motion_.z = self.cmd_motion_.z + 0.75
+    def take_off(self):
+        self.get_logger().info('CrazyflieDriver::Take Off.')
+        self.cmd_motion_.z = self.cmd_motion_.z + 1.0
         self.scf._is_flying = True
 
-    def descenso(self):
-        self.cmd_motion_.z = 0.1
-        self.get_logger().info('CrazyflieDriver::Descenso.')
-        t0 = Timer(2, self.aterrizaje)
-        t0.start()
+    def gohome(self):
+        self.get_logger().info('CrazyflieDriver::Go Home.')
+        self.cmd_motion_.x = 0.025
+        self.cmd_motion_.y = 1.164
+        # self.cmd_motion_.x = -1.690
+        # self.cmd_motion_.y = -0.841
+        self.cmd_motion_.ckeck_pose()
 
-    def aterrizaje(self):
-        self.get_logger().info('CrazyflieDriver::Aterrizaje.')
+    def descent(self):
+        self.cmd_motion_.z = 0.18
+        self.get_logger().info('CrazyflieDriver::Descent.')
+        t_end = Timer(2, self.take_land)
+        t_end.start()
+
+    def take_land(self):
+        self.get_logger().info('CrazyflieDriver::Take Land.')
         self.cmd_motion_.z = 0.0
         self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
         self.scf._cf.commander.send_stop_setpoint()
@@ -197,20 +232,17 @@ class CFDriver(Node):
         global end_test
         if self.scf.init_pose and not self.scf._is_flying and not end_test:
             end_test = True
-            self.despegue()
-            t = Timer(5, self.descenso)
+            self.take_off()
+            t0 = Timer(4, self.gohome)
+            t0.start()
+            t = Timer(7, self.descent)
             t.start()
         if CONTROL_MODE == 'HighLevel':
             if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
                 self.cmd_motion_.send_pose_data_(self.scf._cf)
-                '''
-                self.scf._cf.commander.send_position_setpoint(self.cmd_motion_.x,
-                                                              self.cmd_motion_.y,
-                                                              self.cmd_motion_.z,
-                                                              0)
-                '''
-        # self.get_logger().info(self.cmd_motion_.str_())
-        # self.scf._cf.commander.send_setpoint(self.cmd_motion_.roll, self.cmd_motion_.pitch, self.cmd_motion_.yaw, self.cmd_motion_.thrust)
+        if CONTROL_MODE == 'OffBoard':
+            if self.scf._is_flying:
+                self.cmd_motion_.send_offboard_setpoint_(self.scf._cf)
 
     def data_callback(self, timestamp, data):
         msg = StateEstimate()
@@ -225,15 +257,20 @@ class CFDriver(Node):
         self.publisher_.publish(msg)
 
     def order_callback(self, msg):
-        self.get_logger().info('I heard: "%s"' % msg.data)
+        self.get_logger().info('Order: "%s"' % msg.data)
         if msg.data == 'take_off':
-            if self.mc._is_flying:
+            if self.scf._is_flying:
                 self.get_logger().info('Already flying')
             else:
-                self.despegue()
+                self.take_off()
         if msg.data == 'land':
-            if self.mc._is_flying:
-                self.aterrizaje()
+            if self.scf._is_flying:
+                self.descent()
+            else:
+                self.get_logger().info('In land')
+        if msg.data == 'gohome':
+            if self.scf._is_flying:
+                self.gohome()
             else:
                 self.get_logger().info('In land')
 
@@ -259,6 +296,7 @@ class CFDriver(Node):
         self.cmd_motion_.x = msg.position.x
         self.cmd_motion_.y = msg.position.y
         self.cmd_motion_.z = msg.position.z
+        self.cmd_motion_.ckeck_pose()
 #
 
 
