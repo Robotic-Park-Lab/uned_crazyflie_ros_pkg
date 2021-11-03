@@ -296,10 +296,12 @@ class CFDriver(Node):
             self.get_logger().info(self.cmd_motion_.pose_str_())
 
     def goalpose_callback(self, msg):
+        self.get_logger().info('CrazyflieDriver::New Goal Pose.')
         self.cmd_motion_.x = msg.position.x
         self.cmd_motion_.y = msg.position.y
         self.cmd_motion_.z = msg.position.z
         self.cmd_motion_.ckeck_pose()
+        self.get_logger().info(self.cmd_motion_.pose_str_())
 #
 
 
