@@ -157,7 +157,6 @@ class Logging:
         self.is_connected = False
         rclpy.shutdown()
 
-
 #
 
 
@@ -189,6 +188,8 @@ class CFDriver(Node):
         self.cmd_motion_ = CMD_Motion(self.get_logger())
         self.scf._cf.commander.set_client_xmode(True)
         time.sleep(2.0)
+        # Disable Flow deck to EKF
+        # self.scf._cf.param.set_value('motion.disable', '1')
         # Init Kalman Filter
         self.scf._cf.param.set_value('stabilizer.estimator', '2')
         # Set the std deviation for the quaternion data pushed into the
@@ -229,6 +230,7 @@ class CFDriver(Node):
         self.scf._is_flying = False
 
     def iterate(self):
+        '''
         global end_test
         if self.scf.init_pose and not self.scf._is_flying and not end_test:
             end_test = True
@@ -237,6 +239,7 @@ class CFDriver(Node):
             t0.start()
             t = Timer(7, self.descent)
             t.start()
+        '''
         if CONTROL_MODE == 'HighLevel':
             if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
                 self.cmd_motion_.send_pose_data_(self.scf._cf)
