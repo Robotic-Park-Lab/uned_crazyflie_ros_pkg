@@ -185,8 +185,7 @@ class CFDriver(Node):
         dron_id = self.get_parameter('cf_uri').get_parameter_value().string_value
         self.get_logger().info('Crazyflie ID: %s!' % dron_id)
         cflib.crtp.init_drivers()
-        uri = uri_helper.uri_from_env(dron_id)
-        self.scf = Logging(uri, self)
+        self.scf = Logging(dron_id, self)
         self.scf.init_pose = False
         self.scf._is_flying = False
         self.cmd_motion_ = CMD_Motion(self.get_logger())
@@ -288,10 +287,8 @@ class CFDriver(Node):
         self.cmd_motion_.thrust = msg.thrust
 
     def newpose_callback(self, msg):
-        self.scf._cf.extpos.send_extpose(msg.position.x, msg.position.y,
-                                         msg.position.z, msg.orientation.x,
-                                         msg.orientation.y, msg.orientation.z,
-                                         msg.orientation.w)
+        self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y,
+                                        msg.position.z)
         if not self.scf.init_pose:
             self.scf.init_pose = True
             self.cmd_motion_.x = msg.position.x
