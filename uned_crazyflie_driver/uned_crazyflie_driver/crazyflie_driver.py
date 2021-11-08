@@ -14,7 +14,6 @@ from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.utils import uri_helper
 
-uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 CONTROL_MODE = 'HighLevel'
 """
 Test:
@@ -163,14 +162,16 @@ class Logging:
 class CFDriver(Node):
     def __init__(self):
         super().__init__('cf_driver')
+        # Params
+        self.declare_parameter('cf_uri', 'radio://0/80/2M/E7E7E7E7E7')
         # Publisher
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
         # Subscription
         self.sub_order = self.create_subscription(String, 'cf_order',
                                                   self.order_callback, 10)
-        self.sub_pose = self.create_subscription(Pose, 'dron01/pose',
+        self.sub_pose = self.create_subscription(Pose, 'pose',
                                                  self.newpose_callback, 10)
-        self.sub_goal_pose = self.create_subscription(Pose, 'dron01/goal_pose',
+        self.sub_goal_pose = self.create_subscription(Pose, 'goal_pose',
                                                       self.goalpose_callback,
                                                       10)
         self.sub_cmd = self.create_subscription(Cmdsignal, 'cf_cmd_control',
@@ -181,7 +182,10 @@ class CFDriver(Node):
 
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
+        dron_id = self.get_parameter('cf_uri').get_parameter_value().string_value
+        self.get_logger().info('Crazyflie ID: %s!' % dron_id)
         cflib.crtp.init_drivers()
+        uri = uri_helper.uri_from_env(dron_id)
         self.scf = Logging(uri, self)
         self.scf.init_pose = False
         self.scf._is_flying = False
