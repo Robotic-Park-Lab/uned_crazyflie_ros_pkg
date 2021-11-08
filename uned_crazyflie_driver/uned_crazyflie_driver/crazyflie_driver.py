@@ -183,8 +183,12 @@ class CFDriver(Node):
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
         dron_id = self.get_parameter('cf_uri').get_parameter_value().string_value
+        # uri = uri_helper.uri_from_env(dron_id)
         self.get_logger().info('Crazyflie ID: %s!' % dron_id)
         cflib.crtp.init_drivers()
+        available = cflib.crtp.scan_interfaces()
+        for i in available:
+            print("Interface with URI [%s] found and name/comment [%s]" % (i[0], i[1]))
         self.scf = Logging(dron_id, self)
         self.scf.init_pose = False
         self.scf._is_flying = False
