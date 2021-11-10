@@ -129,7 +129,7 @@ class Logging:
             print('Could not start log configuration,'
                   '{} not found in TOC'.format(str(e)))
         except AttributeError:
-            print('Could not add Stabilizer log config, bad configuration.')
+            self.parent.get_logger().info('Could not add Stabilizer log config, bad configuration.')
 
     def _stab_log_error(self, logconf, msg):
         self.parent.get_logger().info('Error when logging %s: %s'
@@ -145,14 +145,14 @@ class Logging:
         '''
 
     def _connection_failed(self, link_uri, msg):
-        print('Connection to %s failed: %s' % (link_uri, msg))
+        self.parent.get_logger().info('Connection to %s failed: %s' % (link_uri, msg))
         self.is_connected = False
 
     def _connection_lost(self, link_uri, msg):
-        print('Connection to %s lost: %s' % (link_uri, msg))
+        self.parent.get_logger().info('Connection to %s lost: %s' % (link_uri, msg))
 
     def _disconnected(self, link_uri):
-        print('Disconnected from %s' % link_uri)
+        self.parent.get_logger().info('Disconnected from %s' % link_uri)
         self.is_connected = False
         rclpy.shutdown()
 
