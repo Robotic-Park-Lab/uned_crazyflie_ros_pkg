@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'crazyflie_driver = uned_crazyflie_driver.crazyflie_driver:main'
+            'crazyflie_driver = uned_crazyflie_driver.crazyflie_driver:main',
+            'swarm_driver = uned_crazyflie_driver.swarm_driver:main'
         ],
     },
 )
