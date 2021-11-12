@@ -81,7 +81,6 @@ class CMD_Motion():
 
 class Logging:
     def __init__(self, link_uri, parent):
-        """ Initialize and run the example with the specified link_uri """
 
         self._cf = Crazyflie(rw_cache='./cache')
         self.parent = parent
@@ -188,7 +187,7 @@ class CFDriver(Node):
         cflib.crtp.init_drivers()
         available = cflib.crtp.scan_interfaces()
         for i in available:
-            print("Interface with URI [%s] found and name/comment [%s]" % (i[0], i[1]))
+            self.get_logger().info("Interface with URI [%s] found and name/comment [%s]" % (i[0], i[1]))
         self.scf = Logging(dron_id, self)
         self.scf.init_pose = False
         self.scf._is_flying = False
