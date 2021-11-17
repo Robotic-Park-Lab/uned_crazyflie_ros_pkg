@@ -17,10 +17,10 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
 find_package(uned_crazyflie_config REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 find_package(Eigen3)
 # find_package(mav_msgs REQUIRED)
 # find_package(nav_msgs REQUIRED)
-
 
 ament_export_include_directories(include/${PROJECT_NAME} ${Eigen3_INCLUDE_DIRS})
 ament_export_dependencies(rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)

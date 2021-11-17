@@ -1,4 +1,5 @@
 #include "uned_crazyflie_controllers/CrazyfliePositionController.hpp"
+
 using std::placeholders::_1;
 
 bool PositionController::initialize(){
@@ -14,6 +15,20 @@ bool PositionController::initialize(){
     m_y_init = 0.0;
     m_z_init = 0.0;
 
+    // Z Controller
+    /*
+    z_pid.error[0] = 0.0;
+    z_pid.error[1] = 0.0;
+    z_pid.integral[0] = 0.0;
+    z_pid.integral[1] = 0.0;
+    z_pid.derivative[0] = 0.0;
+    z_pid.derivative[1] = 0.0;
+    z_pid.kp = 2.0;
+    z_pid.ki = 4.0;
+    z_pid.kd = 0.0;
+    z_pid.nd = 100.0;
+    z_pid.td = 0.1;
+    */
     Z_q[0] = 915017.5;
     Z_q[1] = -1814982.5;
     Z_q[2] = 900000;
@@ -58,8 +73,24 @@ bool PositionController::initialize(){
     return true;
 }
 
-bool PositionController::iterate(){
+double PositionController::pid_controller(uned_crazyflie_config::msg::Pidcontroller controller, double dt){
+    RCLCPP_INFO(this->get_logger(),"PositionController::pid_controller() ok.");
+    controller.error[0] = controller.error[0] + 1;
+    /*
+    double td = controller[2]/controller[0];
+    double outP = controller[0] * error[0];
+    integral_term[0] = integral_term[0] + controller[1] * error[1] * dt;
+    derivative_term[0] = (td/(td+Nd+dt))*derivative_term[1]+(controller[2]*Nd/(td+Nd*dt))*(error[0]-error[1]);
+    double out = outP + integral_term[0] + derivative_term[0];
+    */
+    return controller.error[0];
+}
 
+
+bool PositionController::iterate(){
+    double thrust = pid_controller(z_pid, 0.1f);
+    RCLCPP_INFO(this->get_logger(),"Z Controller. Thrust = %.2f", thrust);
+    /*
     if(first_pose_received && first_ref_received)
     {
         // Altitude Controller
@@ -156,6 +187,7 @@ bool PositionController::iterate(){
         msg_cmd.yaw = 0.0;
         pub_cmd_->publish(msg_cmd);
     }
+    */
   return true;
 }
 

@@ -15,6 +15,7 @@
 #include <std_msgs/msg/string.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <uned_crazyflie_config/msg/cmdsignal.hpp>
+#include <uned_crazyflie_config/msg/pidcontroller.hpp>
 
 using namespace std::chrono_literals;
 
@@ -53,17 +54,18 @@ private:
   }
 
   void rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities);
+  double pid_controller(uned_crazyflie_config::msg::Pidcontroller controller, double dt);
 
   double m_x_init, m_y_init, m_z_init;
   std::string  m_controller_type, m_robot_id, m_controller_mode;
   geometry_msgs::msg::Pose GT_pose, ref_pose;
+  uned_crazyflie_config::msg::Pidcontroller z_pid;
   bool first_pose_received = false;
   bool first_ref_received = false;
-
   // Controllers
-  double Z_q[3], X_q[3], Y_q[3], U_q[3], V_q[3], Yaw_q[3];
+  double Z_q[3], z_controller[3], X_q[3], Y_q[3], U_q[3], V_q[3], Yaw_q[3];
   // Altitude paremeters
-  double z_error_signal[3], delta_omega[2];
+  double z_error_signal[2], delta_omega[2], z_iterm[2], z_derterm[2];
   double omega = 0.0;
   double we = 14480.0;
   // X-Y paremeters
