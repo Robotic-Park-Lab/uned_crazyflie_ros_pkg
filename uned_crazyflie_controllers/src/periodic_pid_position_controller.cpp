@@ -30,11 +30,6 @@ bool PositionController::initialize(){
     // Yaw Controller
     init_controller("Yaw", yaw_controller, 1.0, 0.0, 0.0, 0.0, 100);
 
-    Yaw_q[0] = 3.0;
-    Yaw_q[1] = -3.0;
-    Yaw_q[2] = 0.0;
-    RCLCPP_INFO(this->get_logger(),"Yaw PID(Z): \t%.2f \t%.2f \t%.2f", Yaw_q[0], Yaw_q[1], Yaw_q[2]);
-
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
     pub_cmd_ = this->create_publisher<uned_crazyflie_config::msg::Cmdsignal>("cf_cmd_control", 10);
@@ -51,7 +46,7 @@ bool PositionController::initialize(){
 
 
 bool PositionController::iterate(){
-    double thrust = pid_controller(0.1f);
+    double thrust = pid_controller(z_controller, 0.01);
     RCLCPP_INFO(this->get_logger(),"Z Controller. Thrust = %.2f", thrust);
     /*
     if(first_pose_received && first_ref_received)

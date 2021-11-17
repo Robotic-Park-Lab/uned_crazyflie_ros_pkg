@@ -64,10 +64,10 @@ private:
   double omega = 0.0;
   double we = 14480.0;
   // X-Y paremeters
-  double x_error_signal[3], y_error_signal[3], uc[2], vc[2], u_feedback[2], v_feedback[2];
-  double u_error_signal[3], v_error_signal[3], pitch_ref[2], roll_ref[2];
+  double uc[2], vc[2], u_feedback[2], v_feedback[2];
+  double pitch_ref[2], roll_ref[2];
   // Yaw Controller
-  double yaw_error_signal[3], dyaw_ref[2];
+  double dyaw_ref[2];
 
   // Function
   void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
@@ -88,16 +88,16 @@ private:
     ref_pose.orientation = msg->orientation;
     first_ref_received = true;
   }
-  double pid_controller(double dt){
-      RCLCPP_INFO(this->get_logger(),"PositionController::pid_controller() ok.");
-      /*
-      double td = controller[2]/controller[0];
-      double outP = controller[0] * error[0];
-      integral_term[0] = integral_term[0] + controller[1] * error[1] * dt;
-      derivative_term[0] = (td/(td+Nd+dt))*derivative_term[1]+(controller[2]*Nd/(td+Nd*dt))*(error[0]-error[1]);
-      double out = outP + integral_term[0] + derivative_term[0];
-      */
-      return dt;
+  double pid_controller(struct pid_s controller, double dt){
+      double outP = controller.kp * controller.error[0];
+      controller.integral[0] = controller.integral[0] + controller.ki * controller.error[1] * dt;
+      controller.derivative[0] = (controller.td/(controller.td+controller.nd+dt))*controller.derivative[1]+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
+      double out = outP + controller.integral[0] + controller.derivative[0];
+
+      controller.error[1] = controller.error[0];
+      controller.derivative[1] = controller.derivative[0];
+
+      return out;
   }
   void init_controller(char id[], struct pid_s controller, double kp, double ki, double kd, double td, int nd){
       controller.kp = kp;
