@@ -16,43 +16,19 @@ bool PositionController::initialize(){
     m_z_init = 0.0;
 
     // Z Controller
-    /*
-    z_pid.error[0] = 0.0;
-    z_pid.error[1] = 0.0;
-    z_pid.integral[0] = 0.0;
-    z_pid.integral[1] = 0.0;
-    z_pid.derivative[0] = 0.0;
-    z_pid.derivative[1] = 0.0;
-    z_pid.kp = 2.0;
-    z_pid.ki = 4.0;
-    z_pid.kd = 0.0;
-    z_pid.nd = 100.0;
-    z_pid.td = 0.1;
-    */
-    Z_q[0] = 915017.5;
-    Z_q[1] = -1814982.5;
-    Z_q[2] = 900000;
-    RCLCPP_INFO(this->get_logger(),"Z PID(Z): \t%.2f \t%.2f \t%.2f", Z_q[0], Z_q[1], Z_q[2]);
-
-    X_q[0] = 1.0;
-    X_q[1] = -1.0;
-    X_q[2] = 0.0;
-    RCLCPP_INFO(this->get_logger(),"X PID(Z): \t%.2f \t%.2f \t%.2f", X_q[0], X_q[1], X_q[2]);
-
-    U_q[0] = 30.0;
-    U_q[1] = -29.99;
-    U_q[2] = 0.0;
-    RCLCPP_INFO(this->get_logger(),"U PID(Z): \t%.2f \t%.2f \t%.2f", U_q[0], U_q[1], U_q[2]);
-
-    Y_q[0] = 1.0;
-    Y_q[1] = -1.0;
-    Y_q[2] = 0.0;
-    RCLCPP_INFO(this->get_logger(),"Y PID(Z): \t%.2f \t%.2f \t%.2f", Y_q[0], Y_q[1], Y_q[2]);
-
-    V_q[0] = -30.0;
-    V_q[1] = 29.99;
-    V_q[2] = 0.0;
-    RCLCPP_INFO(this->get_logger(),"V PID(Z): \t%.2f \t%.2f \t%.2f", V_q[0], V_q[1], V_q[2]);
+    init_controller("Z", z_controller, 2.0, 4.0, 0.0, 0.0, 100);
+    // W Controller
+    init_controller("W", w_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    // X Controller
+    init_controller("X", x_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    // U Controller
+    init_controller("U", u_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    // Y Controller
+    init_controller("Y", y_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    // V Controller
+    init_controller("V", v_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    // Yaw Controller
+    init_controller("Yaw", yaw_controller, 1.0, 0.0, 0.0, 0.0, 100);
 
     Yaw_q[0] = 3.0;
     Yaw_q[1] = -3.0;
@@ -73,22 +49,9 @@ bool PositionController::initialize(){
     return true;
 }
 
-double PositionController::pid_controller(uned_crazyflie_config::msg::Pidcontroller controller, double dt){
-    RCLCPP_INFO(this->get_logger(),"PositionController::pid_controller() ok.");
-    controller.error[0] = controller.error[0] + 1;
-    /*
-    double td = controller[2]/controller[0];
-    double outP = controller[0] * error[0];
-    integral_term[0] = integral_term[0] + controller[1] * error[1] * dt;
-    derivative_term[0] = (td/(td+Nd+dt))*derivative_term[1]+(controller[2]*Nd/(td+Nd*dt))*(error[0]-error[1]);
-    double out = outP + integral_term[0] + derivative_term[0];
-    */
-    return controller.error[0];
-}
-
 
 bool PositionController::iterate(){
-    double thrust = pid_controller(z_pid, 0.1f);
+    double thrust = pid_controller(0.1f);
     RCLCPP_INFO(this->get_logger(),"Z Controller. Thrust = %.2f", thrust);
     /*
     if(first_pose_received && first_ref_received)
