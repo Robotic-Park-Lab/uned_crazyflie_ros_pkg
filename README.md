@@ -4,8 +4,9 @@ Repositorio con los paquetes de ROS2 y ficheros de configuración para la teleop
 #### Estructura 
 - **doc**. Contiene un fichero _.tex_ que aborda más en detalle toda la información relacionada con el repositorio: esquemas de ROS, búsquedas bibliográficas, enlaces de interés, etc.
 - **scripts**. Contiene aquellos ficheros auxiliares que no forman parte de ningún paquete de ROS. Por ejemplo, ficheros _.sh_ para automatizar procesos repetitivos como la conversión de los ficheros _.bag_ a txt o los scripts de Matlab para representar datasets.
-- **submodules**. En este directorio están vinculados otros repositorios que se reutilizan, o se toman de base, para tareas ya abordadas por otros usuarios.
-- **uned_crazyflie_config**. Paquete de ROS2. Contiene aquellos elementos auxiliares para la configuración del entorno, así como los _.launch.py_ para la ejecución en bloque de las diferentes estructuras del sistema.
+- **uned_crazyfldie_config**. Paquete de ROS2. Contiene aquellos elementos auxiliares para la configuración del entorno, así como los _.launch.py_ para la ejecución en bloque de las diferentes estructuras del sistema.a
+- **uned_crazyflie_controllers**. Paquete de ROS2. Contiene los nodos de control en función de las diferentes arquitecturas de control: _PID Periódico_ y _PID Basado en Eventos_.
+- **uned_crazyflie_driver**. Paquete de ROS2. Contiene los nodos para la comunicación con los crazyflies a través de la librería cflib: _crazyflie_driver_ y _swarm_driver_.
 - **uned_crazyflie_test_ros2**. Paquete de ROS2. Paquete en el que se incluyen todos los elementos destinados a realizar comprobaciones en el sistema de forma rápida. Por ejemplo los nodos _talker_ y _listener_ que se desarrollan al empezar a usar ROS, que en este caso se usan para comprobar la correcta comunicación entre máquinas en el sistema distribuido.
 
 ## Instalación :book:
@@ -19,7 +20,6 @@ Lo primero debe ser tener instalada la correspondiente versión de ROS2 para el 
 TO-DO.
 
 ##### Dependencias
-TO-DO. Referenciar el resto de repositorios.
 - Crazyflie python library: [Robotic-Park-Lab branch](https://github.com/Robotic-Park-Lab/crazyflie-lib-python)
 
 
@@ -29,9 +29,6 @@ La configuración del entorno de trabajo para el paquete desarrollado se muestra
 md \dev_ws\src
 cd \dev_ws\src
 git clone -b ros2-galactic-windows https://github.com/Robotic-Park-Lab/uned_crazyflie_ros_pkg.git
-cd uned_crazyflie_ros_pkg
-git submodules init
-git submodules update
 cd ..
 colcon build --merge-install
 ```
@@ -44,7 +41,6 @@ https://www.bitcraze.io/documentation/repository/crazyflie-firmware/master/api/l
 ```
 cd \dev_ws
 colcon build --merge-install --packages-select uned_crazyflie_driver
-call install/setup.bat
 ros2 run uned_crazyflie_driver crazyflie_driver
 ```
 Actualmente (2021-09-28), solo está implementada la función de despegue y aterrizaje mediante un topic. Las instrucciones para ello son:
