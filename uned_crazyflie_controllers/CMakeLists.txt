@@ -11,7 +11,6 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -19,8 +18,6 @@ find_package(eigen3_cmake_module REQUIRED)
 find_package(uned_crazyflie_config REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(Eigen3)
-# find_package(mav_msgs REQUIRED)
-# find_package(nav_msgs REQUIRED)
 
 ament_export_include_directories(include/${PROJECT_NAME} ${Eigen3_INCLUDE_DIRS})
 ament_export_dependencies(rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
@@ -31,21 +28,25 @@ include_directories(
 
 add_executable(eventbased_pid_position_controller src/eventbased_pid_position_controller.cpp)
 ament_target_dependencies(eventbased_pid_position_controller
-    rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+    rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
 
 add_executable(periodic_pid_position_controller src/periodic_pid_position_controller.cpp)
 ament_target_dependencies(periodic_pid_position_controller
-    rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+    rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+
+add_executable(periodic_pid_attituderate_controller src/periodic_pid_attituderate_controller.cpp)
+ament_target_dependencies(periodic_pid_attituderate_controller
+    rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
 
 add_executable(event_triggering src/event_triggering.cpp)
 ament_target_dependencies(event_triggering
-    rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+    rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
 
 add_executable(trajectory_controller src/trajectory_controller.cpp)
 ament_target_dependencies(trajectory_controller
-    rclcpp std_msgs rclpy sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+    rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
 
-install(TARGETS eventbased_pid_position_controller periodic_pid_position_controller event_triggering trajectory_controller
+install(TARGETS eventbased_pid_position_controller periodic_pid_position_controller event_triggering trajectory_controller periodic_pid_attituderate_controller
     DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/${PROJECT_NAME}/
