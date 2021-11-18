@@ -37,7 +37,7 @@ bool PositionController::initialize(){
     // Subscriber:
     // Crazyflie Pose
     // GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("ground_truth/pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
-    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("dron01/pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
+    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
     // Reference:
     ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose_ref", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
 
