@@ -16,19 +16,19 @@ bool PositionController::initialize(){
     m_z_init = 0.0;
 
     // Z Controller
-    init_controller("Z", z_controller, 2.0, 4.0, 0.0, 0.0, 100);
+    init_controller("Z", z_controller, 2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0);
     // W Controller
-    init_controller("W", w_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    init_controller("W", w_controller, 25.0, 15.0, 0.0, 0.0, 100, 1160.0, -640.0);
     // X Controller
-    init_controller("X", x_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    init_controller("X", x_controller, 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // U Controller
-    init_controller("U", u_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    init_controller("U", u_controller, 25.0, 1.0, 0.0, 0.0, 100, 20.0, -20.0);
     // Y Controller
-    init_controller("Y", y_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    init_controller("Y", y_controller, 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // V Controller
-    init_controller("V", v_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    init_controller("V", v_controller, 25.0, 1.0, 0.0, 0.0, 100, 20.0, -20.0);
     // Yaw Controller
-    init_controller("Yaw", yaw_controller, 1.0, 0.0, 0.0, 0.0, 100);
+    init_controller("Yaw", yaw_controller, 6.0, 1.0, 0.3499, 0.0583, 100, 20.0, -20.0);
 
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
@@ -46,106 +46,67 @@ bool PositionController::initialize(){
 
 
 bool PositionController::iterate(){
-    double thrust = pid_controller(z_controller, 0.01);
-    RCLCPP_INFO(this->get_logger(),"Z Controller. Thrust = %.2f", thrust);
-    /*
-    if(first_pose_received && first_ref_received)
-    {
-        // Altitude Controller
-        {
-            // Update error vector
-            z_error_signal[2] = z_error_signal[1];
-            z_error_signal[1] = z_error_signal[0];
-            z_error_signal[0] = ref_pose.position.z - GT_pose.position.z;
+    RCLCPP_INFO_ONCE(this->get_logger(), "PositionController::iterate(). ok.");
+    if (first_pose_received && first_ref_received) {
+        // Z Controller
+        z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
+        double w_ref = pid_controller(z_controller, 0.01);
+        // W Controller - TO-DO!!
+        w_controller.error[0] = w_ref - 0.0;
+        double thrust = pid_controller(w_controller, 0.01);
 
-            // Update signal vector
-            delta_omega[1] = delta_omega[0];
-            delta_omega[0] = delta_omega[1] + Z_q[0]*z_error_signal[0] + Z_q[1]*z_error_signal[1] + Z_q[2]*z_error_signal[2];
-
-            // Saturation
-            if(delta_omega[0]>15000)
-                delta_omega[0] = 15000;
-            if(delta_omega[0]<-20000)
-                delta_omega[0] = -20000;
-
-            // Output signal
-            omega = delta_omega[0]+(we-4070.3)/0.2685;
-            RCLCPP_INFO(this->get_logger(),"Omega: \t%.2f \tDOmega%.2f \tError:%.2f", omega, delta_omega[0], z_error_signal[0]);
-        }
+        thrust = thrust * 1000 + 36000;
+        RCLCPP_INFO(this->get_logger(), "Altitude Controller. Thrust: \t%.2f \tError:%.2f", thrust, z_controller.error[0]);
 
         // Convert quaternion to yw
-        double siny_cosp_ref = 2 * (ref_pose.orientation.w*ref_pose.orientation.z+ref_pose.orientation.x*ref_pose.orientation.y);
-        double cosy_cosp_ref = 1 - 2 * (ref_pose.orientation.y*ref_pose.orientation.y + ref_pose.orientation.z*ref_pose.orientation.z);
-        double yaw_ref = std::atan2(siny_cosp_ref,cosy_cosp_ref);
-        double siny_cosp = 2 * (GT_pose.orientation.w*GT_pose.orientation.z+GT_pose.orientation.x*GT_pose.orientation.y);
-        double cosy_cosp = 1 - 2 * (GT_pose.orientation.y*GT_pose.orientation.y + GT_pose.orientation.z*GT_pose.orientation.z);
-        double yaw = std::atan2(siny_cosp,cosy_cosp);
-        // X-Y Controller
-        {
-            // Position
-            // Update local error
-            x_error_signal[2] = x_error_signal[1];
-            x_error_signal[1] = x_error_signal[0];
-            x_error_signal[0] = (ref_pose.position.x - GT_pose.position.x)*cos(yaw)+(ref_pose.position.y - GT_pose.position.y)*sin(yaw);
-            y_error_signal[2] = y_error_signal[1];
-            y_error_signal[1] = y_error_signal[0];
-            y_error_signal[0] = -(ref_pose.position.x - GT_pose.position.x)*sin(yaw)+(ref_pose.position.y - GT_pose.position.y)*cos(yaw);
-            // Update signal vector
-            uc[1] = uc[0];
-            uc[0] = uc[1] + X_q[0]*x_error_signal[0] + X_q[1]*x_error_signal[1] + X_q[2]*x_error_signal[2];
-            vc[1] = vc[0];
-            vc[0] = vc[1] + Y_q[0]*y_error_signal[0] + Y_q[1]*y_error_signal[1] + Y_q[2]*y_error_signal[2];
-            // Speed
-            u_feedback[1] = u_feedback[0];
-            u_feedback[0] = GT_pose.position.x;
-            double u_signal = (u_feedback[0]-u_feedback[1])/0.01;
-            v_feedback[1] = v_feedback[0];
-            v_feedback[0] = GT_pose.position.y;
-            double v_signal = (v_feedback[0]-v_feedback[1])/0.01;
+        double siny_cosp_ref = 2 * (ref_pose.orientation.w * ref_pose.orientation.z + ref_pose.orientation.x * ref_pose.orientation.y);
+        double cosy_cosp_ref = 1 - 2 * (ref_pose.orientation.y * ref_pose.orientation.y + ref_pose.orientation.z * ref_pose.orientation.z);
+        double yaw_ref = std::atan2(siny_cosp_ref, cosy_cosp_ref);
+        double siny_cosp = 2 * (GT_pose.orientation.w * GT_pose.orientation.z + GT_pose.orientation.x * GT_pose.orientation.y);
+        double cosy_cosp = 1 - 2 * (GT_pose.orientation.y * GT_pose.orientation.y + GT_pose.orientation.z * GT_pose.orientation.z);
+        double yaw = std::atan2(siny_cosp, cosy_cosp);
 
-            // Update error
-            u_error_signal[2] = u_error_signal[1];
-            u_error_signal[1] = u_error_signal[0];
-            u_error_signal[0] = uc[0]-u_signal;
-            v_error_signal[2] = v_error_signal[1];
-            v_error_signal[1] = v_error_signal[0];
-            v_error_signal[0] = vc[0]-v_signal;
-            // Update signal vector
-            pitch_ref[1] = pitch_ref[0];
-            pitch_ref[0] = pitch_ref[1] + U_q[0]*u_error_signal[0] + U_q[1]*u_error_signal[1] + U_q[2]*u_error_signal[2];
-            roll_ref[1] = roll_ref[0];
-            roll_ref[0] = roll_ref[1] + V_q[0]*v_error_signal[0] + V_q[1]*v_error_signal[1] + V_q[2]*v_error_signal[2];
-            // Saturation
-            if(pitch_ref[0]>30)
-                pitch_ref[0] = 30;
-            if(pitch_ref[0]<-30)
-                pitch_ref[0] = -30;
-            if(roll_ref[0]>30)
-                roll_ref[0] = 30;
-            if(roll_ref[0]<-30)
-                roll_ref[0] = -30;
-        }
+        double x_global_error = ref_pose.position.x - GT_pose.position.x;
+        double y_global_error = ref_pose.position.y - GT_pose.position.y;
+        // X Controller
+        x_controller.error[0] = x_global_error * cos(yaw) + y_global_error * sin(yaw);
+        double u_ref = pid_controller(x_controller, 0.01);
+        // Y Controller
+        y_controller.error[0] = -x_global_error * sin(yaw) + y_global_error * cos(yaw);
+        double v_ref = pid_controller(y_controller, 0.01);
+
+        // Speed
+        u_feedback[1] = u_feedback[0];
+        u_feedback[0] = GT_pose.position.x;
+        double u_signal = (u_feedback[0] - u_feedback[1]) / 0.01;
+        v_feedback[1] = v_feedback[0];
+        v_feedback[0] = GT_pose.position.y;
+        double v_signal = (v_feedback[0] - v_feedback[1]) / 0.01;
+
+        // U Controller
+        u_controller.error[0] = u_ref - u_signal;
+        double pitch = pid_controller(u_controller, 0.01);
+
+        // V Controller
+        v_controller.error[0] = v_ref - v_signal;
+        double roll = pid_controller(v_controller, 0.01);
 
         // Yaw Controller
-        {
-            // Update error
-            yaw_error_signal[2] = yaw_error_signal[1];
-            yaw_error_signal[1] = yaw_error_signal[0];
-            yaw_error_signal[0] = (yaw_ref-yaw)*180/3.14159265;
+        yaw_controller.error[0] = (yaw_ref - yaw) * 180 / 3.14159265;
+        double dyaw = pid_controller(yaw_controller, 0.01);
 
-            // Update signal vector
-            dyaw_ref[1] = dyaw_ref[0];
-            dyaw_ref[0] = dyaw_ref[1] + Yaw_q[0]*yaw_error_signal[0] + Yaw_q[1]*yaw_error_signal[1] + Yaw_q[2]*yaw_error_signal[2];
-        }
         // Publish Control CMD
         auto msg_cmd = uned_crazyflie_config::msg::Cmdsignal();
-        msg_cmd.thrust = (int)omega;
-        msg_cmd.roll = roll_ref[0];
-        msg_cmd.pitch = pitch_ref[0];
-        msg_cmd.yaw = 0.0;
+        msg_cmd.thrust = (int)thrust;
+        msg_cmd.roll = roll;
+        msg_cmd.pitch = pitch;
+        msg_cmd.yaw = yaw;
         pub_cmd_->publish(msg_cmd);
     }
-    */
+    else {
+        RCLCPP_INFO_ONCE(this->get_logger(), "PositionController::iterate(). Waiting reference & feedback position");
+    }
+
   return true;
 }
 

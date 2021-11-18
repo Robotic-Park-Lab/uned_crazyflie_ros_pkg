@@ -57,3 +57,4 @@ CATKIN_IGNORE
 *.bbl
 *.blg
 *.dvi
+/.vs
