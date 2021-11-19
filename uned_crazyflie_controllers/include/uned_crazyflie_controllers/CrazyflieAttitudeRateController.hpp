@@ -47,7 +47,7 @@ private:
 
   std::string  m_controller_type, m_robot_id, m_controller_mode;
   // Controllers
-  struct pid_s pitch_controller;
+  struct pid_s pitch_controller, roll_controller, dpitch_controller, droll_controller, dyaw_controller;
 
   // Function
   double pid_controller(struct pid_s controller, double dt){
@@ -56,12 +56,16 @@ private:
       controller.derivative[0] = (controller.td/(controller.td+controller.nd+dt))*controller.derivative[1]+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
       double out = outP + controller.integral + controller.derivative[0];
 
+      double out_i = out;
+
       if (out > controller.upperlimit)
           out = controller.upperlimit;
       if (out < controller.lowerlimit)
           out = controller.lowerlimit;
 
-      // TO-DO: Antiwindup!!
+      double es = out - out_i;
+
+      controller.integral = controller.integral - es * controller.kp / controller.ki;
 
       controller.error[1] = controller.error[0];
       controller.derivative[1] = controller.derivative[0];
