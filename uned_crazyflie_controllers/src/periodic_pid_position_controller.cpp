@@ -8,7 +8,7 @@ bool PositionController::initialize(){
     // Lectura de parámetros
     RCLCPP_INFO(this->get_logger(),"TO-DO: Read Params.");
     m_controller_type = "PID";
-    m_robot_id = "dron_test";
+    m_robot_id = "dron01";
     m_controller_mode = "close loop";
     RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s, \tMode: %s", m_controller_type, m_robot_id, m_controller_mode);
     m_x_init = 0.0;
@@ -22,15 +22,15 @@ bool PositionController::initialize(){
     // X Controller
     init_controller("X", x_controller, 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // U Controller
-    init_controller("U", u_controller, 25.0, 1.0, 0.0, 0.0, 100, 20.0, -20.0);
+    init_controller("U", u_controller, 25.0, 1.0, 0.0, 0.0, 100, 30.0, -30.0);
     // Y Controller
     init_controller("Y", y_controller, 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // V Controller
-    init_controller("V", v_controller, 25.0, 1.0, 0.0, 0.0, 100, 20.0, -20.0);
+    init_controller("V", v_controller, 25.0, 1.0, 0.0, 0.0, 100, 30.0, -30.0);
 
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
-    pub_cmd_ = this->create_publisher<uned_crazyflie_config::msg::Cmdsignal>("cf_cmd_control", 10);
+    pub_cmd_ = this->create_publisher<uned_crazyflie_config::msg::Cmdsignal>("onboard_cmd", 10);
 
     // Subscriber:
     // Crazyflie Pose {Real: /pose; Sim: /ground_truth/pose}
@@ -45,6 +45,7 @@ bool PositionController::initialize(){
 bool PositionController::iterate(){
     RCLCPP_INFO_ONCE(this->get_logger(), "PositionController::iterate(). ok.");
     if (first_pose_received && first_ref_received) {
+        RCLCPP_INFO_ONCE(this->get_logger(), "PositionController::iterate(). Running ...");
         // Z Controller
         z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
         w_ref = pid_controller(z_controller, dt);

@@ -28,6 +28,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/StateEstimate.msg"
   "msg/Cmdsignal.msg"
   "msg/Pidcontroller.msg"
+  "msg/Actuators.msg"
 )
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)

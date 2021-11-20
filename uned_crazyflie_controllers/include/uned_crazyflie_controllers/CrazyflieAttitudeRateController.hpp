@@ -17,6 +17,7 @@
 #include <geometry_msgs/msg/quaternion.hpp>
 #include <uned_crazyflie_config/msg/cmdsignal.hpp>
 #include <uned_crazyflie_config/msg/pidcontroller.hpp>
+#include <uned_crazyflie_config/msg/actuators.hpp>
 
 using namespace std::chrono_literals;
 
@@ -29,9 +30,10 @@ public:
   bool iterate();
 
 private:
-  // rclcpp::Publisher<uned_crazyflie_config::msg::Cmdsignal>::SharedPtr pub_cmd_;
+  rclcpp::Publisher<uned_crazyflie_config::msg::Actuators>::SharedPtr pub_cmd_;
 
   rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
+  rclcpp::Subscription<uned_crazyflie_config::msg::Cmdsignal>::SharedPtr ref_cmd_;
 
   struct pid_s{
       double kp, ki, kd, td;
@@ -44,11 +46,17 @@ private:
 
   std::string  m_controller_type, m_robot_id, m_controller_mode;
   geometry_msgs::msg::Pose GT_pose;
+  uned_crazyflie_config::msg::Cmdsignal ref_cmd;
+  bool first_pose_received = false;
+  bool first_ref_received = false;
   double dt = 0.002;
   // Controllers
   struct pid_s pitch_controller, roll_controller, yaw_controller, dpitch_controller, droll_controller, dyaw_controller;
   // Control Signals
   double dpitch_ref, droll_ref, dyaw_ref, delta_pitch, delta_roll, delta_yaw;
+  double dpitch_signal, droll_signal, dyaw_signal;
+  double dpitch_feedback[2], droll_feedback[2], dyaw_feedback[2];
+  double motors[4];
   // Angles
   struct euler_angles rpy_ref, rpy_state;
   
@@ -56,6 +64,16 @@ private:
   void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg) {
       GT_pose.position = msg->position;
       GT_pose.orientation = msg->orientation;
+      if (!first_pose_received)
+          first_pose_received = true;
+  }
+  void refcmdCallback(const uned_crazyflie_config::msg::Cmdsignal::SharedPtr msg) {
+      ref_cmd.thrust = msg->thrust;
+      ref_cmd.roll = msg->roll;
+      ref_cmd.pitch = msg->pitch;
+      ref_cmd.yaw = msg->yaw;
+      if (!first_ref_received)
+          first_ref_received = true;
   }
   euler_angles quaternion2euler(geometry_msgs::msg::Quaternion quat){
       euler_angles rpy;
@@ -92,7 +110,7 @@ private:
       if (out < controller.lowerlimit)
           out = controller.lowerlimit;
 
-      controller.integral = controller.integral - (out - out_i) * controller.kp / controller.ki;
+      controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
 
       controller.error[1] = controller.error[0];
       controller.derivative[1] = controller.derivative[0];
