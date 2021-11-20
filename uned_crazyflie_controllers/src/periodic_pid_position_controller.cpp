@@ -50,50 +50,50 @@ bool PositionController::iterate(){
     if (first_pose_received && first_ref_received) {
         // Z Controller
         z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
-        double w_ref = pid_controller(z_controller, 0.01);
+        w_ref = pid_controller(z_controller, 0.01);
         // W Controller - TO-DO!!
         w_controller.error[0] = w_ref - 0.0;
-        double thrust = pid_controller(w_controller, 0.01);
+        thrust = pid_controller(w_controller, 0.01);
 
         thrust = thrust * 1000 + 36000;
         RCLCPP_INFO(this->get_logger(), "Altitude Controller. Thrust: \t%.2f \tError:%.2f", thrust, z_controller.error[0]);
 
         // Convert quaternion to yw
-        double siny_cosp_ref = 2 * (ref_pose.orientation.w * ref_pose.orientation.z + ref_pose.orientation.x * ref_pose.orientation.y);
-        double cosy_cosp_ref = 1 - 2 * (ref_pose.orientation.y * ref_pose.orientation.y + ref_pose.orientation.z * ref_pose.orientation.z);
-        double yaw_ref = std::atan2(siny_cosp_ref, cosy_cosp_ref);
-        double siny_cosp = 2 * (GT_pose.orientation.w * GT_pose.orientation.z + GT_pose.orientation.x * GT_pose.orientation.y);
-        double cosy_cosp = 1 - 2 * (GT_pose.orientation.y * GT_pose.orientation.y + GT_pose.orientation.z * GT_pose.orientation.z);
-        double yaw = std::atan2(siny_cosp, cosy_cosp);
+        siny_cosp_ref = 2 * (ref_pose.orientation.w * ref_pose.orientation.z + ref_pose.orientation.x * ref_pose.orientation.y);
+        cosy_cosp_ref = 1 - 2 * (ref_pose.orientation.y * ref_pose.orientation.y + ref_pose.orientation.z * ref_pose.orientation.z);
+        yaw_ref = std::atan2(siny_cosp_ref, cosy_cosp_ref);
+        siny_cosp = 2 * (GT_pose.orientation.w * GT_pose.orientation.z + GT_pose.orientation.x * GT_pose.orientation.y);
+        cosy_cosp = 1 - 2 * (GT_pose.orientation.y * GT_pose.orientation.y + GT_pose.orientation.z * GT_pose.orientation.z);
+        yaw = std::atan2(siny_cosp, cosy_cosp);
 
-        double x_global_error = ref_pose.position.x - GT_pose.position.x;
-        double y_global_error = ref_pose.position.y - GT_pose.position.y;
+        x_global_error = ref_pose.position.x - GT_pose.position.x;
+        y_global_error = ref_pose.position.y - GT_pose.position.y;
         // X Controller
         x_controller.error[0] = x_global_error * cos(yaw) + y_global_error * sin(yaw);
-        double u_ref = pid_controller(x_controller, 0.01);
+        u_ref = pid_controller(x_controller, 0.01);
         // Y Controller
         y_controller.error[0] = -x_global_error * sin(yaw) + y_global_error * cos(yaw);
-        double v_ref = pid_controller(y_controller, 0.01);
+        v_ref = pid_controller(y_controller, 0.01);
 
         // Speed
         u_feedback[1] = u_feedback[0];
         u_feedback[0] = GT_pose.position.x;
-        double u_signal = (u_feedback[0] - u_feedback[1]) / 0.01;
+        u_signal = (u_feedback[0] - u_feedback[1]) / 0.01;
         v_feedback[1] = v_feedback[0];
         v_feedback[0] = GT_pose.position.y;
-        double v_signal = (v_feedback[0] - v_feedback[1]) / 0.01;
+        v_signal = (v_feedback[0] - v_feedback[1]) / 0.01;
 
         // U Controller
         u_controller.error[0] = u_ref - u_signal;
-        double pitch = pid_controller(u_controller, 0.01);
+        pitch = pid_controller(u_controller, 0.01);
 
         // V Controller
         v_controller.error[0] = v_ref - v_signal;
-        double roll = pid_controller(v_controller, 0.01);
+        roll = pid_controller(v_controller, 0.01);
 
         // Yaw Controller
         yaw_controller.error[0] = (yaw_ref - yaw) * 180 / 3.14159265;
-        double dyaw = pid_controller(yaw_controller, 0.01);
+        dyaw = pid_controller(yaw_controller, 0.01);
 
         // Publish Control CMD
         auto msg_cmd = uned_crazyflie_config::msg::Cmdsignal();

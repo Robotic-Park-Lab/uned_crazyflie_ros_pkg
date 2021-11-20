@@ -48,6 +48,8 @@ private:
   std::string  m_controller_type, m_robot_id, m_controller_mode;
   // Controllers
   struct pid_s pitch_controller, roll_controller, dpitch_controller, droll_controller, dyaw_controller;
+  // Control Signals
+  double dpitch_ref, droll_ref, delta_pitch, delta_roll, delta_yaw;
 
   // Function
   double pid_controller(struct pid_s controller, double dt){
@@ -63,9 +65,7 @@ private:
       if (out < controller.lowerlimit)
           out = controller.lowerlimit;
 
-      double es = out - out_i;
-
-      controller.integral = controller.integral - es * controller.kp / controller.ki;
+      controller.integral = controller.integral - (out - out_i) * controller.kp / controller.ki;
 
       controller.error[1] = controller.error[0];
       controller.derivative[1] = controller.derivative[0];

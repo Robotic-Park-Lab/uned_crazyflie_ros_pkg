@@ -29,7 +29,22 @@ bool AttitudeRateController::initialize(){
 
 bool AttitudeRateController::iterate(){
     RCLCPP_WARN(this->get_logger(), "Attitude & Rate Controller in progress ...");
+    // Feedback:
+    // ....
+    // 
+    // Attitude Controller
+    // Pitch controller
+    dpitch_ref = pid_controller(pitch_controller, 0.002);
+    // Roll controller
+    droll_ref = pid_controller(roll_controller, 0.002);
 
+    // Rate Controller
+    // dPitch controller
+    delta_pitch = pid_controller(dpitch_controller, 0.002);
+    // dRoll controller
+    delta_roll = pid_controller(droll_controller, 0.002);
+    // dYaw controller
+    delta_yaw = pid_controller(dyaw_controller, 0.002);
 
   return true;
 }
@@ -39,7 +54,7 @@ int main(int argc, char ** argv){
   try{
     rclcpp::init(argc, argv);
     auto crazyflie_attituderate_controller = std::make_shared<AttitudeRateController>();
-    rclcpp::Rate loop_rate(250);
+    rclcpp::Rate loop_rate(500);
     crazyflie_attituderate_controller->initialize();
 
     while (rclcpp::ok()){
