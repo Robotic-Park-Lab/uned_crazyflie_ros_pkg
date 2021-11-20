@@ -12,16 +12,16 @@ bool AttitudeRateController::initialize(){
     m_controller_mode = "close loop";
     RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s, \tMode: %s", m_controller_type, m_robot_id, m_controller_mode);
 
-    // Z Controller
+    // Pitch Controller
     init_controller("Pitch", pitch_controller, 2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0);
-
+    // Yaw Controller
+    init_controller("Yaw", yaw_controller, 6.0, 1.0, 0.3499, 0.0583, 100, 20.0, -20.0);
     // Publisher:
     // pub_cmd_ = this->create_publisher<uned_crazyflie_config::msg::Cmdsignal>("cf_cmd_control", 10);
 
     // Subscriber:
-    // Crazyflie Pose
-    // GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("ground_truth/pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
-    // GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&AttitudeRateController::gtposeCallback, this, _1));
+    // Crazyflie Pose {Real: /pose; Sim: /ground_truth/pose}
+    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&AttitudeRateController::gtposeCallback, this, _1));
 
     return true;
 }
@@ -29,15 +29,18 @@ bool AttitudeRateController::initialize(){
 
 bool AttitudeRateController::iterate(){
     RCLCPP_WARN(this->get_logger(), "Attitude & Rate Controller in progress ...");
+    
     // Feedback:
-    // rpy_ref = quaternion2euler(ref_pose.orientation);
-    // rpy_state = quaternion2euler(GT_pose.orientation);
+    rpy_state = quaternion2euler(GT_pose.orientation);
 
     // Attitude Controller
     // Pitch controller
     dpitch_ref = pid_controller(pitch_controller, 0.002);
     // Roll controller
     droll_ref = pid_controller(roll_controller, 0.002);
+    // Yaw controller
+    yaw_controller.error[0] = (rpy_state.yaw - rpy_state.yaw);
+    dyaw_ref = pid_controller(yaw_controller, dt);
 
     // Rate Controller
     // dPitch controller
@@ -46,6 +49,8 @@ bool AttitudeRateController::iterate(){
     delta_roll = pid_controller(droll_controller, 0.002);
     // dYaw controller
     delta_yaw = pid_controller(dyaw_controller, 0.002);
+
+    // Mixer Controller
 
   return true;
 }

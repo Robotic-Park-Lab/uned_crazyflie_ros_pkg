@@ -44,20 +44,19 @@ private:
         double roll, pitch, yaw;
     };
 
+    double dt = 0.01;
     double m_x_init, m_y_init, m_z_init;
     std::string  m_controller_type, m_robot_id, m_controller_mode;
     geometry_msgs::msg::Pose GT_pose, ref_pose;
     bool first_pose_received = false;
     bool first_ref_received = false;
     // Controllers
-    struct pid_s z_controller, w_controller, x_controller, u_controller, y_controller, v_controller, yaw_controller;
+    struct pid_s z_controller, w_controller, x_controller, u_controller, y_controller, v_controller;
     // Altitude Controller
-    double w_ref, thrust;
+    double w_feedback[2], w_signal, w_ref, thrust;
     // X-Y paremeters
     double x_global_error, y_global_error, u_ref, v_ref, u_feedback[2], v_feedback[2];
     double u_signal, v_signal, pitch, roll;
-    // Yaw Controller
-    double dyaw;
     // Angles
     struct euler_angles rpy_ref, rpy_state;
 
@@ -71,6 +70,7 @@ private:
             first_pose_received = true;
             u_feedback[0] = ref_pose.position.x;
             v_feedback[0] = ref_pose.position.y;
+            w_feedback[0] = ref_pose.position.z;
             RCLCPP_INFO(this->get_logger(),"Init Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
         }
     }

@@ -43,14 +43,20 @@ private:
   };
 
   std::string  m_controller_type, m_robot_id, m_controller_mode;
+  geometry_msgs::msg::Pose GT_pose;
+  double dt = 0.002;
   // Controllers
-  struct pid_s pitch_controller, roll_controller, dpitch_controller, droll_controller, dyaw_controller;
+  struct pid_s pitch_controller, roll_controller, yaw_controller, dpitch_controller, droll_controller, dyaw_controller;
   // Control Signals
-  double dpitch_ref, droll_ref, delta_pitch, delta_roll, delta_yaw;
+  double dpitch_ref, droll_ref, dyaw_ref, delta_pitch, delta_roll, delta_yaw;
   // Angles
   struct euler_angles rpy_ref, rpy_state;
   
   // Function
+  void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg) {
+      GT_pose.position = msg->position;
+      GT_pose.orientation = msg->orientation;
+  }
   euler_angles quaternion2euler(geometry_msgs::msg::Quaternion quat){
       euler_angles rpy;
       

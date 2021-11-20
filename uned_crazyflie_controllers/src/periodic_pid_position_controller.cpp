@@ -27,16 +27,13 @@ bool PositionController::initialize(){
     init_controller("Y", y_controller, 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // V Controller
     init_controller("V", v_controller, 25.0, 1.0, 0.0, 0.0, 100, 20.0, -20.0);
-    // Yaw Controller
-    init_controller("Yaw", yaw_controller, 6.0, 1.0, 0.3499, 0.0583, 100, 20.0, -20.0);
 
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
     pub_cmd_ = this->create_publisher<uned_crazyflie_config::msg::Cmdsignal>("cf_cmd_control", 10);
 
     // Subscriber:
-    // Crazyflie Pose
-    // GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("ground_truth/pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
+    // Crazyflie Pose {Real: /pose; Sim: /ground_truth/pose}
     GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
     // Reference:
     ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose_ref", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
@@ -50,10 +47,13 @@ bool PositionController::iterate(){
     if (first_pose_received && first_ref_received) {
         // Z Controller
         z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
-        w_ref = pid_controller(z_controller, 0.01);
-        // W Controller - TO-DO!!
-        w_controller.error[0] = w_ref - 0.0;
-        thrust = pid_controller(w_controller, 0.01);
+        w_ref = pid_controller(z_controller, dt);
+        // W Controller
+        w_feedback[1] = w_feedback[0];
+        w_feedback[0] = GT_pose.position.z;
+        w_signal = (w_feedback[0] - w_feedback[1]) / dt;
+        w_controller.error[0] = w_ref - w_signal;
+        thrust = pid_controller(w_controller, dt);
 
         thrust = thrust * 1000 + 36000;
         RCLCPP_INFO(this->get_logger(), "Altitude Controller. Thrust: \t%.2f \tError:%.2f", thrust, z_controller.error[0]);
@@ -66,37 +66,33 @@ bool PositionController::iterate(){
         y_global_error = ref_pose.position.y - GT_pose.position.y;
         // X Controller
         x_controller.error[0] = x_global_error * cos(rpy_state.yaw) + y_global_error * sin(rpy_state.yaw);
-        u_ref = pid_controller(x_controller, 0.01);
+        u_ref = pid_controller(x_controller, dt);
         // Y Controller
         y_controller.error[0] = -x_global_error * sin(rpy_state.yaw) + y_global_error * cos(rpy_state.yaw);
-        v_ref = pid_controller(y_controller, 0.01);
+        v_ref = pid_controller(y_controller, dt);
 
         // Speed
         u_feedback[1] = u_feedback[0];
         u_feedback[0] = GT_pose.position.x;
-        u_signal = (u_feedback[0] - u_feedback[1]) / 0.01;
+        u_signal = (u_feedback[0] - u_feedback[1]) / dt;
         v_feedback[1] = v_feedback[0];
         v_feedback[0] = GT_pose.position.y;
-        v_signal = (v_feedback[0] - v_feedback[1]) / 0.01;
+        v_signal = (v_feedback[0] - v_feedback[1]) / dt;
 
         // U Controller
         u_controller.error[0] = u_ref - u_signal;
-        pitch = pid_controller(u_controller, 0.01);
+        pitch = pid_controller(u_controller, dt);
 
         // V Controller
         v_controller.error[0] = v_ref - v_signal;
-        roll = pid_controller(v_controller, 0.01);
-
-        // Yaw Controller
-        yaw_controller.error[0] = (rpy_ref.yaw - rpy_state.yaw);
-        dyaw = pid_controller(yaw_controller, 0.01);
+        roll = pid_controller(v_controller, dt);
 
         // Publish Control CMD
         auto msg_cmd = uned_crazyflie_config::msg::Cmdsignal();
         msg_cmd.thrust = (int)thrust;
         msg_cmd.roll = roll;
         msg_cmd.pitch = pitch;
-        msg_cmd.yaw = dyaw;
+        msg_cmd.yaw = rpy_ref.yaw;
         pub_cmd_->publish(msg_cmd);
     }
     else {
