@@ -30,8 +30,9 @@ bool AttitudeRateController::initialize(){
 bool AttitudeRateController::iterate(){
     RCLCPP_WARN(this->get_logger(), "Attitude & Rate Controller in progress ...");
     // Feedback:
-    // ....
-    // 
+    // rpy_ref = quaternion2euler(ref_pose.orientation);
+    // rpy_state = quaternion2euler(GT_pose.orientation);
+
     // Attitude Controller
     // Pitch controller
     dpitch_ref = pid_controller(pitch_controller, 0.002);

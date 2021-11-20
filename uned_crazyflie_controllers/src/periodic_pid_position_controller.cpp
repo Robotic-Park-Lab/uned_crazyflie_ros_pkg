@@ -59,20 +59,16 @@ bool PositionController::iterate(){
         RCLCPP_INFO(this->get_logger(), "Altitude Controller. Thrust: \t%.2f \tError:%.2f", thrust, z_controller.error[0]);
 
         // Convert quaternion to yw
-        siny_cosp_ref = 2 * (ref_pose.orientation.w * ref_pose.orientation.z + ref_pose.orientation.x * ref_pose.orientation.y);
-        cosy_cosp_ref = 1 - 2 * (ref_pose.orientation.y * ref_pose.orientation.y + ref_pose.orientation.z * ref_pose.orientation.z);
-        yaw_ref = std::atan2(siny_cosp_ref, cosy_cosp_ref);
-        siny_cosp = 2 * (GT_pose.orientation.w * GT_pose.orientation.z + GT_pose.orientation.x * GT_pose.orientation.y);
-        cosy_cosp = 1 - 2 * (GT_pose.orientation.y * GT_pose.orientation.y + GT_pose.orientation.z * GT_pose.orientation.z);
-        yaw = std::atan2(siny_cosp, cosy_cosp);
+        rpy_ref = quaternion2euler(ref_pose.orientation);
+        rpy_state = quaternion2euler(GT_pose.orientation);
 
         x_global_error = ref_pose.position.x - GT_pose.position.x;
         y_global_error = ref_pose.position.y - GT_pose.position.y;
         // X Controller
-        x_controller.error[0] = x_global_error * cos(yaw) + y_global_error * sin(yaw);
+        x_controller.error[0] = x_global_error * cos(rpy_state.yaw) + y_global_error * sin(rpy_state.yaw);
         u_ref = pid_controller(x_controller, 0.01);
         // Y Controller
-        y_controller.error[0] = -x_global_error * sin(yaw) + y_global_error * cos(yaw);
+        y_controller.error[0] = -x_global_error * sin(rpy_state.yaw) + y_global_error * cos(rpy_state.yaw);
         v_ref = pid_controller(y_controller, 0.01);
 
         // Speed
@@ -92,7 +88,7 @@ bool PositionController::iterate(){
         roll = pid_controller(v_controller, 0.01);
 
         // Yaw Controller
-        yaw_controller.error[0] = (yaw_ref - yaw) * 180 / 3.14159265;
+        yaw_controller.error[0] = (rpy_ref.yaw - rpy_state.yaw);
         dyaw = pid_controller(yaw_controller, 0.01);
 
         // Publish Control CMD
@@ -100,7 +96,7 @@ bool PositionController::iterate(){
         msg_cmd.thrust = (int)thrust;
         msg_cmd.roll = roll;
         msg_cmd.pitch = pitch;
-        msg_cmd.yaw = yaw;
+        msg_cmd.yaw = dyaw;
         pub_cmd_->publish(msg_cmd);
     }
     else {
