@@ -16,17 +16,17 @@ bool PositionController::initialize(){
     m_z_init = 0.0;
 
     // Z Controller
-    init_controller("Z", z_controller, 2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0);
+    z_controller = init_controller("Z", 2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0);
     // W Controller
-    init_controller("W", w_controller, 25.0, 15.0, 0.0, 0.0, 100, 1160.0, -640.0);
+    w_controller = init_controller("W", 25.0, 15.0, 0.0, 0.0, 100, 1160.0, -640.0);
     // X Controller
-    init_controller("X", x_controller, 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
+    x_controller = init_controller("X", 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // U Controller
-    init_controller("U", u_controller, 25.0, 1.0, 0.0, 0.0, 100, 30.0, -30.0);
+    u_controller = init_controller("U", 25.0, 1.0, 0.0, 0.0, 100, 30.0, -30.0);
     // Y Controller
-    init_controller("Y", y_controller, 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
+    y_controller = init_controller("Y", 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // V Controller
-    init_controller("V", v_controller, 25.0, 1.0, 0.0, 0.0, 100, 30.0, -30.0);
+    v_controller = init_controller("V", 25.0, 1.0, 0.0, 0.0, 100, 30.0, -30.0);
 
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
@@ -36,7 +36,7 @@ bool PositionController::initialize(){
     // Crazyflie Pose {Real: /pose; Sim: /ground_truth/pose}
     GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
     // Reference:
-    ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose_ref", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
+    ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("goal_pose", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
 
     return true;
 }
@@ -49,6 +49,7 @@ bool PositionController::iterate(){
         // Z Controller
         z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
         w_ref = pid_controller(z_controller, dt);
+
         // W Controller
         w_feedback[1] = w_feedback[0];
         w_feedback[0] = GT_pose.position.z;
@@ -57,7 +58,6 @@ bool PositionController::iterate(){
         thrust = pid_controller(w_controller, dt);
 
         thrust = thrust * 1000 + 36000;
-        RCLCPP_INFO(this->get_logger(), "Altitude Controller. Thrust: \t%.2f \tError:%.2f", thrust, z_controller.error[0]);
 
         // Convert quaternion to yw
         rpy_ref = quaternion2euler(ref_pose.orientation);
@@ -87,6 +87,9 @@ bool PositionController::iterate(){
         // V Controller
         v_controller.error[0] = v_ref - v_signal;
         roll = pid_controller(v_controller, dt);
+
+        RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", thrust, roll, pitch, rpy_ref.yaw);
+
 
         // Publish Control CMD
         auto msg_cmd = uned_crazyflie_config::msg::Cmdsignal();

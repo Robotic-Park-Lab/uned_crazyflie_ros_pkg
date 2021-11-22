@@ -162,7 +162,7 @@ class CFDriver(Node):
     def __init__(self):
         super().__init__('cf_driver')
         # Params
-        self.declare_parameter('cf_uri', 'radio://0/80/2M/E7E7E7E7E7')
+        self.declare_parameter('cf_uri', 'radio://0/80/2M/E7E7E7E701')
         # Publisher
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
         # Subscription
@@ -173,7 +173,7 @@ class CFDriver(Node):
         self.sub_goal_pose = self.create_subscription(Pose, 'goal_pose',
                                                       self.goalpose_callback,
                                                       10)
-        self.sub_cmd = self.create_subscription(Cmdsignal, 'cf_cmd_control',
+        self.sub_cmd = self.create_subscription(Cmdsignal, 'onboard_cmd',
                                                 self.cmd_control_callback, 10)
         timer_period = 0.01  # seconds
         self.iterate_loop = self.create_timer(timer_period, self.iterate)

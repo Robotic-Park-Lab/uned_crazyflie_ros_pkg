@@ -109,6 +109,7 @@ private:
         controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
         controller.derivative[0] = (controller.td/(controller.td+controller.nd+dt))*controller.derivative[1]+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
         double out = outP + controller.integral + controller.derivative[0];
+        // RCLCPP_INFO(this->get_logger(), "outP: \t%.2f \toutI:%.2f \toutd:%.2f", outP, controller.integral, controller.derivative[0]);
 
         double out_i = out;
 
@@ -124,7 +125,9 @@ private:
 
         return out;
     }
-    void init_controller(char id[], struct pid_s controller, double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
+    struct pid_s init_controller(char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
+        struct pid_s controller;
+
         controller.kp = kp;
         controller.ki = ki;
         controller.kd = kd;
@@ -139,5 +142,6 @@ private:
         controller.lowerlimit = lowerlimit;
 
         RCLCPP_INFO(this->get_logger(),"%s Controller: kp: %0.2f \tki: %0.2f \tkd: %0.2f", id, controller.kp, controller.ki, controller.kd);
+        return controller;
   }
 };
