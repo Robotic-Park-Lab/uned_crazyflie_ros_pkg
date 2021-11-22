@@ -42,6 +42,7 @@
       <arg name="z" default="$(arg z)"/>
     </include>
 
+   <node name="uned_crazyflie_driver_node" pkg="uned_crazyflie_driver" type="uned_crazyflie_driver_node" output="screen" />
    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
    <node name="quaternion_to_rpy" pkg="rotors_gazebo" type="quaternion_to_rpy" output="screen" >
