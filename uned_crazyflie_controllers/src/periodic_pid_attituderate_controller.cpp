@@ -26,7 +26,7 @@ bool AttitudeRateController::initialize(){
     init_controller("dYaw", dyaw_controller, 120.0, 16.7, 0.0, 0.0, 100, 400.0, -400.0);
 
     // Publisher:
-    pub_cmd_ = this->create_publisher<uned_crazyflie_config::msg::Actuators>("cmd_control", 10);
+    pub_cmd_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("cmd_control", 10);
 
     // Subscriber:
     // Crazyflie Pose {Real: /pose; Sim: /ground_truth/pose}
@@ -83,16 +83,15 @@ bool AttitudeRateController::iterate(){
         motors[3] = ref_cmd.thrust - 0.5 * delta_pitch + 0.5 * delta_roll + delta_yaw;
 
         // Publish Control CMD
-        auto msg_cmd = uned_crazyflie_config::msg::Actuators();
+        auto msg_cmd = std_msgs::msg::Float64MultiArray();
         for (int i = 0; i < 4; i++)
-            msg_cmd.angular_velocities[i] = motors[i];
+            msg_cmd[i] = motors[i];
         pub_cmd_->publish(msg_cmd);
     }
     else {
         RCLCPP_INFO_ONCE(this->get_logger(), "AttitudeRateController::iterate(). Waiting reference & feedback orientation");
     }
     
-
   return true;
 }
 
