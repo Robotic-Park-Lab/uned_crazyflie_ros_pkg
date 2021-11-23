@@ -30,7 +30,7 @@ public:
   bool iterate();
 
 private:
-  rclcpp::Publisher<uned_crazyflie_config::msg::Actuators>::SharedPtr pub_cmd_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_cmd_;
 
   rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
   rclcpp::Subscription<uned_crazyflie_config::msg::Cmdsignal>::SharedPtr ref_cmd_;

@@ -85,7 +85,7 @@ bool AttitudeRateController::iterate(){
         // Publish Control CMD
         auto msg_cmd = std_msgs::msg::Float64MultiArray();
         for (int i = 0; i < 4; i++)
-            msg_cmd[i] = motors[i];
+            msg_cmd.data[i] = motors[i];
         pub_cmd_->publish(msg_cmd);
     }
     else {

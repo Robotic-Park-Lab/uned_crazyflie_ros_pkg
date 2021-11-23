@@ -22,19 +22,19 @@ bool PositionController::initialize(){
     // X Controller
     x_controller = init_controller("X", 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // U Controller
-    u_controller = init_controller("U", 25.0, 1.0, 0.0, 0.0, 100, 30.0, -30.0);
+    u_controller = init_controller("U", 25.0, 2.0, 0.0, 0.0, 100, 30.0, -30.0);
     // Y Controller
     y_controller = init_controller("Y", 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // V Controller
-    v_controller = init_controller("V", 25.0, 1.0, 0.0, 0.0, 100, 30.0, -30.0);
+    v_controller = init_controller("V", -25.0, -2.0, 0.0, 0.0, 100, 30.0, -30.0);
 
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
-    pub_cmd_ = this->create_publisher<uned_crazyflie_config::msg::Cmdsignal>("onboard_cmd", 10);
+    pub_cmd_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("onboard_cmd", 10);
 
     // Subscriber:
     // Crazyflie Pose {Real: /pose; Sim: /ground_truth/pose}
-    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
+    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("ground_truth/pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
     // Reference:
     ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("goal_pose", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
 
@@ -92,11 +92,9 @@ bool PositionController::iterate(){
 
 
         // Publish Control CMD
-        auto msg_cmd = uned_crazyflie_config::msg::Cmdsignal();
-        msg_cmd.thrust = (int)thrust;
-        msg_cmd.roll = roll;
-        msg_cmd.pitch = pitch;
-        msg_cmd.yaw = rpy_ref.yaw;
+        
+        auto msg_cmd = std_msgs::msg::Float64MultiArray(); 
+        msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
         pub_cmd_->publish(msg_cmd);
     }
     else {
