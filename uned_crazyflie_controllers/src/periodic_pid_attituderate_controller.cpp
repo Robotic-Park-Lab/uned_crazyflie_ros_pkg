@@ -13,26 +13,27 @@ bool AttitudeRateController::initialize(){
     RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s, \tMode: %s", m_controller_type, m_robot_id, m_controller_mode);
 
     // Pitch Controller
-    init_controller("Pitch", pitch_controller, 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
+    pitch_controller = init_controller("Pitch", 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
     // Roll Controller
-    init_controller("Roll", roll_controller, 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
+    roll_controller = init_controller("Roll", 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
     // Yaw Controller
-    init_controller("Yaw", yaw_controller, 6.0, 1.0, 0.3499, 0.0583, 100, 20.0, -20.0);
+    yaw_controller = init_controller("Yaw", 6.0, 1.0, 0.3499, 0.0583, 100, 20.0, -20.0);
     // dPitch Controller
-    init_controller("dPitch", dpitch_controller, 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
+    dpitch_controller = init_controller("dPitch", 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
     // dRoll Controller
-    init_controller("dRoll", droll_controller, 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
+    droll_controller = init_controller("dRoll", 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
     // dYaw Controller
-    init_controller("dYaw", dyaw_controller, 120.0, 16.7, 0.0, 0.0, 100, 400.0, -400.0);
+    dyaw_controller = init_controller("dYaw", 120.0, 16.7, 0.0, 0.0, 100, 400.0, -400.0);
 
     // Publisher:
     pub_cmd_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("cmd_control", 10);
+    pub_act_ = this->create_publisher<std_msgs::msg::Bool>("attitude_act", 10);
 
     // Subscriber:
     // Crazyflie Pose {Real: /pose; Sim: /ground_truth/pose}
     GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&AttitudeRateController::gtposeCallback, this, _1));
     // Reference from Off-board Controller
-    ref_cmd_ = this->create_subscription<uned_crazyflie_config::msg::Cmdsignal>("onboard_cmd", 10, std::bind(&AttitudeRateController::refcmdCallback, this, _1));
+    ref_cmd_ = this->create_subscription<std_msgs::msg::Float64MultiArray>("onboard_cmd", 10, std::bind(&AttitudeRateController::refcmdCallback, this, _1));
 
     return true;
 }
@@ -84,8 +85,7 @@ bool AttitudeRateController::iterate(){
 
         // Publish Control CMD
         auto msg_cmd = std_msgs::msg::Float64MultiArray();
-        for (int i = 0; i < 4; i++)
-            msg_cmd.data[i] = motors[i];
+        msg_cmd.data = { motors[0], motors[1], motors[2], motors[3] };
         pub_cmd_->publish(msg_cmd);
     }
     else {

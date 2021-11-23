@@ -17,5 +17,17 @@ def generate_launch_description():
                 {"Y_POS": "0.0"},
                 {"Z_POS": "0.0"}
             ]
+        ),
+        Node(
+            package='uned_crazyflie_controllers',
+            namespace='dron01',
+            executable='periodic_pid_attituderate_controller',
+            name='attituderate_controller',
+            parameters=[
+                {"CONTROLLER_TYPE": "PID"},
+                {"ROBOT_ID": "dron_test"},
+                {"CONTROLLER_MODE": "close_loop"}
+            ]
         )
+
     ])

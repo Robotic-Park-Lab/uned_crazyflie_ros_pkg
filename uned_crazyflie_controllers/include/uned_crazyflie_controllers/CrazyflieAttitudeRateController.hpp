@@ -31,9 +31,10 @@ public:
 
 private:
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_cmd_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_act_;
 
   rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
-  rclcpp::Subscription<uned_crazyflie_config::msg::Cmdsignal>::SharedPtr ref_cmd_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr ref_cmd_;
 
   struct pid_s{
       double kp, ki, kd, td;
@@ -67,12 +68,15 @@ private:
       if (!first_pose_received)
           first_pose_received = true;
   }
-  void refcmdCallback(const uned_crazyflie_config::msg::Cmdsignal::SharedPtr msg) {
-      ref_cmd.thrust = msg->thrust;
-      ref_cmd.roll = msg->roll;
-      ref_cmd.pitch = msg->pitch;
-      ref_cmd.yaw = msg->yaw;
+  void refcmdCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
+      ref_cmd.thrust = msg->data[0];
+      ref_cmd.roll = msg->data[1];
+      ref_cmd.pitch = msg->data[2];
+      ref_cmd.yaw = msg->data[3];
       if (!first_ref_received)
+          auto msg_cmd = std_msgs::msg::Bool();
+          //msg_cmd.data = true;
+          // pub_act_->publish(msg_cmd);
           first_ref_received = true;
   }
   euler_angles quaternion2euler(geometry_msgs::msg::Quaternion quat){
@@ -117,7 +121,9 @@ private:
 
       return out;
   }
-  void init_controller(char id[], struct pid_s controller, double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
+  struct pid_s init_controller(char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit) {
+      struct pid_s controller;
+
       controller.kp = kp;
       controller.ki = ki;
       controller.kd = kd;
@@ -131,6 +137,7 @@ private:
       controller.upperlimit = upperlimit;
       controller.lowerlimit = lowerlimit;
 
-      RCLCPP_INFO(this->get_logger(),"%s Controller: kp: %0.2f \tki: %0.2f \tkd: %0.2f", id, controller.kp, controller.ki, controller.kd);
+      RCLCPP_INFO(this->get_logger(), "%s Controller: kp: %0.2f \tki: %0.2f \tkd: %0.2f", id, controller.kp, controller.ki, controller.kd);
+      return controller;
   }
 };

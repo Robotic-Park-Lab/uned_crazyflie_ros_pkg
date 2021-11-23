@@ -75,7 +75,7 @@ private:
         }
     }
     void positionreferenceCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
-        RCLCPP_INFO(this->get_logger(),"New Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
+        // RCLCPP_INFO(this->get_logger(),"New Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
         ref_pose.position = msg->position;
         ref_pose.orientation = msg->orientation;
         if (!first_ref_received) {
@@ -143,5 +143,5 @@ private:
 
         RCLCPP_INFO(this->get_logger(),"%s Controller: kp: %0.2f \tki: %0.2f \tkd: %0.2f", id, controller.kp, controller.ki, controller.kd);
         return controller;
-  }
+    }
 };
