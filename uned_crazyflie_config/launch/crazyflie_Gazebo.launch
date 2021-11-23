@@ -16,6 +16,26 @@
   <arg name="debug" default="false"/>
   <arg name="gui" default="true"/>
   <arg name="verbose" default="false"/>
+  <!-- Phi Controller Params -->
+  <arg name="Phiq1" default="3.5020"/>
+  <arg name="Phiq2" default="-3.4980"/>
+  <arg name="Phiq3" default="0.0"/>
+  <!-- Theta Controller Params -->
+  <arg name="Thetaq1" default="3.5020"/>
+  <arg name="Thetaq2" default="-3.4980"/>
+  <arg name="Thetaq3" default="0.0"/>
+  <!-- dYaw Controller Params -->
+  <arg name="Dpsiq1" default="70.0167"/>
+  <arg name="Dpsiq2" default="-69.9833"/>
+  <arg name="Dpsiq3" default="0.0"/>
+  <!-- Phi Controller Params -->
+  <arg name="Dphiq1" default="70.0"/>
+  <arg name="Dphiq2" default="-70.0"/>
+  <arg name="Dphiq3" default="0.0"/>
+  <!-- Theta Controller Params -->
+  <arg name="Dthetaq1" default="70.0"/>
+  <arg name="Dthetaq2" default="-70.0"/>
+  <arg name="Dthetaq3" default="0.0"/>
 
   <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find uned_interface)/Config/models"/>
   <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find uned_interface)/Config/models"/>
@@ -43,6 +63,31 @@
     </include>
 
    <node name="uned_crazyflie_driver_node" pkg="uned_crazyflie_driver" type="uned_crazyflie_driver_node" output="screen" />
+   <node name="attitude_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_attitude_controller_node" output="screen">
+     <!-- Phi Controller Params -->
+      <param name="Phiq1" value="$(arg Phiq1)"/>
+      <param name="Phiq2" value="$(arg Phiq2)"/>
+      <param name="Phiq3" value="$(arg Phiq3)"/>
+      <!-- Theta Controller Params -->
+      <param name="Thetaq1" value="$(arg Thetaq1)"/>
+      <param name="Thetaq2" value="$(arg Thetaq2)"/>
+      <param name="Thetaq3" value="$(arg Thetaq3)"/>
+   </node>
+
+   <node name="ratemixer_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_ratemixer_controller_node" output="screen">
+     <!-- dYaw Controller Params -->
+     <param name="Dpsiq1" value="$(arg Dpsiq1)"/>
+     <param name="Dpsiq2" value="$(arg Dpsiq2)"/>
+     <param name="Dpsiq3" value="$(arg Dpsiq3)"/>
+     <!-- Phi Controller Params -->
+     <param name="Dphiq1" value="$(arg Dphiq1)"/>
+     <param name="Dphiq2" value="$(arg Dphiq2)"/>
+     <param name="Dphiq3" value="$(arg Dphiq3)"/>
+     <!-- Theta Controller Params -->
+     <param name="Dthetaq1" value="$(arg Dthetaq1)"/>
+     <param name="Dthetaq2" value="$(arg Dthetaq2)"/>
+     <param name="Dthetaq3" value="$(arg Dthetaq3)"/>
+   </node>
    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
    <node name="quaternion_to_rpy" pkg="rotors_gazebo" type="quaternion_to_rpy" output="screen" >
