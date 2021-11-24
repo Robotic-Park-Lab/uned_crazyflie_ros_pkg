@@ -5,11 +5,18 @@ bool CrazyflieAttitudeController::initialize()
 	ROS_INFO("CrazyflieAttitudeController::inicialize() ok.");
 
 	// Lectura de parámetros
+	//Pitch
+	// Pitch Controller
+	str_id = "Pitch";
+	pitch_controller = init_controller(str_id.c_str(), 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
 	if(m_nh_params.hasParam("Phiq1") && m_nh_params.hasParam("Phiq2") && m_nh_params.hasParam("Phiq3")){
 		m_nh_params.getParam("Phiq1", Phi_q[0]);
 		m_nh_params.getParam("Phiq2", Phi_q[1]);
 		m_nh_params.getParam("Phiq3", Phi_q[2]);
 	}
+	// Roll
+	str_id = "Roll";
+	roll_controller = init_controller(str_id.c_str(), 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
 	if(m_nh_params.hasParam("Thetaq1") && m_nh_params.hasParam("Thetaq2") && m_nh_params.hasParam("Thetaq3")){
 		m_nh_params.getParam("Thetaq1", Theta_q[0]);
 		m_nh_params.getParam("Thetaq2", Theta_q[1]);
@@ -23,60 +30,31 @@ bool CrazyflieAttitudeController::initialize()
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyflieAttitudeController::gtposeCallback, this);
 	// Reference
 	m_sub_attitude_ref = m_nh.subscribe( "attitude_controller_ref", 10, &CrazyflieAttitudeController::attitudeRefsCallback, this);
-	ROS_INFO_THROTTLE(1, "In revision ...");
+
 	return true;
 }
 
 bool CrazyflieAttitudeController::iterate()
 {
 
-	// Roll
-	double sinr_cosp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.x+m_GT_pose.orientation.y*m_GT_pose.orientation.z);
-	double cosr_cosp = 1 - 2 * (m_GT_pose.orientation.x*m_GT_pose.orientation.x+m_GT_pose.orientation.y*m_GT_pose.orientation.y);
-	roll_dron = std::atan2(sinr_cosp,cosr_cosp)*180/3.14159265;
-	// Pitch
-	double sinp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.y+m_GT_pose.orientation.y*m_GT_pose.orientation.z);
-	if(std::abs(sinp) >= 1)
-		pitch_dron = std::copysign(M_PI/2, sinp)*180/3.14159265;
-	else
-		pitch_dron = std::asin(sinp)*180/3.14159265;
+	if (first_ref_received && first_pose_received) {
+			ROS_INFO_ONCE("AttitudeRateController::iterate(). Running ...");
+			// Feedback:
+			rpy_state = quaternion2euler(m_GT_pose.orientation);
 
-	// Pitch Controller
-	{
-		// Update error vector
-		pitch_error[2] = pitch_error[1];
-		pitch_error[1] = pitch_error[0];
-		pitch_error[0] = pitch_ref - pitch_dron;
+			// Attitude Controller
+			// Pitch controller
+			pitch_controller.error[0] = (pitch_ref - rpy_state.pitch);
+			dpitch_ref = pid_controller(pitch_controller, dt);
+			// Roll controller
+			roll_controller.error[0] = (roll_ref - rpy_state.roll);
+			droll_ref = pid_controller(roll_controller, dt);
 
-		// Update signal vector
-		dpitch[1] = dpitch[0];
-		dpitch[0] = dpitch[1] + Phi_q[0]*pitch_error[0] + Phi_q[1]*pitch_error[1] + Phi_q[2]*pitch_error[2];
-
-		// Saturation
-		if(dpitch[0]>180.0)
-			dpitch[0] = 180.0;
-		if(dpitch[0]<-180.0)
-			dpitch[0] = -180.0;
+			rateMixerRefsCallback(dpitch_ref,droll_ref, 0.0);
 	}
-	// Roll Controller
-	{
-		// Update error vector
-		roll_error[2] = roll_error[1];
-		roll_error[1] = roll_error[0];
-		roll_error[0] = roll_ref - roll_dron;
-
-		// Update signal vector
-		droll[1] = droll[0];
-		droll[0] = droll[1] + Theta_q[0]*roll_error[0] + Theta_q[1]*roll_error[1] + Theta_q[2]*roll_error[2];
-
-		// Saturation
-		if(droll[0]>314.1593)
-			droll[0] = 314.1593;
-		if(droll[0]<-314.1593)
-			droll[0] = -314.1593;
+	else {
+			ROS_INFO_ONCE("AttitudeRateController::iterate(). Waiting reference & feedback orientation");
 	}
-
-	rateMixerRefsCallback(omega,dpitch[0],droll[0],dyaw);
 
 	return true;
 }
@@ -85,14 +63,18 @@ void CrazyflieAttitudeController::gtposeCallback(const geometry_msgs::Pose::Cons
 {
 	m_GT_pose.position = msg->position;
 	m_GT_pose.orientation = msg->orientation;
+	if (!first_pose_received)
+			first_pose_received = true;
 }
 
 void CrazyflieAttitudeController::attitudeRefsCallback(const uned_crazyflie_controllers::AttitudeRefs::ConstPtr& msg)
 {
 	pitch_ref = msg->pitch;
 	roll_ref = msg->roll;
+	if (!first_ref_received)
+			first_ref_received = true;
 }
-void CrazyflieAttitudeController::rateMixerRefsCallback(const double omega, const double dpitch, const double droll, const double dyaw)
+void CrazyflieAttitudeController::rateMixerRefsCallback(const double dpitch, const double droll, const double dyaw)
 {
 	uned_crazyflie_controllers::RateMixerRefs ref_msg;
 
