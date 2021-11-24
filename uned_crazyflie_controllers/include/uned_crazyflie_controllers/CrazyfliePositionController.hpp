@@ -46,7 +46,7 @@ private:
 
     double dt = 0.01;
     double m_x_init, m_y_init, m_z_init;
-    std::string  m_controller_type, m_robot_id, m_controller_mode;
+    std::string  m_controller_type, m_robot_id, m_controller_mode, str_id;
     geometry_msgs::msg::Pose GT_pose, ref_pose;
     bool first_pose_received = false;
     bool first_ref_received = false;
@@ -125,7 +125,7 @@ private:
 
         return out;
     }
-    struct pid_s init_controller(char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
+    struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
         struct pid_s controller;
 
         controller.kp = kp;

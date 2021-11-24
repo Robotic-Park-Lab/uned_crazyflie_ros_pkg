@@ -10,23 +10,29 @@ bool PositionController::initialize(){
     m_controller_type = "PID";
     m_robot_id = "dron01";
     m_controller_mode = "close loop";
-    RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s, \tMode: %s", m_controller_type, m_robot_id, m_controller_mode);
+    RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s, \tMode: %s", m_controller_type.c_str(), m_robot_id.c_str(), m_controller_mode.c_str());
     m_x_init = 0.0;
     m_y_init = 0.0;
     m_z_init = 0.0;
 
     // Z Controller
-    z_controller = init_controller("Z", 2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0);
+    str_id = "Z";
+    z_controller = init_controller(str_id.c_str(), 2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0);
     // W Controller
-    w_controller = init_controller("W", 25.0, 15.0, 0.0, 0.0, 100, 1160.0, -640.0);
+    str_id = "W";
+    w_controller = init_controller(str_id.c_str(), 25.0, 15.0, 0.0, 0.0, 100, 1160.0, -640.0);
     // X Controller
-    x_controller = init_controller("X", 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
+    str_id = "X";
+    x_controller = init_controller(str_id.c_str(), 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // U Controller
-    u_controller = init_controller("U", 25.0, 2.0, 0.0, 0.0, 100, 30.0, -30.0);
+    str_id = "U";
+    u_controller = init_controller(str_id.c_str(), 25.0, 2.0, 0.0, 0.0, 100, 30.0, -30.0);
     // Y Controller
-    y_controller = init_controller("Y", 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
+    str_id = "Y";
+    y_controller = init_controller(str_id.c_str(), 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
     // V Controller
-    v_controller = init_controller("V", -25.0, -2.0, 0.0, 0.0, 100, 30.0, -30.0);
+    str_id = "V";
+    v_controller = init_controller(str_id.c_str(), -25.0, -2.0, 0.0, 0.0, 100, 30.0, -30.0);
 
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
@@ -92,8 +98,8 @@ bool PositionController::iterate(){
 
 
         // Publish Control CMD
-        
-        auto msg_cmd = std_msgs::msg::Float64MultiArray(); 
+
+        auto msg_cmd = std_msgs::msg::Float64MultiArray();
         msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
         pub_cmd_->publish(msg_cmd);
     }

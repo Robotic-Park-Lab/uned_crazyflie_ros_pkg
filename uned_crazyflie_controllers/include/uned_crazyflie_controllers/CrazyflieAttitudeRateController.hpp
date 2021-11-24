@@ -44,7 +44,7 @@ private:
       double roll, pitch, yaw;
   };
 
-  std::string  m_controller_type, m_robot_id, m_controller_mode;
+  std::string  m_controller_type, m_robot_id, m_controller_mode, str_id;
   geometry_msgs::msg::Pose GT_pose;
   uned_crazyflie_config::msg::Cmdsignal ref_cmd;
   bool first_pose_received = false;
@@ -59,7 +59,7 @@ private:
   double motors[4];
   // Angles
   struct euler_angles rpy_ref, rpy_state;
-  
+
   // Function
   void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg) {
       GT_pose.position = msg->position;
@@ -77,7 +77,7 @@ private:
   }
   euler_angles quaternion2euler(geometry_msgs::msg::Quaternion quat){
       euler_angles rpy;
-      
+
       // roll (x-axis rotation)
       double sinr_cosp = 2 * (quat.w * quat.x + quat.y * quat.z);
       double cosr_cosp = 1 - 2 * (quat.x * quat.x + quat.y * quat.y);
@@ -117,7 +117,7 @@ private:
 
       return out;
   }
-  void init_controller(char id[], struct pid_s controller, double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
+  void init_controller(const char id[], struct pid_s controller, double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
       controller.kp = kp;
       controller.ki = ki;
       controller.kd = kd;
