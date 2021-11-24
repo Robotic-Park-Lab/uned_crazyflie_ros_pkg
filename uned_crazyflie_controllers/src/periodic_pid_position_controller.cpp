@@ -23,16 +23,16 @@ bool PositionController::initialize(){
     w_controller = init_controller(str_id.c_str(), 25.0, 15.0, 0.0, 0.0, 100, 1160.0, -640.0);
     // X Controller
     str_id = "X";
-    x_controller = init_controller(str_id.c_str(), 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
+    x_controller = init_controller(str_id.c_str(), 2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0);
     // U Controller
     str_id = "U";
     u_controller = init_controller(str_id.c_str(), 25.0, 2.0, 0.0, 0.0, 100, 30.0, -30.0);
     // Y Controller
     str_id = "Y";
-    y_controller = init_controller(str_id.c_str(), 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
+    y_controller = init_controller(str_id.c_str(), 2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0);
     // V Controller
     str_id = "V";
-    v_controller = init_controller(str_id.c_str(), -25.0, -2.0, 0.0, 0.0, 100, 30.0, -30.0);
+    v_controller = init_controller(str_id.c_str(), 25.0, 2.0, 0.0, 0.0, 100, 30.0, -30.0);
 
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
