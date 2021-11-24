@@ -6,22 +6,9 @@ bool CrazyflieAttitudeController::initialize()
 
 	// Lectura de parámetros
 	//Pitch
-	// Pitch Controller
-	str_id = "Pitch";
-	pitch_controller = init_controller(str_id.c_str(), 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
-	if(m_nh_params.hasParam("Phiq1") && m_nh_params.hasParam("Phiq2") && m_nh_params.hasParam("Phiq3")){
-		m_nh_params.getParam("Phiq1", Phi_q[0]);
-		m_nh_params.getParam("Phiq2", Phi_q[1]);
-		m_nh_params.getParam("Phiq3", Phi_q[2]);
-	}
+	pitch_controller = init_controller("Pitch", 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
 	// Roll
-	str_id = "Roll";
-	roll_controller = init_controller(str_id.c_str(), 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
-	if(m_nh_params.hasParam("Thetaq1") && m_nh_params.hasParam("Thetaq2") && m_nh_params.hasParam("Thetaq3")){
-		m_nh_params.getParam("Thetaq1", Theta_q[0]);
-		m_nh_params.getParam("Thetaq2", Theta_q[1]);
-		m_nh_params.getParam("Thetaq3", Theta_q[2]);
-	}
+	roll_controller = init_controller("Roll", 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
 
 	// Publisher:
 	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::RateMixerRefs>("ratemixer_controller_ref", 10);
