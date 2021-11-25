@@ -94,7 +94,7 @@ bool PositionController::iterate(){
         v_controller.error[0] = v_ref - v_signal;
         roll = pid_controller(v_controller, dt);
 
-        RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", thrust, roll, pitch, rpy_ref.yaw);
+        // RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", thrust, roll, pitch, rpy_ref.yaw);
 
 
         // Publish Control CMD

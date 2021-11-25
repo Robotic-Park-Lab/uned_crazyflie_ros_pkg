@@ -113,10 +113,12 @@ private:
 
         double out_i = out;
 
-        if (out > controller.upperlimit)
+        if (out > controller.upperlimit){
             out = controller.upperlimit;
-        if (out < controller.lowerlimit)
+        }
+        if (out < controller.lowerlimit){
             out = controller.lowerlimit;
+        }
 
         controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
 
