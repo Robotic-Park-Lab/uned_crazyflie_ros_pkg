@@ -11,7 +11,6 @@ def generate_launch_description():
         output='screen',
         shell=True,
         emulate_tty=True,
-        arguments=['--ros-args', '--log-level', 'DEBUG'],
         parameters=[
             {'cf_uri': 'radio://0/80/2M/E7E7E7E701'}
         ])

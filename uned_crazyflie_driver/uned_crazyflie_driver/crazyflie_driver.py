@@ -76,7 +76,7 @@ class CMD_Motion():
 
     def send_offboard_setpoint_(self, cf):
         cf.commander.send_setpoint(self.roll, self.pitch, self.yaw,
-                                   self.thrust)
+                                   12000.5)
 
 
 class Logging:
@@ -250,8 +250,8 @@ class CFDriver(Node):
             if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
                 self.cmd_motion_.send_pose_data_(self.scf._cf)
         if CONTROL_MODE == 'OffBoard':
-            if self.scf._is_flying:
-                self.cmd_motion_.send_offboard_setpoint_(self.scf._cf)
+            self.get_logger().info('New Command')
+            self.cmd_motion_.send_offboard_setpoint_(self.scf._cf)
 
     def data_callback(self, timestamp, data):
         msg = StateEstimate()
