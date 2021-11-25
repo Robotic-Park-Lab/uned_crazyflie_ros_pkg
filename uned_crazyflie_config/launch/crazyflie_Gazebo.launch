@@ -73,19 +73,35 @@
     </include>
 
    <node name="uned_crazyflie_driver_node" pkg="uned_crazyflie_driver" type="uned_crazyflie_driver_node" output="screen" />
-   <node name="attitude_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_attitude_controller_node" output="screen" />
+   <node name="attitude_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_attitude_controller_node" output="screen">
+       <!-- Pitch Controller Params -->
+       <param name="PitchKp" value="$(arg PitchKp)"/>
+       <param name="PitchKi" value="$(arg PitchKi)"/>
+       <param name="PitchKd" value="$(arg PitchKd)"/>
+       <param name="PitchKd" value="$(arg PitchKd)"/>
+       <!-- Roll Controller Params -->
+       <param name="RollKp" value="$(arg RollKp)"/>
+       <param name="RollKi" value="$(arg RollKi)"/>
+       <param name="RollKd" value="$(arg RollKd)"/>
+       <param name="RollTd" value="$(arg RollTd)"/>
+       <!-- Yaw Controller Params -->
+       <param name="YawKp" value="$(arg YawKp)"/>
+       <param name="YawKi" value="$(arg YawKi)"/>
+       <param name="YawKd" value="$(arg YawKd)"/>
+       <param name="YawTd" value="$(arg YawTd)"/>
+  </node>
    <node name="ratemixer_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_ratemixer_controller_node" output="screen">
-      <!-- dYaw Controller Params -->
+      <!-- Delta Pitch Controller Params -->
       <param name="dPitchKp" value="$(arg dPitchKp)"/>
       <param name="dPitchKi" value="$(arg dPitchKi)"/>
       <param name="dPitchKd" value="$(arg dPitchKd)"/>
       <param name="dPitchKd" value="$(arg dPitchKd)"/>
-      <!-- Phi Controller Params -->
+      <!-- Delta Roll Controller Params -->
       <param name="dRollKp" value="$(arg dRollKp)"/>
       <param name="dRollKi" value="$(arg dRollKi)"/>
       <param name="dRollKd" value="$(arg dRollKd)"/>
       <param name="dRollTd" value="$(arg dRollTd)"/>
-      <!-- Theta Controller Params -->
+      <!-- Delta Yaw Controller Params -->
       <param name="dYawKp" value="$(arg dYawKp)"/>
       <param name="dYawKi" value="$(arg dYawKi)"/>
       <param name="dYawKd" value="$(arg dYawKd)"/>
