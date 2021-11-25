@@ -14,22 +14,22 @@ bool AttitudeRateController::initialize(){
 
     // Pitch Controller
     str_id = "Pitch";
-    init_controller(str_id.c_str(), pitch_controller, 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
+    pitch_controller = init_controller(str_id.c_str(), 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
     // Roll Controller
     str_id = "Roll";
-    init_controller(str_id.c_str(), roll_controller, 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
+    roll_controller = init_controller(str_id.c_str(), 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
     // Yaw Controller
     str_id = "Yaw";
-    init_controller(str_id.c_str(), yaw_controller, 6.0, 1.0, 0.3499, 0.0583, 100, 20.0, -20.0);
+    yaw_controller = init_controller(str_id.c_str(), 6.0, 1.0, 0.3499, 0.0583, 100, 20.0, -20.0);
     // dPitch Controller
     str_id = "dPitch";
-    init_controller(str_id.c_str(), dpitch_controller, 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
+    dpitch_controller = init_controller(str_id.c_str(), 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
     // dRoll Controller
     str_id = "dRoll";
-    init_controller(str_id.c_str(), droll_controller, 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
+    droll_controller = init_controller(str_id.c_str(), 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
     // dYaw Controller
     str_id = "dYaw";
-    init_controller(str_id.c_str(), dyaw_controller, 120.0, 16.7, 0.0, 0.0, 100, 400.0, -400.0);
+    dyaw_controller = init_controller(str_id.c_str(), 120.0, 16.7, 0.0, 0.0, 100, 400.0, -400.0);
 
     // Publisher:
     pub_cmd_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("cmd_control", 10);

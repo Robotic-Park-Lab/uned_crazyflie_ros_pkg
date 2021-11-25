@@ -122,7 +122,7 @@ private:
 
       return out;
   }
-  struct pid_s init_controller(char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit) {
+  struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit) {
       struct pid_s controller;
 
       controller.kp = kp;
