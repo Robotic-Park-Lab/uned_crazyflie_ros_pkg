@@ -14,7 +14,6 @@ bool CrazyflieRateMixerController::initialize()
 	}else{
 			dpitch_controller = init_controller("dPitch", 250.0, 500.0, 2.5, 0.01, 100, 7720.0, -7720.0);
 	}
-
 	// dRoll Controller
 	if(m_nh_params.hasParam("dRollKp") && m_nh_params.hasParam("dRollKi") && m_nh_params.hasParam("dRollKd")){
 			m_nh_params.getParam("dRollKp", kp);
@@ -25,15 +24,13 @@ bool CrazyflieRateMixerController::initialize()
 	}else{
 			droll_controller = init_controller("dRoll", 250.0, 500.0, 2.5, 0.01, 100, 7720.0, -7720.0);
 	}
-
 	// dYaw Controller
-	// dRoll Controller
 	if(m_nh_params.hasParam("dYawKp") && m_nh_params.hasParam("dYawKi") && m_nh_params.hasParam("dYawKd")){
 			m_nh_params.getParam("dYawKp", kp);
 			m_nh_params.getParam("dYawKi", ki);
 			m_nh_params.getParam("dYawKd", kd);
 			m_nh_params.getParam("dYawTd", td);
-			droll_controller = init_controller("dYaw", kp, ki, kd, td, 100, 7720.0, -7720.0);
+			dyaw_controller = init_controller("dYaw", kp, ki, kd, td, 100, 7720.0, -7720.0);
 	}else{
 			dyaw_controller = init_controller("dYaw", 120.0, 16.7, 0.0, 0.0, 100, 4400.0, -4400.0);
 	}

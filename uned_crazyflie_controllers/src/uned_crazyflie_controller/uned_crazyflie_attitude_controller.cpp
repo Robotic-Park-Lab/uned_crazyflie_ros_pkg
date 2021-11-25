@@ -5,10 +5,36 @@ bool CrazyflieAttitudeController::initialize()
 	ROS_INFO("CrazyflieAttitudeController::inicialize() ok.");
 
 	// Lectura de parámetros
-	//Pitch
-	pitch_controller = init_controller("Pitch", 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
-	// Roll
-	roll_controller = init_controller("Roll", 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
+	// Pitch Controller
+	if(m_nh_params.hasParam("PitchKp") && m_nh_params.hasParam("PitchKi") && m_nh_params.hasParam("PitchKd")){
+			m_nh_params.getParam("PitchKp", kp);
+			m_nh_params.getParam("PitchKi", ki);
+			m_nh_params.getParam("PitchKd", kd);
+			m_nh_params.getParam("PitchTd", td);
+			pitch_controller = init_controller("Pitch", kp, ki, kd, td, 100, 720.0, -720.0);
+	}else{
+			pitch_controller = init_controller("Pitch", 6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0);
+	}
+	// Roll Controller
+	if(m_nh_params.hasParam("RollKp") && m_nh_params.hasParam("RollKi") && m_nh_params.hasParam("RollKd")){
+			m_nh_params.getParam("RollKp", kp);
+			m_nh_params.getParam("RollKi", ki);
+			m_nh_params.getParam("RollKd", kd);
+			m_nh_params.getParam("RollTd", td);
+			roll_controller = init_controller("Roll", kp, ki, kd, td, 100, 720.0, -720.0);
+	}else{
+			roll_controller = init_controller("Roll", 6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0);
+	}
+	// Yaw Controller
+	if(m_nh_params.hasParam("YawKp") && m_nh_params.hasParam("YawKi") && m_nh_params.hasParam("YawKd")){
+			m_nh_params.getParam("YawKp", kp);
+			m_nh_params.getParam("YawKi", ki);
+			m_nh_params.getParam("YawKd", kd);
+			m_nh_params.getParam("YawTd", td);
+			yaw_controller = init_controller("Yaw", kp, ki, kd, td, 100, 400.0, -400.0);
+	}else{
+			yaw_controller = init_controller("Yaw", 6.0, 1.0, 0.349, 0.05816, 100, 400.0, -400.0);
+	}
 
 	// Publisher:
 	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::RateMixerRefs>("ratemixer_controller_ref", 10);

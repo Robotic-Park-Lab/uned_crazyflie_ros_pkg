@@ -116,7 +116,7 @@ class CrazyflieAttitudeController
     }
 
     // Controllers
-    struct pid_s pitch_controller, roll_controller, yaw_controller, dpitch_controller, droll_controller, dyaw_controller;
+    struct pid_s pitch_controller, roll_controller, yaw_controller;
     // Control Signals
     double dpitch_ref, droll_ref;
     // Angles
@@ -126,6 +126,7 @@ class CrazyflieAttitudeController
     bool first_pose_received = false;
     bool first_ref_received = false;
     double dt = 0.002;
+    double kp, ki, kd, td;
 
     double omega, pitch_ref, roll_ref, dyaw, pitch_dron, roll_dron;
 

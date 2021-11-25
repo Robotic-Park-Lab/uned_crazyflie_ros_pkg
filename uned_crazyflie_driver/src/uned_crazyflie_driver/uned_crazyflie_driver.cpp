@@ -30,7 +30,7 @@ bool CrazyflieDriverSim::iterate()
   }
 	if(onboard){
 		attitudeRateMixerRefsCallback(thrust, pitch, roll, yaw);
-	  ROS_INFO("Onboard Control: Thrust: %0.2f \tRoll: %0.2f \tPitch: %0.2f \tYaw: %0.2f", thrust, roll, pitch, yaw);
+	  // ROS_INFO("Onboard Control: Thrust: %0.2f \tRoll: %0.2f \tPitch: %0.2f \tYaw: %0.2f", thrust, roll, pitch, yaw);
 		std_msgs::Float64 msg_omega;
 		msg_omega.data = thrust;
 		m_pub_omega.publish(msg_omega);
