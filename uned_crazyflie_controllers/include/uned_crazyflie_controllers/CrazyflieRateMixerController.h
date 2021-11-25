@@ -59,6 +59,7 @@ class CrazyflieRateMixerController
      bool first_pose_received = false;
      bool first_ref_received = false;
      double dt = 0.002;
+     double kp, ki, kd, td;
      struct euler_angles rpy_ref, rpy_state;
      // Controllers
      struct pid_s dpitch_controller, droll_controller, dyaw_controller;

@@ -5,11 +5,38 @@ bool CrazyflieRateMixerController::initialize()
 	ROS_INFO("CrazyflieRateMixerController::inicialize() ok.");
 
 	// dPitch Controller
-	dpitch_controller = init_controller("dPitch", 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
+	if(m_nh_params.hasParam("dPitchKp") && m_nh_params.hasParam("dPitchKi") && m_nh_params.hasParam("dPitchKd")){
+			m_nh_params.getParam("dPitchKp", kp);
+			m_nh_params.getParam("dPitchKi", ki);
+			m_nh_params.getParam("dPitchKd", kd);
+			m_nh_params.getParam("dPitchTd", td);
+			dpitch_controller = init_controller("dPitch", kp, ki, kd, td, 100, 7720.0, -7720.0);
+	}else{
+			dpitch_controller = init_controller("dPitch", 250.0, 500.0, 2.5, 0.01, 100, 7720.0, -7720.0);
+	}
+
 	// dRoll Controller
-	droll_controller = init_controller("dRoll", 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
+	if(m_nh_params.hasParam("dRollKp") && m_nh_params.hasParam("dRollKi") && m_nh_params.hasParam("dRollKd")){
+			m_nh_params.getParam("dRollKp", kp);
+			m_nh_params.getParam("dRollKi", ki);
+			m_nh_params.getParam("dRollKd", kd);
+			m_nh_params.getParam("dRollTd", td);
+			droll_controller = init_controller("dRoll", kp, ki, kd, td, 100, 7720.0, -7720.0);
+	}else{
+			droll_controller = init_controller("dRoll", 250.0, 500.0, 2.5, 0.01, 100, 7720.0, -7720.0);
+	}
+
 	// dYaw Controller
-	dyaw_controller = init_controller("dYaw", 120.0, 16.7, 0.0, 0.0, 100, 400.0, -400.0);
+	// dRoll Controller
+	if(m_nh_params.hasParam("dYawKp") && m_nh_params.hasParam("dYawKi") && m_nh_params.hasParam("dYawKd")){
+			m_nh_params.getParam("dYawKp", kp);
+			m_nh_params.getParam("dYawKi", ki);
+			m_nh_params.getParam("dYawKd", kd);
+			m_nh_params.getParam("dYawTd", td);
+			droll_controller = init_controller("dYaw", kp, ki, kd, td, 100, 7720.0, -7720.0);
+	}else{
+			dyaw_controller = init_controller("dYaw", 120.0, 16.7, 0.0, 0.0, 100, 4400.0, -4400.0);
+	}
 
 	// Publisher:
 	// Actuators
