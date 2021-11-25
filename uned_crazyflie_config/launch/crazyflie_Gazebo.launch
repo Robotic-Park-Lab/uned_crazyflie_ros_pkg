@@ -17,35 +17,35 @@
   <arg name="gui" default="true"/>
   <arg name="verbose" default="false"/>
   <!-- Delta Pitch Controller Params -->
-  <arg name="dPitchKp" default="250.0"/>
-  <arg name="dPitchKi" default="500.0"/>
-  <arg name="dPitchKd" default="2.5"/>
-  <arg name="dPitchTd" default="0.01"/>
+  <arg name="dPitchKp" default="110.0"/>
+  <arg name="dPitchKi" default="0.0"/>
+  <arg name="dPitchKd" default="0.0"/>
+  <arg name="dPitchTd" default="0.0"/>
   <!-- Delta Roll Controller Params -->
-  <arg name="dRollKp" default="250.0"/>
-  <arg name="dRollKi" default="500.0"/>
-  <arg name="dRollKd" default="2.5"/>
-  <arg name="dRollTd" default="0.01"/>
+  <arg name="dRollKp" default="110.0"/>
+  <arg name="dRollKi" default="0.0"/>
+  <arg name="dRollKd" default="0.0"/>
+  <arg name="dRollTd" default="0.0"/>
   <!-- Delta Yaw Controller Params -->
-  <arg name="dYawKp" default="120.0"/>
-  <arg name="dYawKi" default="16.7"/>
-  <arg name="dYawKd" default="0.0"/>
-  <arg name="dYawTd" default="0.0"/>
+  <arg name="dYawKp" default="110.0"/>
+  <arg name="dYawKi" default="16.6980"/>
+  <arg name="dYawKd" default="2.497"/>
+  <arg name="dYawTd" default="0.0227"/>
   <!-- Pitch Controller Params -->
-  <arg name="PitchKp" default="6.0"/>
-  <arg name="PitchKi" default="3.0"/>
+  <arg name="PitchKp" default="3.5"/>
+  <arg name="PitchKi" default="2.0"/>
   <arg name="PitchKd" default="0.0"/>
   <arg name="PitchTd" default="0.0"/>
   <!-- Roll Controller Params -->
-  <arg name="RollKp" default="6.0"/>
-  <arg name="RollKi" default="3.0"/>
+  <arg name="RollKp" default="3.5"/>
+  <arg name="RollKi" default="2.0"/>
   <arg name="RollKd" default="0.0"/>
   <arg name="RollTd" default="0.0"/>
   <!-- Yaw Controller Params -->
-  <arg name="YawKp" default="6.0"/>
-  <arg name="YawKi" default="1.0"/>
-  <arg name="YawKd" default="0.349"/>
-  <arg name="YawTd" default="0.05816"/>
+  <arg name="YawKp" default="3.0"/>
+  <arg name="YawKi" default="0.0"/>
+  <arg name="YawKd" default="0.0"/>
+  <arg name="YawTd" default="0.0"/>
 
   <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find uned_interface)/Config/models"/>
   <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find uned_interface)/Config/models"/>

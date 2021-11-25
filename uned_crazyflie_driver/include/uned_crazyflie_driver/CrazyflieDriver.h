@@ -43,7 +43,7 @@ class CrazyflieDriverSim
      void onboardCallback(const std_msgs::Float64MultiArray::ConstPtr& msg);
      void cmdcontrolCallback(const std_msgs::Float64MultiArray::ConstPtr& msg);
      void rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities);
-     void attitudeRateMixerRefsCallback(const double omega, const double pitch, const double roll, const double dyaw);
+     void attitudeRateMixerRefsCallback(const double omega, const double pitch, const double roll, const double yaw);
 
 
      std_msgs::String m_controller_type, m_robot_id, m_controller_mode;

@@ -7,7 +7,6 @@ bool CrazyflieDriverSim::initialize()
   // Publisher:
   m_pub_cmdcontrol = m_nh.advertise<mav_msgs::Actuators>("command/motor_speed", 10);
 	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::AttitudeRefs>("attitude_controller_ref", 10);
-	m_pub_dyaw = m_nh.advertise<std_msgs::Float64>("dyaw_controller_ref", 10);
 	m_pub_omega = m_nh.advertise<std_msgs::Float64>("omega_signal", 10);
 
 	// Subscriber:
@@ -34,9 +33,6 @@ bool CrazyflieDriverSim::iterate()
 		std_msgs::Float64 msg_omega;
 		msg_omega.data = thrust;
 		m_pub_omega.publish(msg_omega);
-		std_msgs::Float64 msg_dyaw;
-		msg_dyaw.data = 0.0;
-		m_pub_dyaw.publish(msg_dyaw);
 	}
 	return true;
 }
@@ -71,13 +67,14 @@ void CrazyflieDriverSim::rotorvelocitiesCallback(const Eigen::Vector4d rotor_vel
 	m_pub_cmdcontrol.publish(actuator_msg);
 }
 
-void CrazyflieDriverSim::attitudeRateMixerRefsCallback(const double omega, const double pitch, const double roll, const double dyaw)
+void CrazyflieDriverSim::attitudeRateMixerRefsCallback(const double omega, const double pitch, const double roll, const double yaw)
 {
 	uned_crazyflie_controllers::AttitudeRefs ref_msg;
 
 	ref_msg.timestamp = ros::Time::now().toSec();
 	ref_msg.pitch = pitch;
 	ref_msg.roll = roll;
+	ref_msg.yaw = yaw;
 
 	m_pub_control_signal.publish(ref_msg);
 }
