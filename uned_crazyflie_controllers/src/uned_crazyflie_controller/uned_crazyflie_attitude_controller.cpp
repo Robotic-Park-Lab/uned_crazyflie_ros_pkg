@@ -62,8 +62,11 @@ bool CrazyflieAttitudeController::iterate()
 			// Roll controller
 			roll_controller.error[0] = (roll_ref - rpy_state.roll);
 			droll_ref = pid_controller(roll_controller, dt);
+			// Yaw controller
+			yaw_controller.error[0] = (yaw_ref - rpy_state.yaw);
+			dyaw_ref = pid_controller(yaw_controller, dt);
 
-			rateMixerRefsCallback(dpitch_ref,droll_ref, 0.0);
+			rateMixerRefsCallback(dpitch_ref,droll_ref, dyaw_ref);
 	}
 	else {
 			ROS_INFO_ONCE("AttitudeRateController::iterate(). Waiting reference & feedback orientation");
@@ -84,6 +87,7 @@ void CrazyflieAttitudeController::attitudeRefsCallback(const uned_crazyflie_cont
 {
 	pitch_ref = msg->pitch;
 	roll_ref = msg->roll;
+	yaw_ref = msg->yaw;
 	if (!first_ref_received)
 			first_ref_received = true;
 }
@@ -94,6 +98,7 @@ void CrazyflieAttitudeController::rateMixerRefsCallback(const double dpitch, con
 	ref_msg.timestamp = ros::Time::now().toSec();
 	ref_msg.dpitch = dpitch;
 	ref_msg.droll = droll;
+	ref_msg.dyaw = dyaw;
 
 	m_pub_control_signal.publish(ref_msg);
 }

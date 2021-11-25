@@ -46,8 +46,6 @@ bool CrazyflieRateMixerController::initialize()
 
 	m_sub_omega = m_nh.subscribe( "omega_signal", 10, &CrazyflieRateMixerController::omegaCallback, this);
 
-	m_sub_dyaw = m_nh.subscribe( "dyaw_controller_ref", 10, &CrazyflieRateMixerController::dyawCallback, this);
-
 	return true;
 }
 
@@ -116,6 +114,7 @@ void CrazyflieRateMixerController::rateMixerRefsCallback(const uned_crazyflie_co
 {
 	dpitch_ref = msg->dpitch;
 	droll_ref = msg->droll;
+	dyaw_ref = msg->dyaw;
 	if (!first_ref_received)
 			first_ref_received = true;
 }
@@ -123,9 +122,4 @@ void CrazyflieRateMixerController::rateMixerRefsCallback(const uned_crazyflie_co
 void CrazyflieRateMixerController::omegaCallback(const std_msgs::Float64::ConstPtr& msg)
 {
 	omega = msg->data;
-}
-
-void CrazyflieRateMixerController::dyawCallback(const std_msgs::Float64::ConstPtr& msg)
-{
-	dyaw_ref = msg->data;
 }

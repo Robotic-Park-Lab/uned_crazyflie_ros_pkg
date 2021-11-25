@@ -118,7 +118,8 @@ class CrazyflieAttitudeController
     // Controllers
     struct pid_s pitch_controller, roll_controller, yaw_controller;
     // Control Signals
-    double dpitch_ref, droll_ref;
+    double pitch_ref, roll_ref, yaw_ref;
+    double dpitch_ref, droll_ref, dyaw_ref;
     // Angles
     struct euler_angles rpy_ref, rpy_state;
     std::string m_controller_type, m_robot_id, m_controller_mode, str_id;
@@ -128,9 +129,4 @@ class CrazyflieAttitudeController
     double dt = 0.002;
     double kp, ki, kd, td;
 
-    double omega, pitch_ref, roll_ref, dyaw, pitch_dron, roll_dron;
-
-    double pitch_error[3], dpitch[2], Phi_q[3];
-
-    double roll_error[3], droll[2], Theta_q[3];
 };
