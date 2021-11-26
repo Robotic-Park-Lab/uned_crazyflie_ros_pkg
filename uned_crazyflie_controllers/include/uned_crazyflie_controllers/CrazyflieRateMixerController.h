@@ -16,6 +16,15 @@
 #include <mav_msgs/Actuators.h>
 #include <uned_crazyflie_controllers/RateMixerRefs.h>
 
+struct pid_s{
+   double kp, ki, kd, td;
+   int nd;
+   double error[2], integral, derivative[2], upperlimit, lowerlimit;
+};
+struct euler_angles{
+   double roll, pitch, yaw;
+};
+
 class CrazyflieRateMixerController
 {
    public:
@@ -42,9 +51,12 @@ class CrazyflieRateMixerController
     void rotorvelocitiesCallback(const Eigen::Vector4d rotor_velocities);
     void rateMixerRefsCallback(const uned_crazyflie_controllers::RateMixerRefs::ConstPtr& msg);
     void omegaCallback(const std_msgs::Float64::ConstPtr& msg);
-    void dyawCallback(const std_msgs::Float64::ConstPtr& msg);
+    euler_angles quaternion2euler(geometry_msgs::Quaternion quat);
+    double pid_controller(struct pid_s controller, double dt);
+    struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit);
 
     std::string m_controller_type, m_robot_id, m_controller_mode;
+    struct pid_s pitch_controller, roll_controller, yaw_controller;
     geometry_msgs::Pose m_GT_pose;
     Eigen::Vector4d ref_rotor_velocities;
 

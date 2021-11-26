@@ -30,8 +30,6 @@ bool CrazyflieRateMixerController::initialize()
 
 	m_sub_omega = m_nh.subscribe( "omega_signal", 10, &CrazyflieRateMixerController::omegaCallback, this);
 
-	m_sub_dyaw = m_nh.subscribe( "dyaw_controller_ref", 10, &CrazyflieRateMixerController::dyawCallback, this);
-
 	return true;
 }
 
@@ -134,7 +132,64 @@ void CrazyflieRateMixerController::omegaCallback(const std_msgs::Float64::ConstP
 	omega = msg->data;
 }
 
-void CrazyflieRateMixerController::dyawCallback(const std_msgs::Float64::ConstPtr& msg)
-{
-	double dyaw_test = msg->data;
+euler_angles CrazyflieRateMixerController::quaternion2euler(geometry_msgs::Quaternion quat){
+	euler_angles rpy;
+
+	// roll (x-axis rotation)
+	double sinr_cosp = 2 * (quat.w * quat.x + quat.y * quat.z);
+	double cosr_cosp = 1 - 2 * (quat.x * quat.x + quat.y * quat.y);
+	rpy.roll = std::atan2(sinr_cosp, cosr_cosp) * (180 / 3.14159265);
+
+	// pitch (y-axis rotation)
+	double sinp = 2 * (quat.w * quat.y - quat.z * quat.x);
+	if (std::abs(sinp) >= 1)
+	rpy.pitch = std::copysign(3.14159265 / 2, sinp) * (180 / 3.14159265);
+	else
+	rpy.pitch = std::asin(sinp) * (180 / 3.14159265);
+
+	// yaw (z-axis rotation)
+	double siny_cosp = 2 * (quat.w * quat.z + quat.x * quat.y);
+	double cosy_cosp = 1 - 2 * (quat.y * quat.y + quat.z * quat.z);
+	rpy.yaw = std::atan2(siny_cosp, cosy_cosp) * (180 / 3.14159265);
+
+	return rpy;
+}
+double CrazyflieRateMixerController::pid_controller(struct pid_s controller, double dt){
+	double outP = controller.kp * controller.error[0];
+	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
+	controller.derivative[0] = (controller.td/(controller.td+controller.nd+dt))*controller.derivative[1]+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
+	double out = outP + controller.integral + controller.derivative[0];
+
+	double out_i = out;
+
+	if (out > controller.upperlimit)
+	out = controller.upperlimit;
+	if (out < controller.lowerlimit)
+	out = controller.lowerlimit;
+
+	controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
+
+	controller.error[1] = controller.error[0];
+	controller.derivative[1] = controller.derivative[0];
+
+	return out;
+}
+struct pid_s CrazyflieRateMixerController::init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
+	struct pid_s controller;
+
+	controller.kp = kp;
+	controller.ki = ki;
+	controller.kd = kd;
+	controller.td = td;
+	controller.nd = nd;
+	controller.error[0] = 0.0;
+	controller.error[1] = 0.0;
+	controller.integral = 0.0;
+	controller.derivative[0] = 0.0;
+	controller.derivative[1] = 0.0;
+	controller.upperlimit = upperlimit;
+	controller.lowerlimit = lowerlimit;
+
+	ROS_INFO("%s Controller: kp: %0.2f \tki: %0.2f \tkd: %0.2f", id, controller.kp, controller.ki, controller.kd);
+	return controller;
 }
