@@ -121,19 +121,19 @@ euler_angles CrazyflieRateMixerController::quaternion2euler(geometry_msgs::Quate
 	// roll (x-axis rotation)
 	double sinr_cosp = 2 * (quat.w * quat.x + quat.y * quat.z);
 	double cosr_cosp = 1 - 2 * (quat.x * quat.x + quat.y * quat.y);
-	rpy.roll = std::atan2(sinr_cosp, cosr_cosp) * (180 / 3.14159265);
+	rpy.roll = std::atan2(sinr_cosp, cosr_cosp) * (180 / PI);
 
 	// pitch (y-axis rotation)
 	double sinp = 2 * (quat.w * quat.y - quat.z * quat.x);
 	if (std::abs(sinp) >= 1)
-	rpy.pitch = std::copysign(3.14159265 / 2, sinp) * (180 / 3.14159265);
+	rpy.pitch = std::copysign(PI / 2, sinp) * (180 / PI);
 	else
-	rpy.pitch = std::asin(sinp) * (180 / 3.14159265);
+	rpy.pitch = std::asin(sinp) * (180 / PI);
 
 	// yaw (z-axis rotation)
 	double siny_cosp = 2 * (quat.w * quat.z + quat.x * quat.y);
 	double cosy_cosp = 1 - 2 * (quat.y * quat.y + quat.z * quat.z);
-	rpy.yaw = std::atan2(siny_cosp, cosy_cosp) * (180 / 3.14159265);
+	rpy.yaw = std::atan2(siny_cosp, cosy_cosp) * (180 / PI);
 
 	return rpy;
 }

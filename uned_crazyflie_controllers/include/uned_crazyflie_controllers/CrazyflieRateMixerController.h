@@ -40,7 +40,7 @@ class CrazyflieRateMixerController
 
 	ros::Publisher m_pub_motor_velocity_reference;
 
-	ros::Subscriber m_sub_GT_pose, m_sub_ratemixer_ref, m_sub_omega, m_sub_dyaw;
+	ros::Subscriber m_sub_GT_pose, m_sub_ratemixer_ref, m_sub_omega;
 
 	bool initialize();
 
@@ -68,9 +68,4 @@ class CrazyflieRateMixerController
     double C = (4070.3*fm)*PI/30;
     double pitch_dron[2], roll_dron[2], yaw_dron[2];
 
-    double dpitch_error[3],dpitch[2], Dphi_q[3];
-
-    double droll_error[3], droll[2], Dtheta_q[3];
-
-    double dyaw_error[3], dyaw[2], Dpsi_q[3];
 };
