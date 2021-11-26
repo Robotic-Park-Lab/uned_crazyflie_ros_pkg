@@ -14,11 +14,15 @@ bool CrazyflieRateMixerController::initialize()
 	}else{
 			dpitch_controller = init_controller("dPitch", 250, 500, 2.5, 0.01, 100, 0.0, 0.0);
 	}
-
-	if(m_nh_params.hasParam("Dthetaq1") && m_nh_params.hasParam("Dthetaq2") && m_nh_params.hasParam("Dthetaq3")){
-		m_nh_params.getParam("Dthetaq1", Dtheta_q[0]);
-		m_nh_params.getParam("Dthetaq2", Dtheta_q[1]);
-		m_nh_params.getParam("Dthetaq3", Dtheta_q[2]);
+	// dRoll Controller
+	if(m_nh_params.hasParam("dRollKp") && m_nh_params.hasParam("dRollKi") && m_nh_params.hasParam("dRollKd")){
+			m_nh_params.getParam("dRollKp", kp);
+			m_nh_params.getParam("dRollKi", ki);
+			m_nh_params.getParam("dRollKd", kd);
+			m_nh_params.getParam("dRollTd", td);
+			droll_controller = init_controller("dRoll", kp, ki, kd, td, 100, 7720.0, -7720.0);
+	}else{
+			droll_controller = init_controller("dRoll", 250.0, 500.0, 2.5, 0.01, 100, 7720.0, -7720.0);
 	}
 	if(m_nh_params.hasParam("Dpsiq1") && m_nh_params.hasParam("Dpsiq2") && m_nh_params.hasParam("Dpsiq3")){
 		m_nh_params.getParam("Dpsiq1", Dpsi_q[0]);
@@ -52,20 +56,11 @@ bool CrazyflieRateMixerController::iterate()
 
 	// DRoll Controller
 	roll_dron[1] = roll_dron[0];
-	double sinr_cosp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.x+m_GT_pose.orientation.y*m_GT_pose.orientation.z);
-	double cosr_cosp = 1 - 2 * (m_GT_pose.orientation.x*m_GT_pose.orientation.x+m_GT_pose.orientation.y*m_GT_pose.orientation.y);
-	roll_dron[0] = std::atan2(sinr_cosp,cosr_cosp)*180/PI;
+	roll_dron[0] = rpy_state.roll;
 	droll_dron = (roll_dron[0]-roll_dron[1])/0.002;
-	{
-		// Update error vector
-		droll_error[2] = droll_error[1];
-		droll_error[1] = droll_error[0];
-		droll_error[0] = droll_ref - droll_dron;
+	droll_controller.error[0] = droll_ref - droll_dron;
+	delta_roll = pid_controller(droll_controller, 0.002);
 
-		// Update signal vector
-		droll[1] = droll[0];
-		droll[0] = droll[1] + Dtheta_q[0]*droll_error[0] + Dtheta_q[1]*droll_error[1] + Dtheta_q[2]*droll_error[2];
-	}
 	// DYaw Controller
 	yaw_dron[1] = yaw_dron[0];
 	double siny_cosp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.z+m_GT_pose.orientation.x*m_GT_pose.orientation.y);
@@ -84,10 +79,10 @@ bool CrazyflieRateMixerController::iterate()
 	}
 	// Control Mixer
 	{
-		ref_rotor_velocities[0] = (omega - 0.5*delta_pitch - 0.5*droll[0] - dyaw[0])*fm;
-		ref_rotor_velocities[1] = (omega + 0.5*delta_pitch - 0.5*droll[0] + dyaw[0])*fm;
-		ref_rotor_velocities[2] = (omega + 0.5*delta_pitch + 0.5*droll[0] - dyaw[0])*fm;
-		ref_rotor_velocities[3] = (omega - 0.5*delta_pitch + 0.5*droll[0] + dyaw[0])*fm;
+		ref_rotor_velocities[0] = (omega - 0.5*delta_pitch - 0.5*delta_roll - dyaw[0])*fm;
+		ref_rotor_velocities[1] = (omega + 0.5*delta_pitch - 0.5*delta_roll + dyaw[0])*fm;
+		ref_rotor_velocities[2] = (omega + 0.5*delta_pitch + 0.5*delta_roll - dyaw[0])*fm;
+		ref_rotor_velocities[3] = (omega - 0.5*delta_pitch + 0.5*delta_roll + dyaw[0])*fm;
 
 		rotorvelocitiesCallback(ref_rotor_velocities);
 	}

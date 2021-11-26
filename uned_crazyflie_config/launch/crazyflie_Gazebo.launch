@@ -20,12 +20,12 @@
   <arg name="dPitchKp" default="250.0"/>
   <arg name="dPitchKi" default="500.0"/>
   <arg name="dPitchKd" default="2.5"/>
-  <arg name="dPitchTd" default="0.001"/>
+  <arg name="dPitchTd" default="0.01"/>
   <!-- Delta Roll Controller Params -->
-  <arg name="dRollKp" default="110.0"/>
-  <arg name="dRollKi" default="0.0"/>
-  <arg name="dRollKd" default="0.0"/>
-  <arg name="dRollTd" default="0.0"/>
+  <arg name="dRollKp" default="250.0"/>
+  <arg name="dRollKi" default="500.0"/>
+  <arg name="dRollKd" default="2.5"/>
+  <arg name="dRollTd" default="0.01"/>
   <!-- Delta Yaw Controller Params -->
   <arg name="dYawKp" default="110.0"/>
   <arg name="dYawKi" default="16.6980"/>
@@ -112,6 +112,11 @@
     <param name="dPitchKi" value="$(arg dPitchKi)"/>
     <param name="dPitchKd" value="$(arg dPitchKd)"/>
     <param name="dPitchKd" value="$(arg dPitchKd)"/>
+    <!-- Delta Roll Controller Params -->
+    <param name="dRollKp" value="$(arg dRollKp)"/>
+    <param name="dRollKi" value="$(arg dRollKi)"/>
+    <param name="dRollKd" value="$(arg dRollKd)"/>
+    <param name="dRollKd" value="$(arg dRollKd)"/>
    </node>
 
    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />

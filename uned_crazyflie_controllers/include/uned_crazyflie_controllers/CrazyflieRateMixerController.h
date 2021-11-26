@@ -58,7 +58,7 @@ class CrazyflieRateMixerController
     std::string m_controller_type, m_robot_id, m_controller_mode;
     struct pid_s dpitch_controller, droll_controller, dyaw_controller;
     euler_angles rpy_state;
-    double kp, ki, kd, td, delta_pitch;
+    double kp, ki, kd, td, delta_pitch,delta_roll;
     geometry_msgs::Pose m_GT_pose;
     Eigen::Vector4d ref_rotor_velocities;
 
