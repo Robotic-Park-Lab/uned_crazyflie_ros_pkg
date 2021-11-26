@@ -17,19 +17,19 @@
   <arg name="gui" default="true"/>
   <arg name="verbose" default="false"/>
   <!-- Delta Pitch Controller Params -->
-  <arg name="dPitchKp" default="250.0"/>
-  <arg name="dPitchKi" default="500.0"/>
-  <arg name="dPitchKd" default="2.5"/>
-  <arg name="dPitchTd" default="0.01"/>
+  <arg name="dPitchKp" default="110.0"/>
+  <arg name="dPitchKi" default="0.0"/>
+  <arg name="dPitchKd" default="0.0"/>
+  <arg name="dPitchTd" default="0.0"/>
   <!-- Delta Roll Controller Params -->
-  <arg name="dRollKp" default="250.0"/>
-  <arg name="dRollKi" default="500.0"/>
-  <arg name="dRollKd" default="2.5"/>
-  <arg name="dRollTd" default="0.01"/>
+  <arg name="dRollKp" default="110.0"/>
+  <arg name="dRollKi" default="0.0"/>
+  <arg name="dRollKd" default="0.0"/>
+  <arg name="dRollTd" default="0.0"/>
   <!-- Delta Yaw Controller Params -->
-  <arg name="dYawKp" default="110.0"/>
+  <arg name="dYawKp" default="120.0"/>
   <arg name="dYawKi" default="16.6980"/>
-  <arg name="dYawKd" default="2.497"/>
+  <arg name="dYawKd" default="0.0"/>
   <arg name="dYawTd" default="0.0227"/>
   <!-- Pitch Controller Params -->
   <arg name="PitchKp" default="6.0"/>
@@ -50,10 +50,6 @@
   <arg name="Dpsiq1" default="70.0167"/>
   <arg name="Dpsiq2" default="-69.9833"/>
   <arg name="Dpsiq3" default="0.0"/>
-  <!-- Theta Controller Params -->
-  <arg name="Dthetaq1" default="70.0"/>
-  <arg name="Dthetaq2" default="-70.0"/>
-  <arg name="Dthetaq3" default="0.0"/>
 
   <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find uned_interface)/Config/models"/>
   <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find uned_interface)/Config/models"/>
@@ -103,10 +99,6 @@
     <param name="Dpsiq1" value="$(arg Dpsiq1)"/>
     <param name="Dpsiq2" value="$(arg Dpsiq2)"/>
     <param name="Dpsiq3" value="$(arg Dpsiq3)"/>
-    <!-- Theta Controller Params -->
-    <param name="Dthetaq1" value="$(arg Dthetaq1)"/>
-    <param name="Dthetaq2" value="$(arg Dthetaq2)"/>
-    <param name="Dthetaq3" value="$(arg Dthetaq3)"/>
     <!-- Delta Pitch Controller Params -->
     <param name="dPitchKp" value="$(arg dPitchKp)"/>
     <param name="dPitchKi" value="$(arg dPitchKi)"/>
@@ -117,6 +109,11 @@
     <param name="dRollKi" value="$(arg dRollKi)"/>
     <param name="dRollKd" value="$(arg dRollKd)"/>
     <param name="dRollKd" value="$(arg dRollKd)"/>
+    <!-- Delta Yaw Controller Params -->
+    <param name="dYawKp" value="$(arg dYawKp)"/>
+    <param name="dYawKi" value="$(arg dYawKi)"/>
+    <param name="dYawKd" value="$(arg dYawKd)"/>
+    <param name="dYawKd" value="$(arg dYawKd)"/>
    </node>
 
    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />

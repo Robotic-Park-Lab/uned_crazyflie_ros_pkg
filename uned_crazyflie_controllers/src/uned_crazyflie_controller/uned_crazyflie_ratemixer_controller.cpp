@@ -20,14 +20,19 @@ bool CrazyflieRateMixerController::initialize()
 			m_nh_params.getParam("dRollKi", ki);
 			m_nh_params.getParam("dRollKd", kd);
 			m_nh_params.getParam("dRollTd", td);
-			droll_controller = init_controller("dRoll", kp, ki, kd, td, 100, 7720.0, -7720.0);
+			droll_controller = init_controller("dRoll", kp, ki, kd, td, 100, 0.0, -0.0);
 	}else{
-			droll_controller = init_controller("dRoll", 250.0, 500.0, 2.5, 0.01, 100, 7720.0, -7720.0);
+			droll_controller = init_controller("dRoll", 250.0, 500.0, 2.5, 0.01, 100, 0.0, -0.0);
 	}
-	if(m_nh_params.hasParam("Dpsiq1") && m_nh_params.hasParam("Dpsiq2") && m_nh_params.hasParam("Dpsiq3")){
-		m_nh_params.getParam("Dpsiq1", Dpsi_q[0]);
-		m_nh_params.getParam("Dpsiq2", Dpsi_q[1]);
-		m_nh_params.getParam("Dpsiq3", Dpsi_q[2]);
+	// dYaw Controller
+	if(m_nh_params.hasParam("dYawKp") && m_nh_params.hasParam("dYawKi") && m_nh_params.hasParam("dYawKd")){
+			m_nh_params.getParam("dYawKp", kp);
+			m_nh_params.getParam("dYawKi", ki);
+			m_nh_params.getParam("dYawKd", kd);
+			m_nh_params.getParam("dYawTd", td);
+			dyaw_controller = init_controller("dYaw", kp, ki, kd, td, 100, 0.0, -0.0);
+	}else{
+			dyaw_controller = init_controller("dYaw", 120.0, 16.7, 0.0, 0.0, 100, 0.0, -0.0);
 	}
 	// Publisher:
 	// Actuators
@@ -63,26 +68,17 @@ bool CrazyflieRateMixerController::iterate()
 
 	// DYaw Controller
 	yaw_dron[1] = yaw_dron[0];
-	double siny_cosp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.z+m_GT_pose.orientation.x*m_GT_pose.orientation.y);
-	double cosy_cosp = 1 - 2 * (m_GT_pose.orientation.y*m_GT_pose.orientation.y + m_GT_pose.orientation.z*m_GT_pose.orientation.z);
-	yaw_dron[0] = std::atan2(siny_cosp,cosy_cosp)*180/PI;
+	yaw_dron[0] = rpy_state.yaw;
 	dyaw_dron = (yaw_dron[0]-yaw_dron[1])/0.002;
-	{
-		// Update error vector
-		dyaw_error[2] = dyaw_error[1];
-		dyaw_error[1] = dyaw_error[0];
-		dyaw_error[0] = dyaw_ref - dyaw_dron;
+	dyaw_controller.error[0] = dyaw_ref - dyaw_dron;
+	delta_yaw = pid_controller(dyaw_controller, 0.002);
 
-		// Update signal vector
-		dyaw[1] = dyaw[0];
-		dyaw[0] = dyaw[1] + Dpsi_q[0]*dyaw_error[0] + Dpsi_q[1]*dyaw_error[1] + Dpsi_q[2]*dyaw_error[2];
-	}
 	// Control Mixer
 	{
-		ref_rotor_velocities[0] = (omega - 0.5*delta_pitch - 0.5*delta_roll - dyaw[0])*fm;
-		ref_rotor_velocities[1] = (omega + 0.5*delta_pitch - 0.5*delta_roll + dyaw[0])*fm;
-		ref_rotor_velocities[2] = (omega + 0.5*delta_pitch + 0.5*delta_roll - dyaw[0])*fm;
-		ref_rotor_velocities[3] = (omega - 0.5*delta_pitch + 0.5*delta_roll + dyaw[0])*fm;
+		ref_rotor_velocities[0] = (omega - 0.5*delta_pitch - 0.5*delta_roll - delta_yaw)*fm;
+		ref_rotor_velocities[1] = (omega + 0.5*delta_pitch - 0.5*delta_roll + delta_yaw)*fm;
+		ref_rotor_velocities[2] = (omega + 0.5*delta_pitch + 0.5*delta_roll - delta_yaw)*fm;
+		ref_rotor_velocities[3] = (omega - 0.5*delta_pitch + 0.5*delta_roll + delta_yaw)*fm;
 
 		rotorvelocitiesCallback(ref_rotor_velocities);
 	}
