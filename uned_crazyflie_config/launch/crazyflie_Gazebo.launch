@@ -46,10 +46,6 @@
   <arg name="YawKi" default="1.0"/>
   <arg name="YawKd" default="0.349"/>
   <arg name="YawTd" default="0.058"/>
-  <!-- dYaw Controller Params -->
-  <arg name="Dpsiq1" default="70.0167"/>
-  <arg name="Dpsiq2" default="-69.9833"/>
-  <arg name="Dpsiq3" default="0.0"/>
 
   <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find uned_interface)/Config/models"/>
   <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find uned_interface)/Config/models"/>
@@ -95,25 +91,21 @@
        <param name="YawTd" value="$(arg YawTd)"/>
   </node>
    <node name="ratemixer_controller_node" pkg="uned_crazyflie_controllers" type="uned_crazyflie_ratemixer_controller_node" output="screen">
-     <!-- dYaw Controller Params -->
-    <param name="Dpsiq1" value="$(arg Dpsiq1)"/>
-    <param name="Dpsiq2" value="$(arg Dpsiq2)"/>
-    <param name="Dpsiq3" value="$(arg Dpsiq3)"/>
-    <!-- Delta Pitch Controller Params -->
-    <param name="dPitchKp" value="$(arg dPitchKp)"/>
-    <param name="dPitchKi" value="$(arg dPitchKi)"/>
-    <param name="dPitchKd" value="$(arg dPitchKd)"/>
-    <param name="dPitchKd" value="$(arg dPitchKd)"/>
-    <!-- Delta Roll Controller Params -->
-    <param name="dRollKp" value="$(arg dRollKp)"/>
-    <param name="dRollKi" value="$(arg dRollKi)"/>
-    <param name="dRollKd" value="$(arg dRollKd)"/>
-    <param name="dRollKd" value="$(arg dRollKd)"/>
-    <!-- Delta Yaw Controller Params -->
-    <param name="dYawKp" value="$(arg dYawKp)"/>
-    <param name="dYawKi" value="$(arg dYawKi)"/>
-    <param name="dYawKd" value="$(arg dYawKd)"/>
-    <param name="dYawKd" value="$(arg dYawKd)"/>
+        <!-- Delta Pitch Controller Params -->
+        <param name="dPitchKp" value="$(arg dPitchKp)"/>
+        <param name="dPitchKi" value="$(arg dPitchKi)"/>
+        <param name="dPitchKd" value="$(arg dPitchKd)"/>
+        <param name="dPitchKd" value="$(arg dPitchKd)"/>
+        <!-- Delta Roll Controller Params -->
+        <param name="dRollKp" value="$(arg dRollKp)"/>
+        <param name="dRollKi" value="$(arg dRollKi)"/>
+        <param name="dRollKd" value="$(arg dRollKd)"/>
+        <param name="dRollKd" value="$(arg dRollKd)"/>
+        <!-- Delta Yaw Controller Params -->
+        <param name="dYawKp" value="$(arg dYawKp)"/>
+        <param name="dYawKi" value="$(arg dYawKi)"/>
+        <param name="dYawKd" value="$(arg dYawKd)"/>
+        <param name="dYawKd" value="$(arg dYawKd)"/>
    </node>
 
    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
