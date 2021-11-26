@@ -56,7 +56,9 @@ class CrazyflieRateMixerController
     struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit);
 
     std::string m_controller_type, m_robot_id, m_controller_mode;
-    struct pid_s pitch_controller, roll_controller, yaw_controller;
+    struct pid_s dpitch_controller, droll_controller, dyaw_controller;
+    euler_angles rpy_state;
+    double kp, ki, kd, td, delta_pitch;
     geometry_msgs::Pose m_GT_pose;
     Eigen::Vector4d ref_rotor_velocities;
 

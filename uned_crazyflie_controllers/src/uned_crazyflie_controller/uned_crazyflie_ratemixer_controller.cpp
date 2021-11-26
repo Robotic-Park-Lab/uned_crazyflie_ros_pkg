@@ -4,11 +4,17 @@ bool CrazyflieRateMixerController::initialize()
 {
 	ROS_INFO("CrazyflieRateMixerController::inicialize() ok.");
 
-	if(m_nh_params.hasParam("Dphiq1") && m_nh_params.hasParam("Dphiq2") && m_nh_params.hasParam("Dphiq3")){
-		m_nh_params.getParam("Dphiq1", Dphi_q[0]);
-		m_nh_params.getParam("Dphiq2", Dphi_q[1]);
-		m_nh_params.getParam("Dphiq3", Dphi_q[2]);
+	// dPitch Controller
+	if(m_nh_params.hasParam("dPitchKp") && m_nh_params.hasParam("dPitchKi") && m_nh_params.hasParam("dPitchKd")){
+			m_nh_params.getParam("dPitchKp", kp);
+			m_nh_params.getParam("dPitchKi", ki);
+			m_nh_params.getParam("dPitchKd", kd);
+			m_nh_params.getParam("dPitchTd", td);
+			dpitch_controller = init_controller("dPitch", kp, ki, kd, td, 100, 0.0, 0.0);
+	}else{
+			dpitch_controller = init_controller("dPitch", 250, 500, 2.5, 0.01, 100, 0.0, 0.0);
 	}
+
 	if(m_nh_params.hasParam("Dthetaq1") && m_nh_params.hasParam("Dthetaq2") && m_nh_params.hasParam("Dthetaq3")){
 		m_nh_params.getParam("Dthetaq1", Dtheta_q[0]);
 		m_nh_params.getParam("Dthetaq2", Dtheta_q[1]);
@@ -35,24 +41,14 @@ bool CrazyflieRateMixerController::initialize()
 
 bool CrazyflieRateMixerController::iterate()
 {
-	// DPitch Controller
+	// Feedback:
+		rpy_state = quaternion2euler(m_GT_pose.orientation);
+	// dPitch controller
 	pitch_dron[1] = pitch_dron[0];
-	double sinp = 2 * (m_GT_pose.orientation.w*m_GT_pose.orientation.y+m_GT_pose.orientation.y*m_GT_pose.orientation.z);
-	if(std::abs(sinp) >= 1)
-		pitch_dron[0] = std::copysign(M_PI/2, sinp)*180/PI;
-	else
-		pitch_dron[0] = std::asin(sinp)*180/PI;
-	dpitch_dron = (pitch_dron[0]-pitch_dron[1])/0.002;
-	{
-		// Update error vector
-		dpitch_error[2] = dpitch_error[1];
-		dpitch_error[1] = dpitch_error[0];
-		dpitch_error[0] = dpitch_ref - dpitch_dron;
-
-		// Update signal vector
-		dpitch[1] = dpitch[0];
-		dpitch[0] = dpitch[1] + Dphi_q[0]*dpitch_error[0] + Dphi_q[1]*dpitch_error[1] + Dphi_q[2]*dpitch_error[2];
-	}
+	pitch_dron[0] = rpy_state.pitch;
+	dpitch_dron = (pitch_dron[0] - pitch_dron[1]) / 0.002;
+	dpitch_controller.error[0] = dpitch_ref - dpitch_dron;
+	delta_pitch = pid_controller(dpitch_controller, 0.002);
 
 	// DRoll Controller
 	roll_dron[1] = roll_dron[0];
@@ -88,10 +84,10 @@ bool CrazyflieRateMixerController::iterate()
 	}
 	// Control Mixer
 	{
-		ref_rotor_velocities[0] = (omega - 0.5*dpitch[0] - 0.5*droll[0] - dyaw[0])*fm;
-		ref_rotor_velocities[1] = (omega + 0.5*dpitch[0] - 0.5*droll[0] + dyaw[0])*fm;
-		ref_rotor_velocities[2] = (omega + 0.5*dpitch[0] + 0.5*droll[0] - dyaw[0])*fm;
-		ref_rotor_velocities[3] = (omega - 0.5*dpitch[0] + 0.5*droll[0] + dyaw[0])*fm;
+		ref_rotor_velocities[0] = (omega - 0.5*delta_pitch - 0.5*droll[0] - dyaw[0])*fm;
+		ref_rotor_velocities[1] = (omega + 0.5*delta_pitch - 0.5*droll[0] + dyaw[0])*fm;
+		ref_rotor_velocities[2] = (omega + 0.5*delta_pitch + 0.5*droll[0] - dyaw[0])*fm;
+		ref_rotor_velocities[3] = (omega - 0.5*delta_pitch + 0.5*droll[0] + dyaw[0])*fm;
 
 		rotorvelocitiesCallback(ref_rotor_velocities);
 	}
@@ -113,22 +109,18 @@ void CrazyflieRateMixerController::rotorvelocitiesCallback(const Eigen::Vector4d
 	m_pub_motor_velocity_reference.publish(actuator_msg);
 }
 
-
-void CrazyflieRateMixerController::gtposeCallback(const geometry_msgs::Pose::ConstPtr& msg)
-{
+void CrazyflieRateMixerController::gtposeCallback(const geometry_msgs::Pose::ConstPtr& msg){
 	m_GT_pose.position = msg->position;
 	m_GT_pose.orientation = msg->orientation;
 }
 
-void CrazyflieRateMixerController::rateMixerRefsCallback(const uned_crazyflie_controllers::RateMixerRefs::ConstPtr& msg)
-{
+void CrazyflieRateMixerController::rateMixerRefsCallback(const uned_crazyflie_controllers::RateMixerRefs::ConstPtr& msg){
 	dpitch_ref = msg->dpitch;
 	droll_ref = msg->droll;
 	dyaw_ref = msg->dyaw;
 }
 
-void CrazyflieRateMixerController::omegaCallback(const std_msgs::Float64::ConstPtr& msg)
-{
+void CrazyflieRateMixerController::omegaCallback(const std_msgs::Float64::ConstPtr& msg){
 	omega = msg->data;
 }
 
@@ -154,26 +146,30 @@ euler_angles CrazyflieRateMixerController::quaternion2euler(geometry_msgs::Quate
 
 	return rpy;
 }
+
 double CrazyflieRateMixerController::pid_controller(struct pid_s controller, double dt){
 	double outP = controller.kp * controller.error[0];
 	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
 	controller.derivative[0] = (controller.td/(controller.td+controller.nd+dt))*controller.derivative[1]+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
 	double out = outP + controller.integral + controller.derivative[0];
 
-	double out_i = out;
+	if(controller.upperlimit != 0.0){
+		double out_i = out;
 
-	if (out > controller.upperlimit)
-	out = controller.upperlimit;
-	if (out < controller.lowerlimit)
-	out = controller.lowerlimit;
+		if (out > controller.upperlimit)
+			out = controller.upperlimit;
+		if (out < controller.lowerlimit)
+			out = controller.lowerlimit;
 
-	controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
+		controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
+	}
 
 	controller.error[1] = controller.error[0];
 	controller.derivative[1] = controller.derivative[0];
 
 	return out;
 }
+
 struct pid_s CrazyflieRateMixerController::init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
 	struct pid_s controller;
 
