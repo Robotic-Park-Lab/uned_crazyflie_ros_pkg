@@ -6,33 +6,50 @@ bool PositionController::initialize(){
     RCLCPP_INFO(this->get_logger(),"PositionController::inicialize() ok.");
 
     // Lectura de parámetros
-    RCLCPP_INFO(this->get_logger(),"TO-DO: Read Params.");
+    this->get_parameter("ROBOT_ID", robotid);
     m_controller_type = "PID";
-    m_robot_id = "dron01";
     m_controller_mode = "close loop";
-    RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s, \tMode: %s", m_controller_type.c_str(), m_robot_id.c_str(), m_controller_mode.c_str());
+    RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s, \tMode: %s", m_controller_type.c_str(), robotid.c_str(), m_controller_mode.c_str());
     m_x_init = 0.0;
     m_y_init = 0.0;
     m_z_init = 0.0;
 
     // Z Controller
-    str_id = "Z";
-    z_controller = init_controller(str_id.c_str(), 2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0);
+    this->get_parameter("ZKp", Kp);
+    this->get_parameter("ZKi", Ki);
+    this->get_parameter("ZKd", Kd);
+    this->get_parameter("ZTd", Td);
+    z_controller = init_controller("Z", Kp, Ki, Kd, Td, 100, 1.0, -1.0);
     // W Controller
-    str_id = "W";
-    w_controller = init_controller(str_id.c_str(), 25.0, 15.0, 0.0, 0.0, 100, 1160.0, -640.0);
+    this->get_parameter("WKp", Kp);
+    this->get_parameter("WKi", Ki);
+    this->get_parameter("WKd", Kd);
+    this->get_parameter("WTd", Td);
+    w_controller = init_controller("W", Kp, Ki, Kd, Td, 100, 1160.0, -640.0);
     // X Controller
-    str_id = "X";
-    x_controller = init_controller(str_id.c_str(), 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
+    this->get_parameter("XKp", Kp);
+    this->get_parameter("XKi", Ki);
+    this->get_parameter("XKd", Kd);
+    this->get_parameter("XTd", Td);
+    x_controller = init_controller("X", Kp, Ki, Kd, Td, 100, 1.0, -1.0);
     // U Controller
-    str_id = "U";
-    u_controller = init_controller(str_id.c_str(), 25.0, 1.0, 0.0, 0.0, 100, 30.0, -30.0);
+    this->get_parameter("UKp", Kp);
+    this->get_parameter("UKi", Ki);
+    this->get_parameter("UKd", Kd);
+    this->get_parameter("UTd", Td);
+    u_controller = init_controller("U", Kp, Ki, Kd, Td,100, 30.0, -30.0);
     // Y Controller
-    str_id = "Y";
-    y_controller = init_controller(str_id.c_str(), 2.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0);
+    this->get_parameter("YKp", Kp);
+    this->get_parameter("YKi", Ki);
+    this->get_parameter("YKd", Kd);
+    this->get_parameter("YTd", Td);
+    y_controller = init_controller("Y", Kp, Ki, Kd, Td, 100, 1.0, -1.0);
     // V Controller
-    str_id = "V";
-    v_controller = init_controller(str_id.c_str(), -25.0, -1.0, 0.0, 0.0, 100, 30.0, -30.0);
+    this->get_parameter("VKp", Kp);
+    this->get_parameter("VKi", Ki);
+    this->get_parameter("VKd", Kd);
+    this->get_parameter("VTd", Td);
+    v_controller = init_controller("V", Kp, Ki, Kd, Td, 100, 30.0, -30.0);
 
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
@@ -98,7 +115,6 @@ bool PositionController::iterate(){
 
 
         // Publish Control CMD
-
         auto msg_cmd = std_msgs::msg::Float64MultiArray();
         msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
         //msg_cmd.data = { thrust, 0.0, 0.0, 0.0 };
@@ -128,4 +144,70 @@ int main(int argc, char ** argv){
   } catch (std::exception &e){
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Exception: %s",e.what());
     }
+}
+
+euler_angles PositionController::quaternion2euler(geometry_msgs::msg::Quaternion quat) {
+    euler_angles rpy;
+
+    // roll (x-axis rotation)
+    double sinr_cosp = 2 * (quat.w * quat.x + quat.y * quat.z);
+    double cosr_cosp = 1 - 2 * (quat.x * quat.x + quat.y * quat.y);
+    rpy.roll = std::atan2(sinr_cosp, cosr_cosp) * (180 / 3.14159265);
+
+    // pitch (y-axis rotation)
+    double sinp = 2 * (quat.w * quat.y - quat.z * quat.x);
+    if (std::abs(sinp) >= 1)
+        rpy.pitch = std::copysign(3.14159265 / 2, sinp) * (180 / 3.14159265);
+    else
+        rpy.pitch = std::asin(sinp) * (180 / 3.14159265);
+
+    // yaw (z-axis rotation)
+    double siny_cosp = 2 * (quat.w * quat.z + quat.x * quat.y);
+    double cosy_cosp = 1 - 2 * (quat.y * quat.y + quat.z * quat.z);
+    rpy.yaw = std::atan2(siny_cosp, cosy_cosp) * (180 / 3.14159265);
+
+    return rpy;
+}
+
+struct pid_s PositionController::init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
+    struct pid_s controller;
+
+    controller.kp = kp;
+    controller.ki = ki;
+    controller.kd = kd;
+    controller.td = td;
+    controller.nd = nd;
+    controller.error[0] = 0.0;
+    controller.error[1] = 0.0;
+    controller.integral = 0.0;
+    controller.derivative[0] = 0.0;
+    controller.derivative[1] = 0.0;
+    controller.upperlimit = upperlimit;
+    controller.lowerlimit = lowerlimit;
+
+    RCLCPP_INFO(this->get_logger(),"%s Controller: kp: %0.2f \tki: %0.2f \tkd: %0.2f", id, controller.kp, controller.ki, controller.kd);
+    return controller;
+}
+
+double PositionController::pid_controller(struct pid_s controller, double dt){
+	double outP = controller.kp * controller.error[0];
+	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
+	controller.derivative[0] = (controller.td/(controller.td+controller.nd+dt))*controller.derivative[1]+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
+	double out = outP + controller.integral + controller.derivative[0];
+
+	if(controller.upperlimit != 0.0){
+		double out_i = out;
+
+		if (out > controller.upperlimit)
+			out = controller.upperlimit;
+		if (out < controller.lowerlimit)
+			out = controller.lowerlimit;
+
+		controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
+	}
+
+	controller.error[1] = controller.error[0];
+	controller.derivative[1] = controller.derivative[0];
+
+	return out;
 }

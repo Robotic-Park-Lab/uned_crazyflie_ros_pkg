@@ -18,12 +18,47 @@
 #include <uned_crazyflie_config/msg/cmdsignal.hpp>
 #include <uned_crazyflie_config/msg/pidcontroller.hpp>
 
+struct pid_s{
+    double kp, ki, kd, td;
+    int nd;
+    double error[2], integral, derivative[2], upperlimit, lowerlimit;
+};
+struct euler_angles {
+    double roll, pitch, yaw;
+};
+
 using namespace std::chrono_literals;
 
 class PositionController : public rclcpp::Node
 {
 public:
-    PositionController() : Node("position_controller") {}
+    PositionController() : Node("position_controller") {
+      this->declare_parameter("ZKp");
+      this->declare_parameter("ZKi");
+      this->declare_parameter("ZKd");
+      this->declare_parameter("ZTd");
+      this->declare_parameter("WKp");
+      this->declare_parameter("WKi");
+      this->declare_parameter("WKd");
+      this->declare_parameter("WTd");
+      this->declare_parameter("XKp");
+      this->declare_parameter("XKi");
+      this->declare_parameter("XKd");
+      this->declare_parameter("XTd");
+      this->declare_parameter("UKp");
+      this->declare_parameter("UKi");
+      this->declare_parameter("UKd");
+      this->declare_parameter("UTd");
+      this->declare_parameter("YKp");
+      this->declare_parameter("YKi");
+      this->declare_parameter("YKd");
+      this->declare_parameter("YTd");
+      this->declare_parameter("VKp");
+      this->declare_parameter("VKi");
+      this->declare_parameter("VKd");
+      this->declare_parameter("VTd");
+      this->declare_parameter("ROBOT_ID");
+    }
 
     bool initialize();
     bool iterate();
@@ -35,15 +70,8 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr ref_pose_;
 
-    struct pid_s{
-        double kp, ki, kd, td;
-        int nd;
-        double error[2], integral, derivative[2], upperlimit, lowerlimit;
-    };
-    struct euler_angles {
-        double roll, pitch, yaw;
-    };
-
+    std::string robotid;
+    double Kp, Ki, Kd, Td;
     double dt = 0.01;
     double m_x_init, m_y_init, m_z_init;
     std::string  m_controller_type, m_robot_id, m_controller_mode, str_id;
@@ -82,68 +110,7 @@ private:
             first_ref_received = true;
         }
     }
-    euler_angles quaternion2euler(geometry_msgs::msg::Quaternion quat) {
-        euler_angles rpy;
-
-        // roll (x-axis rotation)
-        double sinr_cosp = 2 * (quat.w * quat.x + quat.y * quat.z);
-        double cosr_cosp = 1 - 2 * (quat.x * quat.x + quat.y * quat.y);
-        rpy.roll = std::atan2(sinr_cosp, cosr_cosp) * (180 / 3.14159265);
-
-        // pitch (y-axis rotation)
-        double sinp = 2 * (quat.w * quat.y - quat.z * quat.x);
-        if (std::abs(sinp) >= 1)
-            rpy.pitch = std::copysign(3.14159265 / 2, sinp) * (180 / 3.14159265);
-        else
-            rpy.pitch = std::asin(sinp) * (180 / 3.14159265);
-
-        // yaw (z-axis rotation)
-        double siny_cosp = 2 * (quat.w * quat.z + quat.x * quat.y);
-        double cosy_cosp = 1 - 2 * (quat.y * quat.y + quat.z * quat.z);
-        rpy.yaw = std::atan2(siny_cosp, cosy_cosp) * (180 / 3.14159265);
-
-        return rpy;
-    }
-    double pid_controller(struct pid_s controller, double dt){
-        double outP = controller.kp * controller.error[0];
-        controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
-        controller.derivative[0] = (controller.td/(controller.td+controller.nd+dt))*controller.derivative[1]+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
-        double out = outP + controller.integral + controller.derivative[0];
-        // RCLCPP_INFO(this->get_logger(), "outP: \t%.2f \toutI:%.2f \toutd:%.2f", outP, controller.integral, controller.derivative[0]);
-
-        double out_i = out;
-
-        if (out > controller.upperlimit){
-            out = controller.upperlimit;
-        }
-        if (out < controller.lowerlimit){
-            out = controller.lowerlimit;
-        }
-
-        controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
-
-        controller.error[1] = controller.error[0];
-        controller.derivative[1] = controller.derivative[0];
-
-        return out;
-    }
-    struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
-        struct pid_s controller;
-
-        controller.kp = kp;
-        controller.ki = ki;
-        controller.kd = kd;
-        controller.td = td;
-        controller.nd = nd;
-        controller.error[0] = 0.0;
-        controller.error[1] = 0.0;
-        controller.integral = 0.0;
-        controller.derivative[0] = 0.0;
-        controller.derivative[1] = 0.0;
-        controller.upperlimit = upperlimit;
-        controller.lowerlimit = lowerlimit;
-
-        RCLCPP_INFO(this->get_logger(),"%s Controller: kp: %0.2f \tki: %0.2f \tkd: %0.2f", id, controller.kp, controller.ki, controller.kd);
-        return controller;
-    }
+    euler_angles quaternion2euler(geometry_msgs::msg::Quaternion quat);
+    double pid_controller(struct pid_s controller, double dt);
+    struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit);
 };
