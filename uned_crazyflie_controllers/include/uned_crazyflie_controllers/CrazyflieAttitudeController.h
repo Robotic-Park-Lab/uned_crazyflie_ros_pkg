@@ -66,7 +66,7 @@ class CrazyflieAttitudeController
     // Angles
     struct euler_angles rpy_ref, rpy_state;
     std::string m_controller_type, m_robot_id, m_controller_mode, str_id;
-    geometry_msgs::Pose m_GT_pose;
+    geometry_msgs::Pose GT_pose;
     bool first_pose_received = false;
     bool first_ref_received = false;
     double dt = 0.002;

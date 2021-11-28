@@ -48,11 +48,11 @@ bool CrazyflieAttitudeController::initialize()
 }
 
 bool CrazyflieAttitudeController::iterate(){
-	
+
 	if (first_ref_received && first_pose_received) {
 			ROS_INFO_ONCE("AttitudeRateController::iterate(). Running ...");
 			// Feedback:
-			rpy_state = quaternion2euler(m_GT_pose.orientation);
+			rpy_state = quaternion2euler(GT_pose.orientation);
 
 			// Attitude Controller
 			// Pitch controller
@@ -75,8 +75,8 @@ bool CrazyflieAttitudeController::iterate(){
 }
 
 void CrazyflieAttitudeController::gtposeCallback(const geometry_msgs::Pose::ConstPtr& msg){
-	m_GT_pose.position = msg->position;
-	m_GT_pose.orientation = msg->orientation;
+	GT_pose.position = msg->position;
+	GT_pose.orientation = msg->orientation;
 	if (!first_pose_received)
 			first_pose_received = true;
 }
