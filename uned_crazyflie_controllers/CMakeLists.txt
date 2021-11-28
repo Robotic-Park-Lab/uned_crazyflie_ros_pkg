@@ -62,13 +62,15 @@ add_executable(uned_crazyflie_trajectory_controller_node src/uned_crazyflie_traj
 target_link_libraries(uned_crazyflie_trajectory_controller_node uned_crazyflie_trajectory_controller
    ${catkin_LIBRARIES}
 )
-########################################################################################################################
-add_library(uned_crazyflie_position_controller src/uned_crazyflie_controller/uned_crazyflie_position_controller.cpp)
-target_link_libraries(uned_crazyflie_position_controller ${catkin_LIBRARIES})
-add_dependencies(uned_crazyflie_position_controller ${catkin_EXPORTED_TARGETS})
+#################################
+##     POSITION CONTROLLER     ##
+#################################
+add_library(periodic_pid_position_controller src/uned_crazyflie_controller/periodic_pid_position_controller.cpp)
+target_link_libraries(periodic_pid_position_controller ${catkin_LIBRARIES})
+add_dependencies(periodic_pid_position_controller ${catkin_EXPORTED_TARGETS})
 
-add_executable(uned_crazyflie_position_controller_node src/uned_crazyflie_position_controller_node.cpp)
-target_link_libraries(uned_crazyflie_position_controller_node uned_crazyflie_position_controller
+add_executable(periodic_pid_position_controller_node src/periodic_pid_position_controller_node.cpp)
+target_link_libraries(periodic_pid_position_controller_node periodic_pid_position_controller
    ${catkin_LIBRARIES}
 )
 #################################
@@ -118,11 +120,11 @@ target_link_libraries(discrete_pid_ratemixer_controller_node discrete_pid_ratemi
 #############
 
 # Mark executables and/or libraries for installation
-install(TARGETS uned_crazyflie_trajectory_controller uned_crazyflie_position_controller periodic_pid_attitude_controller discrete_pid_ratemixer_controller periodic_pid_ratemixer_controller
+install(TARGETS uned_crazyflie_trajectory_controller periodic_pid_position_controller discrete_pid_attitude_controller periodic_pid_attitude_controller discrete_pid_ratemixer_controller periodic_pid_ratemixer_controller
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
 
-install(TARGETS uned_crazyflie_trajectory_controller uned_crazyflie_position_controller_node periodic_pid_attitude_controller_node discrete_pid_ratemixer_controller_node periodic_pid_ratemixer_controller_node
+install(TARGETS uned_crazyflie_trajectory_controller periodic_pid_position_controller_node discrete_pid_attitude_controller_node periodic_pid_attitude_controller_node discrete_pid_ratemixer_controller_node periodic_pid_ratemixer_controller_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

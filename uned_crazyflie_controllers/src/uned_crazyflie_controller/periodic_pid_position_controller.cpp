@@ -35,10 +35,8 @@ bool CrazyfliePositionController::initialize()
 	// Publisher:
 	// Referencias para los controladores PID Attitude y Rate
 	m_pub_control_signal = m_nh.advertise<uned_crazyflie_controllers::AttitudeRefs>("attitude_controller_ref", 10);
-
 	m_pub_omega = m_nh.advertise<std_msgs::Float64>("omega_signal", 10);
 
-	m_pub_dyaw = m_nh.advertise<std_msgs::Float64>("dyaw_controller_ref", 10);
 	// Subscriber:
 	// Crazyflie Pose
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyfliePositionController::gtposeCallback, this);
@@ -105,11 +103,18 @@ bool CrazyfliePositionController::iterate()
 
 void CrazyfliePositionController::attitudeRateMixerRefsCallback(const double omega, const double pitch, const double roll, const double yaw)
 {
-	std_msgs::Float64MultiArray msg_cmd;
+	uned_crazyflie_controllers::AttitudeRefs ref_msg;
 
-	msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
+	ref_msg.timestamp = ros::Time::now().toSec();
+	ref_msg.pitch = pitch;
+	ref_msg.roll = roll;
+	ref_msg.yaw = yaw;
 
-	m_pub_control_signal.publish(msg_cmd);
+	m_pub_control_signal.publish(ref_msg);
+
+	std_msgs::Float64 msg_omega;
+	msg_omega.data = omega;
+	m_pub_omega.publish(msg_omega);
 }
 
 void CrazyfliePositionController::positionreferenceCallback(const geometry_msgs::Pose::ConstPtr& msg)

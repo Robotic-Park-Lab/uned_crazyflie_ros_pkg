@@ -6,7 +6,7 @@ int main(int argc, char **argv)
 {
 	try
 	{
-		ros::init(argc, argv, "crazyflie_position_controller");
+		ros::init(argc, argv, "position_controller");
 
 		CrazyfliePositionController crazyflie_position_controller;
 		crazyflie_position_controller.initialize();
