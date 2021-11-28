@@ -1,0 +1,5 @@
+topics:
+  -
+    topic: /chatter  # ROS1 topic name
+    type: std_msgs/msg/String  # ROS2 type name
+    queue_size: 1  # For the publisher back to ROS1

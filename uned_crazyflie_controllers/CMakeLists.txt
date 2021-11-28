@@ -53,42 +53,52 @@ include_directories(
   ${Eigen3_INCLUDE_DIRS}
 )
 
+########################################################################################################################
 add_library(uned_crazyflie_trajectory_controller src/uned_crazyflie_controller/uned_crazyflie_trajectory_controller.cpp)
 target_link_libraries(uned_crazyflie_trajectory_controller ${catkin_LIBRARIES})
 add_dependencies(uned_crazyflie_trajectory_controller ${catkin_EXPORTED_TARGETS})
 
-add_library(uned_crazyflie_position_controller src/uned_crazyflie_controller/uned_crazyflie_position_controller.cpp)
-target_link_libraries(uned_crazyflie_position_controller ${catkin_LIBRARIES})
-add_dependencies(uned_crazyflie_position_controller ${catkin_EXPORTED_TARGETS})
-
-add_library(uned_crazyflie_attitude_controller src/uned_crazyflie_controller/uned_crazyflie_attitude_controller.cpp)
-target_link_libraries(uned_crazyflie_attitude_controller ${catkin_LIBRARIES})
-add_dependencies(uned_crazyflie_attitude_controller ${catkin_EXPORTED_TARGETS})
-
-add_library(uned_crazyflie_ratemixer_controller src/uned_crazyflie_controller/uned_crazyflie_ratemixer_controller.cpp)
-target_link_libraries(uned_crazyflie_ratemixer_controller ${catkin_LIBRARIES})
-add_dependencies(uned_crazyflie_ratemixer_controller ${catkin_EXPORTED_TARGETS})
-
-# Declare a C++ executable
 add_executable(uned_crazyflie_trajectory_controller_node src/uned_crazyflie_trajectory_controller_node.cpp)
 target_link_libraries(uned_crazyflie_trajectory_controller_node uned_crazyflie_trajectory_controller
    ${catkin_LIBRARIES}
 )
+########################################################################################################################
+add_library(uned_crazyflie_position_controller src/uned_crazyflie_controller/uned_crazyflie_position_controller.cpp)
+target_link_libraries(uned_crazyflie_position_controller ${catkin_LIBRARIES})
+add_dependencies(uned_crazyflie_position_controller ${catkin_EXPORTED_TARGETS})
 
 add_executable(uned_crazyflie_position_controller_node src/uned_crazyflie_position_controller_node.cpp)
 target_link_libraries(uned_crazyflie_position_controller_node uned_crazyflie_position_controller
    ${catkin_LIBRARIES}
 )
+########################################################################################################################
+add_library(uned_crazyflie_attitude_controller src/uned_crazyflie_controller/uned_crazyflie_attitude_controller.cpp)
+target_link_libraries(uned_crazyflie_attitude_controller ${catkin_LIBRARIES})
+add_dependencies(uned_crazyflie_attitude_controller ${catkin_EXPORTED_TARGETS})
 
 add_executable(uned_crazyflie_attitude_controller_node src/uned_crazyflie_attitude_controller_node.cpp)
 target_link_libraries(uned_crazyflie_attitude_controller_node uned_crazyflie_attitude_controller
    ${catkin_LIBRARIES}
 )
+########################################################################################################################
+add_library(uned_crazyflie_ratemixer_controller src/uned_crazyflie_controller/uned_crazyflie_ratemixer_controller.cpp)
+target_link_libraries(uned_crazyflie_ratemixer_controller ${catkin_LIBRARIES})
+add_dependencies(uned_crazyflie_ratemixer_controller ${catkin_EXPORTED_TARGETS})
 
 add_executable(uned_crazyflie_ratemixer_controller_node src/uned_crazyflie_ratemixer_controller_node.cpp)
 target_link_libraries(uned_crazyflie_ratemixer_controller_node uned_crazyflie_ratemixer_controller
    ${catkin_LIBRARIES}
 )
+########################################################################################################################
+add_library(periodic_pid_ratemixer_controller src/uned_crazyflie_controller/periodic_pid_ratemixer_controller.cpp)
+target_link_libraries(periodic_pid_ratemixer_controller ${catkin_LIBRARIES})
+add_dependencies(periodic_pid_ratemixer_controller ${catkin_EXPORTED_TARGETS})
+
+add_executable(periodic_pid_ratemixer_controller_node src/periodic_pid_ratemixer_controller_node.cpp)
+target_link_libraries(periodic_pid_ratemixer_controller_node periodic_pid_ratemixer_controller
+   ${catkin_LIBRARIES}
+)
+########################################################################################################################
 #############
 ## Install ##
 #############
