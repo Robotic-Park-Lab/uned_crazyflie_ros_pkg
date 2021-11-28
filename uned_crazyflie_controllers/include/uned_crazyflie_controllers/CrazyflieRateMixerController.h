@@ -65,7 +65,11 @@ class CrazyflieRateMixerController
     double omega, dpitch_ref, droll_ref, dyaw_ref, dpitch_dron, droll_dron, dyaw_dron;
     const double PI = 3.14159265;
     double fm = 2*0.2685*PI/30;
-    double C = (4070.3*fm)*PI/30;
     double pitch_dron[2], roll_dron[2], yaw_dron[2];
 
+    double dpitch_error[3],dpitch[2], Dphi_q[3];
+
+    double droll_error[3], droll[2], Dtheta_q[3];
+
+    double dyaw_error[3], dyaw[2], Dpsi_q[3];
 };

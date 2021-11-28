@@ -99,6 +99,15 @@ target_link_libraries(periodic_pid_ratemixer_controller_node periodic_pid_ratemi
    ${catkin_LIBRARIES}
 )
 ########################################################################################################################
+add_library(discrete_pid_ratemixer_controller src/uned_crazyflie_controller/discrete_pid_ratemixer_controller.cpp)
+target_link_libraries(discrete_pid_ratemixer_controller ${catkin_LIBRARIES})
+add_dependencies(discrete_pid_ratemixer_controller ${catkin_EXPORTED_TARGETS})
+
+add_executable(discrete_pid_ratemixer_controller_node src/discrete_pid_ratemixer_controller_node.cpp)
+target_link_libraries(discrete_pid_ratemixer_controller_node discrete_pid_ratemixer_controller
+   ${catkin_LIBRARIES}
+)
+########################################################################################################################
 #############
 ## Install ##
 #############
