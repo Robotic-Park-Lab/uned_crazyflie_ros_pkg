@@ -72,12 +72,13 @@ private:
 
     std::string robotid;
     double Kp, Ki, Kd, Td;
-    double dt = 0.01;
+    double dt = 0.004;
     double m_x_init, m_y_init, m_z_init;
     std::string  m_controller_type, m_robot_id, m_controller_mode, str_id;
     geometry_msgs::msg::Pose GT_pose, ref_pose;
     bool first_pose_received = false;
     bool first_ref_received = false;
+    bool fail = false;
     // Controllers
     struct pid_s z_controller, w_controller, x_controller, u_controller, y_controller, v_controller;
     // Altitude Controller

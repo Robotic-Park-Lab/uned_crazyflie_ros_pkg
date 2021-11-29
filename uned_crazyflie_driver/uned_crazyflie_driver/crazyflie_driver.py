@@ -5,6 +5,7 @@ from threading import Timer
 
 from rclpy.node import Node
 from std_msgs.msg import String
+from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Pose
 from uned_crazyflie_config.msg import StateEstimate
 from uned_crazyflie_config.msg import Cmdsignal
@@ -75,8 +76,9 @@ class CMD_Motion():
         cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
 
     def send_offboard_setpoint_(self, cf):
+        # self.logger.info('Command: %s' % self.str_())
         cf.commander.send_setpoint(self.roll, self.pitch, self.yaw,
-                                   12000.5)
+                                   self.thrust)
 
 
 class Logging:
@@ -173,9 +175,9 @@ class CFDriver(Node):
         self.sub_goal_pose = self.create_subscription(Pose, 'goal_pose',
                                                       self.goalpose_callback,
                                                       10)
-        self.sub_cmd = self.create_subscription(Cmdsignal, 'onboard_cmd',
+        self.sub_cmd = self.create_subscription(Float64MultiArray, 'onboard_cmd',
                                                 self.cmd_control_callback, 10)
-        timer_period = 0.01  # seconds
+        timer_period = 0.004  # seconds
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
         self.initialize()
 
@@ -236,21 +238,10 @@ class CFDriver(Node):
         self.scf._is_flying = False
 
     def iterate(self):
-        '''
-        global end_test
-        if self.scf.init_pose and not self.scf._is_flying and not end_test:
-            end_test = True
-            self.take_off()
-            t0 = Timer(4, self.gohome)
-            t0.start()
-            t = Timer(7, self.descent)
-            t.start()
-        '''
         if CONTROL_MODE == 'HighLevel':
-            if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
-                self.cmd_motion_.send_pose_data_(self.scf._cf)
+            # if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
+            self.cmd_motion_.send_pose_data_(self.scf._cf)
         if CONTROL_MODE == 'OffBoard':
-            self.get_logger().info('New Command')
             self.cmd_motion_.send_offboard_setpoint_(self.scf._cf)
 
     def data_callback(self, timestamp, data):
@@ -284,10 +275,11 @@ class CFDriver(Node):
                 self.get_logger().info('In land')
 
     def cmd_control_callback(self, msg):
-        self.cmd_motion_.roll = msg.roll
-        self.cmd_motion_.pitch = msg.pitch
-        self.cmd_motion_.yaw = msg.yaw
-        self.cmd_motion_.thrust = msg.thrust
+            self.cmd_motion_.roll = msg.data[1]
+            self.cmd_motion_.pitch = msg.data[2]
+            self.cmd_motion_.yaw = msg.data[3]
+            self.cmd_motion_.thrust = int(msg.data[0])
+            self.get_logger().warning('Command: %s' % self.cmd_motion_.str_())
 
     def newpose_callback(self, msg):
         self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y,
@@ -300,7 +292,6 @@ class CFDriver(Node):
             self.get_logger().info(self.cmd_motion_.pose_str_())
 
     def goalpose_callback(self, msg):
-        self.get_logger().info('CrazyflieDriver::New Goal Pose.')
         self.cmd_motion_.x = msg.position.x
         self.cmd_motion_.y = msg.position.y
         self.cmd_motion_.z = msg.position.z

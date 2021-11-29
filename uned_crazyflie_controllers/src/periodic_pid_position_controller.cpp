@@ -25,7 +25,7 @@ bool PositionController::initialize(){
     this->get_parameter("WKi", Ki);
     this->get_parameter("WKd", Kd);
     this->get_parameter("WTd", Td);
-    w_controller = init_controller("W", Kp, Ki, Kd, Td, 100, 1160.0, -640.0);
+    w_controller = init_controller("W", Kp, Ki, Kd, Td, 100, 28.0, -16.0);
     // X Controller
     this->get_parameter("XKp", Kp);
     this->get_parameter("XKi", Ki);
@@ -37,19 +37,19 @@ bool PositionController::initialize(){
     this->get_parameter("UKi", Ki);
     this->get_parameter("UKd", Kd);
     this->get_parameter("UTd", Td);
-    u_controller = init_controller("U", Kp, Ki, Kd, Td,100, 30.0, -30.0);
+    u_controller = init_controller("U", Kp, Ki, Kd, Td,100, 20.0, -20.0);
     // Y Controller
     this->get_parameter("YKp", Kp);
     this->get_parameter("YKi", Ki);
     this->get_parameter("YKd", Kd);
     this->get_parameter("YTd", Td);
-    y_controller = init_controller("Y", Kp, Ki, Kd, Td, 100, 1.0, -1.0);
+    y_controller = init_controller("Y", Kp, Ki, Kd, Td, 100, 1.0, -2.0);
     // V Controller
     this->get_parameter("VKp", Kp);
     this->get_parameter("VKi", Ki);
     this->get_parameter("VKd", Kd);
     this->get_parameter("VTd", Td);
-    v_controller = init_controller("V", Kp, Ki, Kd, Td, 100, 30.0, -30.0);
+    v_controller = init_controller("V", Kp, Ki, Kd, Td, 100, 20.0, -20.0);
 
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
@@ -67,7 +67,7 @@ bool PositionController::initialize(){
 
 bool PositionController::iterate(){
     RCLCPP_INFO_ONCE(this->get_logger(), "PositionController::iterate(). ok.");
-    if (first_pose_received && first_ref_received) {
+    if (first_pose_received && first_ref_received && !fail) {
         RCLCPP_INFO_ONCE(this->get_logger(), "PositionController::iterate(). Running ...");
         // Z Controller
         z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
@@ -94,7 +94,6 @@ bool PositionController::iterate(){
         // Y Controller
         y_controller.error[0] = -x_global_error * sin(rpy_state.yaw) + y_global_error * cos(rpy_state.yaw);
         v_ref = pid_controller(y_controller, dt);
-
         // Speed
         u_feedback[1] = u_feedback[0];
         u_feedback[0] = GT_pose.position.x;
@@ -106,18 +105,28 @@ bool PositionController::iterate(){
         // U Controller
         u_controller.error[0] = u_ref - u_signal;
         pitch = pid_controller(u_controller, dt);
-
         // V Controller
         v_controller.error[0] = v_ref - v_signal;
         roll = pid_controller(v_controller, dt);
+        
 
-        // RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", thrust, roll, pitch, rpy_ref.yaw);
-
+        RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], u_ref);
+        RCLCPP_INFO(this->get_logger(), "U: Error: \t%.2f \tPitch:%.2f", u_controller.error[0], pitch);
+        RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], v_ref);
+        RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
 
         // Publish Control CMD
         auto msg_cmd = std_msgs::msg::Float64MultiArray();
-        msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
-        //msg_cmd.data = { thrust, 0.0, 0.0, 0.0 };
+        // msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
+        if (abs(GT_pose.position.x) > 0.7 || abs(GT_pose.position.y) > 0.7)
+            fail = true;
+        if (!fail) {
+            msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
+            RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", thrust, roll, pitch, rpy_ref.yaw);
+        }
+        else {
+            msg_cmd.data = { 0.0, 0.0, 0.0, rpy_ref.yaw };
+        }
         pub_cmd_->publish(msg_cmd);
     }
     else {
@@ -132,7 +141,7 @@ int main(int argc, char ** argv){
   try{
     rclcpp::init(argc, argv);
     auto crazyflie_position_controller = std::make_shared<PositionController>();
-    rclcpp::Rate loop_rate(100);
+    rclcpp::Rate loop_rate(250);
     crazyflie_position_controller->initialize();
 
     while (rclcpp::ok()){
