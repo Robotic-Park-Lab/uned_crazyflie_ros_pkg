@@ -15,13 +15,6 @@ from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.utils import uri_helper
 
-CONTROL_MODE = 'OffBoard'
-"""
-Test:
-HighLevel: Trajectory
-OffBoard: Trajectory + Position
-LowLevel: Trajectory + Position + Attitude
-"""
 end_test = False
 not_fail = True
 xy_warn = 1.0
@@ -100,6 +93,7 @@ class Logging:
 
         # Variable used to keep main loop occupied until disconnect
         self.is_connected = True
+        
 
     def _connected(self, link_uri):
         """ This callback is called form the Crazyflie API when a Crazyflie
@@ -180,6 +174,13 @@ class CFDriver(Node):
                                                 self.cmd_control_callback, 10)
         timer_period = 0.004  # seconds
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
+        self.CONTROL_MODE = 'OffBoard'
+        """
+        Test:
+        HighLevel: Trajectory
+        OffBoard: Trajectory + Position
+        LowLevel: Trajectory + Position + Attitude
+        """
         self.initialize()
 
     def initialize(self):
@@ -211,7 +212,7 @@ class CFDriver(Node):
         # Init Motors
         self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
 
-        if CONTROL_MODE == 'OffBoard':
+        if self.CONTROL_MODE == 'OffBoard':
             self.scf._is_flying = True
 
     def take_off(self):
@@ -238,12 +239,13 @@ class CFDriver(Node):
         self.scf._cf.commander.send_stop_setpoint()
         self.scf.init_pose = False
         self.scf._is_flying = False
+        self.CONTROL_MODE = 'Stop'
 
     def iterate(self):
-        if CONTROL_MODE == 'HighLevel':
+        if self.CONTROL_MODE == 'HighLevel':
             if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
-            self.cmd_motion_.send_pose_data_(self.scf._cf)
-        if CONTROL_MODE == 'OffBoard':
+                self.cmd_motion_.send_pose_data_(self.scf._cf)
+        if self.CONTROL_MODE == 'OffBoard':
             self.cmd_motion_.send_offboard_setpoint_(self.scf._cf)
 
     def data_callback(self, timestamp, data):
@@ -281,7 +283,8 @@ class CFDriver(Node):
             self.cmd_motion_.pitch = msg.data[2]
             self.cmd_motion_.yaw = msg.data[3]
             self.cmd_motion_.thrust = int(msg.data[0])
-            self.get_logger().warning('Command: %s' % self.cmd_motion_.str_())
+            if self.CONTROL_MODE == 'OffBoard':
+                self.get_logger().warning('Command: %s' % self.cmd_motion_.str_())
 
     def newpose_callback(self, msg):
         self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
@@ -291,11 +294,16 @@ class CFDriver(Node):
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.get_logger().info(self.cmd_motion_.pose_str_())
-        if (abs(msg.position.x)>1.0) or (abs(msg.position.y)>1.0) or (abs(msg.position.z)>2.0):
-            CONTROL_MODE = 'HighLevel'
+        if (abs(msg.position.x)>0.5) or (abs(msg.position.y)>0.5) or (abs(msg.position.z)>2.0) and self.CONTROL_MODE != 'HighLevel':
+            self.CONTROL_MODE = 'HighLevel'
+            self.scf._is_flying = True
             self.get_logger().error('CrazyflieDriver::Out.')
-            self.gohome()
-            t_end = Timer(2, self.descent)
+            self.cmd_motion_.x = 0.0
+            self.cmd_motion_.y = 0.0
+            self.cmd_motion_.z = 0.7
+            self.cmd_motion_.send_pose_data_(self.scf._cf)
+            t_end = Timer(3, self.descent)
+            t_end.start()
 
     def goalpose_callback(self, msg):
         self.cmd_motion_.x = msg.position.x
