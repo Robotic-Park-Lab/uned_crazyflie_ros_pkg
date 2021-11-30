@@ -23,6 +23,7 @@ OffBoard: Trajectory + Position
 LowLevel: Trajectory + Position + Attitude
 """
 end_test = False
+not_fail = True
 xy_warn = 1.0
 xy_lim = 1.3
 # Only output errors from the logging framework
@@ -210,6 +211,9 @@ class CFDriver(Node):
         # Init Motors
         self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
 
+        if CONTROL_MODE == 'OffBoard':
+            self.scf._is_flying = True
+
     def take_off(self):
         self.get_logger().info('CrazyflieDriver::Take Off.')
         self.cmd_motion_.z = self.cmd_motion_.z + 1.0
@@ -217,10 +221,8 @@ class CFDriver(Node):
 
     def gohome(self):
         self.get_logger().info('CrazyflieDriver::Go Home.')
-        self.cmd_motion_.x = 0.025
-        self.cmd_motion_.y = 1.164
-        # self.cmd_motion_.x = -1.690
-        # self.cmd_motion_.y = -0.841
+        self.cmd_motion_.x = 0.0
+        self.cmd_motion_.y = 0.0
         self.cmd_motion_.ckeck_pose()
 
     def descent(self):
@@ -239,7 +241,7 @@ class CFDriver(Node):
 
     def iterate(self):
         if CONTROL_MODE == 'HighLevel':
-            # if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
+            if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
             self.cmd_motion_.send_pose_data_(self.scf._cf)
         if CONTROL_MODE == 'OffBoard':
             self.cmd_motion_.send_offboard_setpoint_(self.scf._cf)
@@ -282,14 +284,18 @@ class CFDriver(Node):
             self.get_logger().warning('Command: %s' % self.cmd_motion_.str_())
 
     def newpose_callback(self, msg):
-        self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y,
-                                        msg.position.z)
+        self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
         if not self.scf.init_pose:
             self.scf.init_pose = True
             self.cmd_motion_.x = msg.position.x
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.get_logger().info(self.cmd_motion_.pose_str_())
+        if (abs(msg.position.x)>1.0) or (abs(msg.position.y)>1.0) or (abs(msg.position.z)>2.0):
+            CONTROL_MODE = 'HighLevel'
+            self.get_logger().error('CrazyflieDriver::Out.')
+            self.gohome()
+            t_end = Timer(2, self.descent)
 
     def goalpose_callback(self, msg):
         self.cmd_motion_.x = msg.position.x
