@@ -152,8 +152,6 @@ class Logging:
         self.is_connected = False
         rclpy.shutdown()
 
-#
-
 
 class CFDriver(Node):
     def __init__(self):
@@ -162,6 +160,7 @@ class CFDriver(Node):
         self.declare_parameter('cf_uri', 'radio://0/80/2M/E7E7E7E701')
         # Publisher
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
+        self.publisher_test = self.create_publisher(String, 'topic', 10)
         # Subscription
         self.sub_order = self.create_subscription(String, 'cf_order',
                                                   self.order_callback, 10)
@@ -172,7 +171,7 @@ class CFDriver(Node):
                                                       10)
         self.sub_cmd = self.create_subscription(Float64MultiArray, 'onboard_cmd',
                                                 self.cmd_control_callback, 10)
-        timer_period = 0.004  # seconds
+        timer_period = 0.01  # seconds
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
         self.CONTROL_MODE = 'OffBoard'
         """
@@ -242,6 +241,9 @@ class CFDriver(Node):
         self.CONTROL_MODE = 'Stop'
 
     def iterate(self):
+        msg = String()
+        msg.data = 'Hello World'
+        self.publisher_test.publish(msg)
         if self.CONTROL_MODE == 'HighLevel':
             if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
                 self.cmd_motion_.send_pose_data_(self.scf._cf)
