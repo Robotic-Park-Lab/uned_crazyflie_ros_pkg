@@ -19,37 +19,37 @@ bool PositionController::initialize(){
     this->get_parameter("ZKi", Ki);
     this->get_parameter("ZKd", Kd);
     this->get_parameter("ZTd", Td);
-    z_controller = init_controller("Z", Kp, Ki, Kd, Td, 100, 28.0, -16.0);
+    z_controller = init_controller("Z", Kp, Ki, Kd, Td, 100, 1.0, -1.0);
     // W Controller
     this->get_parameter("WKp", Kp);
     this->get_parameter("WKi", Ki);
     this->get_parameter("WKd", Kd);
     this->get_parameter("WTd", Td);
-    w_controller = init_controller("W", Kp, Ki, Kd, Td, 100, 28.0, -16.0);
+    w_controller = init_controller("W", Kp, Ki, Kd, Td, 100, 26.0, -16.0);
     // X Controller
     this->get_parameter("XKp", Kp);
     this->get_parameter("XKi", Ki);
     this->get_parameter("XKd", Kd);
     this->get_parameter("XTd", Td);
-    x_controller = init_controller("X", Kp, Ki, Kd, Td, 100, 30.0, -30.0);
+    x_controller = init_controller("X", Kp, Ki, Kd, Td, 100, 1.0, -1.0);
     // U Controller
     this->get_parameter("UKp", Kp);
     this->get_parameter("UKi", Ki);
     this->get_parameter("UKd", Kd);
     this->get_parameter("UTd", Td);
-    u_controller = init_controller("U", Kp, Ki, Kd, Td,100, 20.0, -20.0);
+    u_controller = init_controller("U", Kp, Ki, Kd, Td, 100, 30.0, -30.0);
     // Y Controller
     this->get_parameter("YKp", Kp);
     this->get_parameter("YKi", Ki);
     this->get_parameter("YKd", Kd);
     this->get_parameter("YTd", Td);
-    y_controller = init_controller("Y", Kp, Ki, Kd, Td, 100, 30.0, -30.0);
+    y_controller = init_controller("Y", Kp, Ki, Kd, Td, 100, 1.0, -1.0);
     // V Controller
     this->get_parameter("VKp", Kp);
     this->get_parameter("VKi", Ki);
     this->get_parameter("VKd", Kd);
     this->get_parameter("VTd", Td);
-    v_controller = init_controller("V", Kp, Ki, Kd, Td, 100, 20.0, -20.0);
+    v_controller = init_controller("V", Kp, Ki, Kd, Td, 100, 30.0, -30.0);
 
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
@@ -57,7 +57,7 @@ bool PositionController::initialize(){
 
     // Subscriber:
     // Crazyflie Pose {Real: /pose; Sim: /ground_truth/pose}
-    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
+    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("cf_pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
     // Reference:
     ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("goal_pose", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
 
@@ -71,16 +71,14 @@ bool PositionController::iterate(){
         RCLCPP_INFO_ONCE(this->get_logger(), "PositionController::iterate(). Running ...");
         // Z Controller
         z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
-        thrust = pid_controller(z_controller, dt);
-        /*
+        w_ref = pid_controller(z_controller, dt);
         // W Controller
         w_feedback[1] = w_feedback[0];
         w_feedback[0] = GT_pose.position.z;
         w_signal = (w_feedback[0] - w_feedback[1]) / dt;
         w_controller.error[0] = w_ref - w_signal;
-        thrust = pid_controller(w_controller, dt);
-        */
-        thrust = thrust * 1000 + 38000;
+        double thrust_w = pid_controller(w_controller, dt);
+        thrust = thrust_w * 1000 + 38000;
 
         // Convert quaternion to yw
         rpy_ref = quaternion2euler(ref_pose.orientation);
@@ -90,11 +88,10 @@ bool PositionController::iterate(){
         y_global_error = ref_pose.position.y - GT_pose.position.y;
         // X Controller
         x_controller.error[0] = x_global_error * cos(rpy_state.yaw) + y_global_error * sin(rpy_state.yaw);
-        pitch = pid_controller(x_controller, dt);
+        u_ref = pid_controller(x_controller, dt);
         // Y Controller
         y_controller.error[0] = -x_global_error * sin(rpy_state.yaw) + y_global_error * cos(rpy_state.yaw);
-        roll = pid_controller(y_controller, dt);
-        /*
+        v_ref = pid_controller(y_controller, dt);
         // Speed
         u_feedback[1] = u_feedback[0];
         u_feedback[0] = GT_pose.position.x;
@@ -109,20 +106,23 @@ bool PositionController::iterate(){
         // V Controller
         v_controller.error[0] = v_ref - v_signal;
         roll = pid_controller(v_controller, dt);
-        */
 
-        RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], pitch);
-        //RCLCPP_INFO(this->get_logger(), "U: Error: \t%.2f \tPitch:%.2f", u_controller.error[0], pitch);
-        RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], roll);
-        //RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
-        
+
         // Publish Control CMD
         auto msg_cmd = std_msgs::msg::Float64MultiArray();
         // msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
-        // if (abs(GT_pose.position.x) > 0.7 || abs(GT_pose.position.y) > 0.7)
-        //    fail = true;
+        if (abs(GT_pose.position.x) > 1.2 || abs(GT_pose.position.y) > 1.2)
+            fail = true;
         if (!fail) {
+            RCLCPP_INFO(this->get_logger(), "Z: Error: \t%.2f \tSignal:%.2f", z_controller.error[0], w_ref);
+            RCLCPP_INFO(this->get_logger(), "W: Error: \t%.2f \tSignal:%.2f", w_controller.error[0], thrust_w);
+            RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], pitch);
+            //RCLCPP_INFO(this->get_logger(), "U: Error: \t%.2f \tPitch:%.2f", u_controller.error[0], pitch);
+            RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], roll);
+            //RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
+
             msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
+            msg_cmd.data = { thrust, 0.0, 0.0, 0.0 };
             RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", thrust, roll, pitch, rpy_ref.yaw);
         }
         else {

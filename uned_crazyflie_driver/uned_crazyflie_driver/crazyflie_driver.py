@@ -2,6 +2,7 @@ import logging
 import time
 import rclpy
 from threading import Timer
+import numpy as np
 
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -9,6 +10,7 @@ from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Pose
 from uned_crazyflie_config.msg import StateEstimate
 from uned_crazyflie_config.msg import Cmdsignal
+from vicon_receiver.msg import Position
 
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
@@ -93,14 +95,14 @@ class Logging:
 
         # Variable used to keep main loop occupied until disconnect
         self.is_connected = True
-        
+
 
     def _connected(self, link_uri):
         """ This callback is called form the Crazyflie API when a Crazyflie
         has been connected and the TOCs have been downloaded."""
         self.parent.get_logger().info('Connected to %s' % link_uri)
         # The definition of the logconfig can be made before connecting
-        self._lg_stab = LogConfig(name='Stabilizer', period_in_ms=50)
+        self._lg_stab = LogConfig(name='Stabilizer', period_in_ms=10)
         self._lg_stab.add_variable('stateEstimate.x', 'float')
         self._lg_stab.add_variable('stateEstimate.y', 'float')
         self._lg_stab.add_variable('stateEstimate.z', 'float')
@@ -160,7 +162,7 @@ class CFDriver(Node):
         self.declare_parameter('cf_uri', 'radio://0/80/2M/E7E7E7E701')
         # Publisher
         self.publisher_ = self.create_publisher(StateEstimate, 'cf_data', 10)
-        self.publisher_test = self.create_publisher(String, 'topic', 10)
+        self.publisher_pose = self.create_publisher(Pose, 'cf_pose', 10)
         # Subscription
         self.sub_order = self.create_subscription(String, 'cf_order',
                                                   self.order_callback, 10)
@@ -193,7 +195,10 @@ class CFDriver(Node):
             self.get_logger().info("Interface with URI [%s] found and name/comment [%s]" % (i[0], i[1]))
         self.scf = Logging(dron_id, self)
         self.scf.init_pose = False
-        self.scf._is_flying = False
+        if self.CONTROL_MODE == 'OffBoard':
+            self.scf._is_flying = True
+        else:
+            self.scf._is_flying = False
         self.cmd_motion_ = CMD_Motion(self.get_logger())
         self.scf._cf.commander.set_client_xmode(True)
         time.sleep(2.0)
@@ -211,8 +216,6 @@ class CFDriver(Node):
         # Init Motors
         self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
 
-        if self.CONTROL_MODE == 'OffBoard':
-            self.scf._is_flying = True
 
     def take_off(self):
         self.get_logger().info('CrazyflieDriver::Take Off.')
@@ -241,9 +244,6 @@ class CFDriver(Node):
         self.CONTROL_MODE = 'Stop'
 
     def iterate(self):
-        msg = String()
-        msg.data = 'Hello World'
-        self.publisher_test.publish(msg)
         if self.CONTROL_MODE == 'HighLevel':
             if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
                 self.cmd_motion_.send_pose_data_(self.scf._cf)
@@ -261,6 +261,18 @@ class CFDriver(Node):
         # msg.yaw = data['stabilizer.yaw']
         msg.thrust = data['controller.cmd_thrust']
         self.publisher_.publish(msg)
+        msg = Pose()
+        msg.position.x = data['stateEstimate.x']
+        msg.position.y = data['stateEstimate.y']
+        msg.position.z = data['stateEstimate.z']
+        roll = data['stabilizer.roll']
+        pitch = data['stabilizer.roll']
+        yaw = data['stabilizer.roll']
+        msg.orientation.x = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+        msg.orientation.y = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+        msg.orientation.z = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+        msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+        self.publisher_pose.publish(msg)
 
     def order_callback(self, msg):
         self.get_logger().info('Order: "%s"' % msg.data)
@@ -296,7 +308,7 @@ class CFDriver(Node):
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.get_logger().info(self.cmd_motion_.pose_str_())
-        if (abs(msg.position.x)>0.5) or (abs(msg.position.y)>0.5) or (abs(msg.position.z)>2.0) and self.CONTROL_MODE != 'HighLevel':
+        if ((abs(msg.position.x)>1.0) or (abs(msg.position.y)>1.0) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
             self.CONTROL_MODE = 'HighLevel'
             self.scf._is_flying = True
             self.get_logger().error('CrazyflieDriver::Out.')
@@ -308,11 +320,12 @@ class CFDriver(Node):
             t_end.start()
 
     def goalpose_callback(self, msg):
-        self.cmd_motion_.x = msg.position.x
-        self.cmd_motion_.y = msg.position.y
-        self.cmd_motion_.z = msg.position.z
-        self.cmd_motion_.ckeck_pose()
-        self.get_logger().info(self.cmd_motion_.pose_str_())
+        if self.CONTROL_MODE == 'HighLevel':
+            self.cmd_motion_.x = msg.position.x
+            self.cmd_motion_.y = msg.position.y
+            self.cmd_motion_.z = msg.position.z
+            self.cmd_motion_.ckeck_pose()
+            self.get_logger().info(self.cmd_motion_.pose_str_())
 #
 
 

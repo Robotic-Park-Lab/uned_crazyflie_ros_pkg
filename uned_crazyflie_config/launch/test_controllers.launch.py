@@ -3,11 +3,6 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-
-    hostname = '10.196.88.156'
-    buffer_size = 200
-    topic_namespace = 'vicon'
-
     dron01_node = Node(
         package='uned_crazyflie_driver',
         namespace='dron01',
@@ -18,13 +13,6 @@ def generate_launch_description():
         emulate_tty=True,
         parameters=[
             {'cf_uri': 'radio://0/80/2M/E7E7E7E701'}
-        ])
-    vicon_node = Node(
-        package='vicon_receiver',
-        executable='vicon_client',
-        name='vicon_node',
-        parameters=[
-            {'hostname': hostname, 'buffer_size': buffer_size, 'namespace': topic_namespace}
         ])
     dron01_controller = Node(
             package='uned_crazyflie_controllers',
@@ -38,6 +26,9 @@ def generate_launch_description():
                 {"CONTROLLER_TYPE": "PID"},
                 {"ROBOT_ID": "dron01"},
                 {"CONTROLLER_MODE": "close_loop"},
+                {"X_POS": "1.0"},
+                {"Y_POS": "0.0"},
+                {"Z_POS": "0.0"},
                 {"ZKp": 2.0},
                 {"ZKi": 0.5},
                 {"ZKd": 0.0},
@@ -66,6 +57,5 @@ def generate_launch_description():
         )
     return LaunchDescription([
         dron01_node,
-        vicon_node,
         dron01_controller
     ])
