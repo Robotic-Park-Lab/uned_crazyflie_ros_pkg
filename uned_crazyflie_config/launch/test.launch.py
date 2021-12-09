@@ -14,14 +14,6 @@ def generate_launch_description():
         parameters=[
             {'cf_uri': 'radio://0/80/2M/E7E7E7E701'}
         ])
-    vicon_node = Node(
-        package='uned_vicon_bridge',
-        executable='vicon_tracker',
-        name='vicon',
-        output='screen',
-        shell=True,
-        emulate_tty=True,
-        )
     dron01_controller = Node(
             package='uned_crazyflie_controllers',
             namespace='dron01',
@@ -64,7 +56,6 @@ def generate_launch_description():
             ]
         )
     return LaunchDescription([
-        vicon_node,
         dron01_node,
         dron01_controller
     ])
