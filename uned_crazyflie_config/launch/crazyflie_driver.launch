@@ -57,7 +57,7 @@
     </include>
 
    <node name="crazyflie_driver" pkg="uned_crazyflie_driver" type="uned_crazyflie_driver_node" output="screen" />
-   <node name="attitude_controller" pkg="uned_crazyflie_controllers" type="uned_crazyflie_attitude_controller_node" output="screen">
+   <node name="attitude_controller" pkg="uned_crazyflie_controllers" type="periodic_pid_attitude_controller_node" output="screen">
        <!-- Pitch Controller Params -->
        <param name="PitchKp" value="$(arg PitchKp)"/>
        <param name="PitchKi" value="$(arg PitchKi)"/>

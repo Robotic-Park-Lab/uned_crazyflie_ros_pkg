@@ -21,7 +21,7 @@
 struct pid_s{
    double kp, ki, kd, td;
    int nd;
-   double error[2], integral, derivative[2], upperlimit, lowerlimit;
+   double error[2], integral, derivative, upperlimit, lowerlimit;
 };
 struct euler_angles{
    double roll, pitch, yaw;

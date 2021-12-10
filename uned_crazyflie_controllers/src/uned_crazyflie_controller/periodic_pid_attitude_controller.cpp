@@ -3,6 +3,7 @@
 bool CrazyflieAttitudeController::initialize()
 {
 	ROS_INFO("CrazyflieAttitudeController::inicialize() ok.");
+	ROS_WARN("Controllers I-D: Off");
 
 	// Lectura de parámetros
 	// Pitch Controller
@@ -125,22 +126,21 @@ euler_angles CrazyflieAttitudeController::quaternion2euler(geometry_msgs::Quater
 double CrazyflieAttitudeController::pid_controller(struct pid_s controller, double dt){
 	double outP = controller.kp * controller.error[0];
 	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
-	controller.derivative[0] = (controller.td/(controller.td+controller.nd+dt))*controller.derivative[1]+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
-	double out = outP + controller.integral + controller.derivative[0];
+	controller.derivative = (controller.td/(controller.td+controller.nd+dt))*controller.derivative+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
+	double out = outP + controller.integral + controller.derivative;
 
 	if(controller.upperlimit != 0.0){
-		double out_i = out;
+		// double out_i = out;
 
 		if (out > controller.upperlimit)
 			out = controller.upperlimit;
 		if (out < controller.lowerlimit)
 			out = controller.lowerlimit;
 
-		controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
+		// controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
 	}
 
 	controller.error[1] = controller.error[0];
-	controller.derivative[1] = controller.derivative[0];
 
 	return out;
 }
@@ -156,8 +156,7 @@ struct pid_s CrazyflieAttitudeController::init_controller(const char id[], doubl
 	controller.error[0] = 0.0;
 	controller.error[1] = 0.0;
 	controller.integral = 0.0;
-	controller.derivative[0] = 0.0;
-	controller.derivative[1] = 0.0;
+	controller.derivative = 0.0;
 	controller.upperlimit = upperlimit;
 	controller.lowerlimit = lowerlimit;
 
