@@ -33,32 +33,33 @@ class PositionController : public rclcpp::Node
 {
 public:
     PositionController() : Node("position_controller") {
-      this->declare_parameter("ZKp");
-      this->declare_parameter("ZKi");
-      this->declare_parameter("ZKd");
-      this->declare_parameter("ZTd");
-      this->declare_parameter("WKp");
-      this->declare_parameter("WKi");
-      this->declare_parameter("WKd");
-      this->declare_parameter("WTd");
-      this->declare_parameter("XKp");
-      this->declare_parameter("XKi");
-      this->declare_parameter("XKd");
-      this->declare_parameter("XTd");
-      this->declare_parameter("UKp");
-      this->declare_parameter("UKi");
-      this->declare_parameter("UKd");
-      this->declare_parameter("UTd");
-      this->declare_parameter("YKp");
-      this->declare_parameter("YKi");
-      this->declare_parameter("YKd");
-      this->declare_parameter("YTd");
-      this->declare_parameter("VKp");
-      this->declare_parameter("VKi");
-      this->declare_parameter("VKd");
-      this->declare_parameter("VTd");
-      this->declare_parameter("ROBOT_ID");
-      this->declare_parameter("Feedback_topic");
+      // this->declare_parameter("ZKp");
+      this->declare_parameter("ZKp", 0.);
+      this->declare_parameter("ZKi", 0.);
+      this->declare_parameter("ZKd", 0.);
+      this->declare_parameter("ZTd", 0.);
+      this->declare_parameter("WKp", 0.);
+      this->declare_parameter("WKi", 0.);
+      this->declare_parameter("WKd", 0.);
+      this->declare_parameter("WTd", 0.);
+      this->declare_parameter("XKp", 0.);
+      this->declare_parameter("XKi", 0.);
+      this->declare_parameter("XKd", 0.);
+      this->declare_parameter("XTd", 0.);
+      this->declare_parameter("UKp", 0.);
+      this->declare_parameter("UKi", 0.);
+      this->declare_parameter("UKd", 0.);
+      this->declare_parameter("UTd", 0.);
+      this->declare_parameter("YKp", 0.);
+      this->declare_parameter("YKi", 0.);
+      this->declare_parameter("YKd", 0.);
+      this->declare_parameter("YTd", 0.);
+      this->declare_parameter("VKp", 0.);
+      this->declare_parameter("VKi", 0.);
+      this->declare_parameter("VKd", 0.);
+      this->declare_parameter("VTd", 0.);
+      this->declare_parameter("ROBOT_ID", "dron01");
+      this->declare_parameter("Feedback_topic", "cf_pose");
     }
 
     bool initialize();
