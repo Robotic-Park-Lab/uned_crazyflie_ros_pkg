@@ -1,7 +1,6 @@
 #include <uned_crazyflie_controllers/CrazyflieRateMixerController.h>
 
-bool CrazyflieRateMixerController::initialize()
-{
+bool CrazyflieRateMixerController::initialize(){
 	ROS_INFO("CrazyflieRateMixerController::inicialize() ok.");
 
 	// dPitch Controller
@@ -48,8 +47,7 @@ bool CrazyflieRateMixerController::initialize()
 	return true;
 }
 
-bool CrazyflieRateMixerController::iterate()
-{
+bool CrazyflieRateMixerController::iterate(){
 	// Feedback:
 		rpy_state = quaternion2euler(m_GT_pose.orientation);
 	// dPitch controller
@@ -138,25 +136,24 @@ euler_angles CrazyflieRateMixerController::quaternion2euler(geometry_msgs::Quate
 	return rpy;
 }
 
-double CrazyflieRateMixerController::pid_controller(struct pid_s controller, double dt){
+double CrazyflieRateMixerController::pid_controller(struct pid_s &controller, double dt){
 	double outP = controller.kp * controller.error[0];
 	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
-	controller.derivative[0] = (controller.td/(controller.td+controller.nd+dt))*controller.derivative[1]+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
-	double out = outP + controller.integral + controller.derivative[0];
+	controller.derivative = (controller.td/(controller.td+controller.nd+dt))*controller.derivative+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
+	double out = outP + controller.integral + controller.derivative;
 
 	if(controller.upperlimit != 0.0){
-		double out_i = out;
+		// double out_i = out;
 
 		if (out > controller.upperlimit)
 			out = controller.upperlimit;
 		if (out < controller.lowerlimit)
 			out = controller.lowerlimit;
 
-		controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
+		// controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
 	}
 
 	controller.error[1] = controller.error[0];
-	controller.derivative[1] = controller.derivative[0];
 
 	return out;
 }
@@ -172,8 +169,7 @@ struct pid_s CrazyflieRateMixerController::init_controller(const char id[], doub
 	controller.error[0] = 0.0;
 	controller.error[1] = 0.0;
 	controller.integral = 0.0;
-	controller.derivative[0] = 0.0;
-	controller.derivative[1] = 0.0;
+	controller.derivative = 0.0;
 	controller.upperlimit = upperlimit;
 	controller.lowerlimit = lowerlimit;
 
