@@ -7,11 +7,9 @@ def generate_launch_description():
         Node(
             package='uned_crazyflie_controllers',
             namespace='dron01',
-            executable='periodic_pid_position_controller',
-            # executable='eventbased_pid_position_controller',
+            executable='eventbased_pid_position_controller',
             name='position_controller',
             parameters=[
-                {"Feedback_topic": "ground_truth/pose"},
                 {"ROBOT_ID": "dron01"},
                 {"DEBUG": False},
                 {"ZKp": 2.0, "ZKi": 0.5, "ZKd": 0.0, "ZTd": 0.0},
@@ -20,6 +18,13 @@ def generate_launch_description():
                 {"UKp": 25.0, "UKi": 1.0, "UKd": 0.0, "UTd": 0.0},
                 {"YKp": 2.0, "YKi": 0.0, "YKd": 0.0, "YTd": 0.0},
                 {"VKp": -25.0, "VKi": -1.0, "VKd": 0.0, "VTd": 0.0},
+                {"Feedback_topic": "ground_truth/pose"},
+                {"Zco": 0.01, "Zai": 0.015},
+                {"Wco": 0.01, "Wai": 0.015},
+                {"Xco": 0.01, "Xai": 0.015},
+                {"Uco": 0.01, "Uai": 0.015},
+                {"Yco": 0.01, "Yai": 0.015},
+                {"Vco": 0.01, "Vai": 0.015}
             ]
         )
 
