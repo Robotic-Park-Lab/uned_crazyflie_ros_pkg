@@ -85,7 +85,7 @@ bool PositionController::iterate(){
 			if (eval_threshold(z_threshold, GT_pose.position.z, ref_pose.position.z)){
 				RCLCPP_INFO(this->get_logger(), "Z New Event. Dt: %.4f", z_threshold.dt);
 				z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
-				w_ref = pid_controller_test(z_controller, z_threshold.dt);
+				w_ref = pid_controller(z_controller, z_threshold.dt);
 			}
 
 			// W Controller
@@ -95,7 +95,7 @@ bool PositionController::iterate(){
 			if (eval_threshold(w_threshold, w_signal, w_ref)){
 				RCLCPP_INFO(this->get_logger(), "W New Event. Dt: %.4f", w_threshold.dt);
 				w_controller.error[0] = w_ref - w_signal;
-				thrust = pid_controller_test(w_controller, w_threshold.dt);
+				thrust = pid_controller(w_controller, w_threshold.dt);
 				thrust = thrust * 1000 + 38000;
 			}
 
@@ -109,13 +109,13 @@ bool PositionController::iterate(){
 			if (eval_threshold(x_threshold, GT_pose.position.x, ref_pose.position.x)){
 				RCLCPP_INFO(this->get_logger(), "X New Event. Dt: %.4f", x_threshold.dt);
 				x_controller.error[0] = x_global_error * cos(rpy_state.yaw) + y_global_error * sin(rpy_state.yaw);
-				u_ref = pid_controller_test(x_controller, x_threshold.dt);
+				u_ref = pid_controller(x_controller, x_threshold.dt);
 			}
 			// Y Controller
 			if (eval_threshold(y_threshold, GT_pose.position.y, ref_pose.position.y)){
 				RCLCPP_INFO(this->get_logger(), "Y New Event. Dt: %.4f", y_threshold.dt);
 				y_controller.error[0] = -x_global_error * sin(rpy_state.yaw) + y_global_error * cos(rpy_state.yaw);
-				v_ref = pid_controller_test(y_controller, y_threshold.dt);
+				v_ref = pid_controller(y_controller, y_threshold.dt);
 			}
 			// Speed
 			u_feedback[1] = u_feedback[0];
@@ -129,13 +129,13 @@ bool PositionController::iterate(){
 			if (eval_threshold(u_threshold, u_signal, u_ref)){
 				RCLCPP_INFO(this->get_logger(), "U New Event. Dt: %.4f", u_threshold.dt);
 				u_controller.error[0] = u_ref - u_signal;
-				pitch = pid_controller_test(u_controller, u_threshold.dt);
+				pitch = pid_controller(u_controller, u_threshold.dt);
 			}
 			// V Controller
 			if (eval_threshold(v_threshold, v_signal, v_ref)){
 				RCLCPP_INFO(this->get_logger(), "V New Event. Dt: %.4f", v_threshold.dt);
 				v_controller.error[0] = v_ref - v_signal;
-				roll = pid_controller_test(v_controller, v_threshold.dt);
+				roll = pid_controller(v_controller, v_threshold.dt);
 			}
 
 			if(events){
@@ -227,7 +227,7 @@ struct pid_s PositionController::init_controller(const char id[], double kp, dou
     return controller;
 }
 
-double PositionController::pid_controller_test(struct pid_s &controller, double dt){
+double PositionController::pid_controller(struct pid_s &controller, double dt){
 	double outP = controller.kp * controller.error[0];
 	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
 	controller.derivative = (controller.td/(controller.td+controller.nd+dt))*controller.derivative+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
@@ -246,27 +246,6 @@ double PositionController::pid_controller_test(struct pid_s &controller, double 
 
 	controller.error[1] = controller.error[0];
 	events = true;
-	return out;
-}
-
-double PositionController::pid_controller(struct pid_s controller, double dt){
-	double outP = controller.kp * controller.error[0];
-	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
-	controller.derivative = (controller.td/(controller.td+controller.nd+dt))*controller.derivative+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
-	double out = outP + controller.integral + controller.derivative;
-
-	if(controller.upperlimit != 0.0){
-		double out_i = out;
-
-		if (out > controller.upperlimit)
-			out = controller.upperlimit;
-		if (out < controller.lowerlimit)
-			out = controller.lowerlimit;
-
-		controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
-	}
-
-	controller.error[1] = controller.error[0];
 	return out;
 }
 

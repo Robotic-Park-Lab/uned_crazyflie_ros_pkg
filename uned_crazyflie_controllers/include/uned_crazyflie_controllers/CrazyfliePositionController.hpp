@@ -120,8 +120,7 @@ private:
     void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg);
     void positionreferenceCallback(const geometry_msgs::msg::Pose::SharedPtr msg);
     euler_angles quaternion2euler(geometry_msgs::msg::Quaternion quat);
-    double pid_controller(struct pid_s controller, double dt);
-    double pid_controller_test(struct pid_s &controller, double dt);
+    double pid_controller(struct pid_s &controller, double dt);
     struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit);
     struct threshold init_triggering(const char id[], double co, double a);
     bool eval_threshold(struct threshold &trigger, double signal, double ref);

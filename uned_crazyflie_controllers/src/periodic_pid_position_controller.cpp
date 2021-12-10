@@ -191,25 +191,25 @@ struct pid_s PositionController::init_controller(const char id[], double kp, dou
     return controller;
 }
 
-double PositionController::pid_controller(struct pid_s controller, double dt){
+double PositionController::pid_controller(struct pid_s &controller, double dt){
 	double outP = controller.kp * controller.error[0];
 	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
 	controller.derivative = (controller.td/(controller.td+controller.nd+dt))*controller.derivative+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
 	double out = outP + controller.integral + controller.derivative;
 
 	if(controller.upperlimit != 0.0){
-		double out_i = out;
+		// double out_i = out;
 
 		if (out > controller.upperlimit)
 			out = controller.upperlimit;
 		if (out < controller.lowerlimit)
 			out = controller.lowerlimit;
 
-		controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
+		// controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
 	}
 
 	controller.error[1] = controller.error[0];
-
+	events = true;
 	return out;
 }
 

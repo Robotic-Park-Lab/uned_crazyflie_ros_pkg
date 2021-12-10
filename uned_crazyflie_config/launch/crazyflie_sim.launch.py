@@ -8,7 +8,6 @@ def generate_launch_description():
             package='uned_crazyflie_controllers',
             namespace='dron01',
             executable='periodic_pid_position_controller',
-            # executable='eventbased_pid_position_controller',
             name='position_controller',
             parameters=[
                 {"Feedback_topic": "ground_truth/pose"},
