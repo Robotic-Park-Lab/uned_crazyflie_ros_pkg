@@ -43,6 +43,30 @@ public:
     AttitudeRateController() : Node("attituderate_controller") {
       this->declare_parameter("ROBOT_ID", "dron01");
       this->declare_parameter("DEBUG", false);
+      this->declare_parameter("PitchKp", 6.0);
+      this->declare_parameter("PitchKi", 3.0);
+      this->declare_parameter("PitchKd", 0.0);
+      this->declare_parameter("PitchTd", 0.0);
+      this->declare_parameter("RollKp", 6.0);
+      this->declare_parameter("RollKi", 3.0);
+      this->declare_parameter("RollKd", 0.0);
+      this->declare_parameter("RollTd", 0.0);
+      this->declare_parameter("YawKp", 6.0);
+      this->declare_parameter("YawKi", 1.0);
+      this->declare_parameter("YawKd", 0.3499);
+      this->declare_parameter("YawTd", 0.0583);
+      this->declare_parameter("dPitchKp", 250.0);
+      this->declare_parameter("dPitchKi", 500.0);
+      this->declare_parameter("dPitchKd", 2.5);
+      this->declare_parameter("dPitchTd", 0.01);
+      this->declare_parameter("dRollKp", 250.0);
+      this->declare_parameter("dRollKi", 500.0);
+      this->declare_parameter("dRollKd", 2.5);
+      this->declare_parameter("dRollTd", 0.01);
+      this->declare_parameter("dYawKp", 120.0);
+      this->declare_parameter("dYawKi", 16.7);
+      this->declare_parameter("dYawKd", 0.0);
+      this->declare_parameter("dYawTd", 0.0);
     }
 
   bool initialize();
@@ -61,6 +85,7 @@ private:
   bool first_pose_received = false;
   bool first_ref_received = false;
   bool debug_flag = false;
+  double Kp, Ki, Kd, Td;
   double dt = 0.002;
   double kp, ki, kd, td;
   // Controllers

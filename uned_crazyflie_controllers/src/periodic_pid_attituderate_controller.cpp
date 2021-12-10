@@ -12,17 +12,41 @@ bool AttitudeRateController::initialize(){
     RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s,", m_controller_type.c_str(), robotid.c_str());
 
     // Pitch Controller
-    pitch_controller = init_controller("Pitch", 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
+    this->get_parameter("PitchKp", Kp);
+    this->get_parameter("PitchKi", Ki);
+    this->get_parameter("PitchKd", Kd);
+    this->get_parameter("PitchTd", Td);
+    pitch_controller = init_controller("Pitch", Kp, Ki, Kd, Td, 100, 50.0, -50.0);
     // Roll Controller
-    roll_controller = init_controller("Roll", 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
+    this->get_parameter("RollKp", Kp);
+    this->get_parameter("RollKi", Ki);
+    this->get_parameter("RollKd", Kd);
+    this->get_parameter("RollTd", Td);
+    roll_controller = init_controller("Roll", Kp, Ki, Kd, Td, 100, 50.0, -50.0);
     // Yaw Controller
-    yaw_controller = init_controller("Yaw", 6.0, 1.0, 0.3499, 0.0583, 100, 20.0, -20.0);
+    this->get_parameter("YawKp", Kp);
+    this->get_parameter("YawKi", Ki);
+    this->get_parameter("YawKd", Kd);
+    this->get_parameter("YawTd", Td);
+    yaw_controller = init_controller("Yaw", Kp, Ki, Kd, Td, 100, 20.0, -20.0);
     // dPitch Controller
-    dpitch_controller = init_controller("dPitch", 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
+    this->get_parameter("dPitchKp", Kp);
+    this->get_parameter("dPitchKi", Ki);
+    this->get_parameter("dPitchKd", Kd);
+    this->get_parameter("dPitchTd", Td);
+    dpitch_controller = init_controller("dPitch", Kp, Ki, Kd, Td, 100, 720.0, -720.0);
     // dRoll Controller
-    droll_controller = init_controller("dRoll", 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
+    this->get_parameter("dRollKp", Kp);
+    this->get_parameter("dRollKi", Ki);
+    this->get_parameter("dRollKd", Kd);
+    this->get_parameter("dRollTd", Td);
+    droll_controller = init_controller("dRoll", Kp, Ki, Kd, Td, 100, 720.0, -720.0);
     // dYaw Controller
-    dyaw_controller = init_controller("dYaw", 120.0, 16.7, 0.0, 0.0, 100, 400.0, -400.0);
+    this->get_parameter("dYawKp", Kp);
+    this->get_parameter("dYawKi", Ki);
+    this->get_parameter("dYawKd", Kd);
+    this->get_parameter("dYawTd", Td);
+    dyaw_controller = init_controller("dYaw", Kp, Ki, Kd, Td, 100, 400.0, -400.0);
 
     // Publisher:
     pub_cmd_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("cmd_control", 10);
