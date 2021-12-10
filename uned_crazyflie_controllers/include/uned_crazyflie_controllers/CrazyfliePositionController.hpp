@@ -60,6 +60,7 @@ public:
       this->declare_parameter("VTd", 0.);
       this->declare_parameter("ROBOT_ID", "dron01");
       this->declare_parameter("Feedback_topic", "cf_pose");
+      this->declare_parameter("DEBUG", false);
     }
 
     bool initialize();
@@ -79,6 +80,7 @@ private:
     bool first_pose_received = false;
     bool first_ref_received = false;
     bool fail = false;
+    bool debug_flag = false;
     // Controllers
     struct pid_s z_controller, w_controller, x_controller, u_controller, y_controller, v_controller;
     // Altitude Controller

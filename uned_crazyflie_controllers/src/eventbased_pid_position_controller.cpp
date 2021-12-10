@@ -47,6 +47,8 @@ bool PositionController::initialize(){
 	this->get_parameter("VTd", Td);
 	v_controller = init_controller("V", Kp, Ki, Kd, Td, 100, 30.0, -30.0);
 
+	dt = 0.004;
+
 	// Publisher:
 	// Referencias para los controladores PID Attitude y Rate
 	pub_cmd_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("onboard_cmd", 10);

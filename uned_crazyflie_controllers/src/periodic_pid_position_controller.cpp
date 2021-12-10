@@ -8,6 +8,7 @@ bool PositionController::initialize(){
     // Lectura de parámetros
     this->get_parameter("ROBOT_ID", robotid);
     this->get_parameter("Feedback_topic", feedback_topic);
+    this->get_parameter("DEBUG", debug_flag);
     m_controller_type = "PERIODIC PID";
     RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s", m_controller_type.c_str(), robotid.c_str());
 
@@ -73,8 +74,8 @@ bool PositionController::iterate(){
         w_feedback[0] = GT_pose.position.z;
         w_signal = (w_feedback[0] - w_feedback[1]) / dt;
         w_controller.error[0] = w_ref - w_signal;
-        double thrust_w = pid_controller(w_controller, dt);
-        thrust = thrust_w * 1000 + 38000;
+        thrust = pid_controller(w_controller, dt);
+        thrust = thrust * 1000 + 38000;
 
         // Convert quaternion to yw
         rpy_ref = quaternion2euler(ref_pose.orientation);
@@ -103,27 +104,25 @@ bool PositionController::iterate(){
         v_controller.error[0] = v_ref - v_signal;
         roll = pid_controller(v_controller, dt);
 
-
+        // Debug
+        if(debug_flag){
+          RCLCPP_INFO(this->get_logger(), "Z: Error: \t%.2f \tSignal:%.2f", z_controller.error[0], w_ref);
+          RCLCPP_INFO(this->get_logger(), "W: Error: \t%.2f \tSignal:%.2f", w_controller.error[0], thrust);
+          RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], u_ref);
+          RCLCPP_INFO(this->get_logger(), "U: Error: \t%.2f \tPitch:%.2f", u_controller.error[0], pitch);
+          RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], v_ref);
+          RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
+        }
         // Publish Control CMD
         auto msg_cmd = std_msgs::msg::Float64MultiArray();
+        msg_cmd.data = { 0.0, 0.0, 0.0, rpy_ref.yaw };
         // msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
         if (abs(GT_pose.position.x) > 1.2 || abs(GT_pose.position.y) > 1.2)
             fail = true;
-        if (!fail) {
-            RCLCPP_INFO(this->get_logger(), "Z: Error: \t%.2f \tSignal:%.2f", z_controller.error[0], w_ref);
-            RCLCPP_INFO(this->get_logger(), "W: Error: \t%.2f \tSignal:%.2f", w_controller.error[0], thrust_w);
-            RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], pitch);
-            //RCLCPP_INFO(this->get_logger(), "U: Error: \t%.2f \tPitch:%.2f", u_controller.error[0], pitch);
-            RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], roll);
-            //RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
-
+        if (!fail)
             msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
-            // msg_cmd.data = { thrust, 0.0, 0.0, 0.0 };
-            RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", thrust, roll, pitch, rpy_ref.yaw);
-        }
-        else {
-            msg_cmd.data = { 0.0, 0.0, 0.0, rpy_ref.yaw };
-        }
+
+        RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", msg_cmd.data[0], msg_cmd.data[1], msg_cmd.data[2], msg_cmd.data[3]);
         pub_cmd_->publish(msg_cmd);
     }
     else
