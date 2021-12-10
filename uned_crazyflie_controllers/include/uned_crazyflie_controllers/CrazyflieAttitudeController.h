@@ -55,7 +55,7 @@ class CrazyflieAttitudeController
     void attitudeRefsCallback(const uned_crazyflie_controllers::AttitudeRefs::ConstPtr& msg);
     void rateMixerRefsCallback(const double dpitch, const double droll, const double dyaw);
     euler_angles quaternion2euler(geometry_msgs::Quaternion quat);
-    double pid_controller(struct pid_s controller, double dt);
+    double pid_controller(struct pid_s &controller, double dt);
     struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit);
 
     // Controllers

@@ -1,9 +1,8 @@
 #include <uned_crazyflie_controllers/CrazyflieAttitudeController.h>
 
-bool CrazyflieAttitudeController::initialize()
-{
+bool CrazyflieAttitudeController::initialize(){
 	ROS_INFO("CrazyflieAttitudeController::inicialize() ok.");
-	ROS_WARN("Controllers I-D: Off");
+	ROS_WARN("Controllers I-D: Fail");
 
 	// Lectura de parámetros
 	// Pitch Controller
@@ -89,6 +88,7 @@ void CrazyflieAttitudeController::attitudeRefsCallback(const uned_crazyflie_cont
 	if (!first_ref_received)
 			first_ref_received = true;
 }
+
 void CrazyflieAttitudeController::rateMixerRefsCallback(const double dpitch, const double droll, const double dyaw){
 	uned_crazyflie_controllers::RateMixerRefs ref_msg;
 
@@ -123,7 +123,7 @@ euler_angles CrazyflieAttitudeController::quaternion2euler(geometry_msgs::Quater
 	return rpy;
 }
 
-double CrazyflieAttitudeController::pid_controller(struct pid_s controller, double dt){
+double CrazyflieAttitudeController::pid_controller(struct pid_s &controller, double dt){
 	double outP = controller.kp * controller.error[0];
 	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
 	controller.derivative = (controller.td/(controller.td+controller.nd+dt))*controller.derivative+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
