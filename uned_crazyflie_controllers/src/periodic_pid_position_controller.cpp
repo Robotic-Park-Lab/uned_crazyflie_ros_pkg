@@ -7,12 +7,9 @@ bool PositionController::initialize(){
 
     // Lectura de parámetros
     this->get_parameter("ROBOT_ID", robotid);
-    m_controller_type = "PID";
-    m_controller_mode = "close loop";
-    RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s, \tMode: %s", m_controller_type.c_str(), robotid.c_str(), m_controller_mode.c_str());
-    m_x_init = 0.0;
-    m_y_init = 0.0;
-    m_z_init = 0.0;
+    this->get_parameter("Feedback_topic", feedback_topic);
+    m_controller_type = "PERIODIC PID";
+    RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s", m_controller_type.c_str(), robotid.c_str());
 
     // Z Controller
     this->get_parameter("ZKp", Kp);
@@ -56,14 +53,13 @@ bool PositionController::initialize(){
     pub_cmd_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("onboard_cmd", 10);
 
     // Subscriber:
-    // Crazyflie Pose {Real: /pose; Sim: /ground_truth/pose}
-    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("cf_pose", 10, std::bind(&PositionController::gtposeCallback, this, _1));
+    // Crazyflie Pose {Real: /cf_pose; Sim: /ground_truth/pose}
+    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>(feedback_topic, 10, std::bind(&PositionController::gtposeCallback, this, _1));
     // Reference:
     ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("goal_pose", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
 
     return true;
 }
-
 
 bool PositionController::iterate(){
     RCLCPP_INFO_ONCE(this->get_logger(), "PositionController::iterate(). ok.");
@@ -122,7 +118,7 @@ bool PositionController::iterate(){
             //RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
 
             msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
-            msg_cmd.data = { thrust, 0.0, 0.0, 0.0 };
+            // msg_cmd.data = { thrust, 0.0, 0.0, 0.0 };
             RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", thrust, roll, pitch, rpy_ref.yaw);
         }
         else {
@@ -130,19 +126,17 @@ bool PositionController::iterate(){
         }
         pub_cmd_->publish(msg_cmd);
     }
-    else {
+    else
         RCLCPP_INFO_ONCE(this->get_logger(), "PositionController::iterate(). Waiting reference & feedback position");
-    }
 
   return true;
 }
-
 
 int main(int argc, char ** argv){
   try{
     rclcpp::init(argc, argv);
     auto crazyflie_position_controller = std::make_shared<PositionController>();
-    rclcpp::Rate loop_rate(250);
+    rclcpp::Rate loop_rate(100);
     crazyflie_position_controller->initialize();
 
     while (rclcpp::ok()){
@@ -190,8 +184,7 @@ struct pid_s PositionController::init_controller(const char id[], double kp, dou
     controller.error[0] = 0.0;
     controller.error[1] = 0.0;
     controller.integral = 0.0;
-    controller.derivative[0] = 0.0;
-    controller.derivative[1] = 0.0;
+    controller.derivative = 0.0;
     controller.upperlimit = upperlimit;
     controller.lowerlimit = lowerlimit;
 
@@ -202,8 +195,8 @@ struct pid_s PositionController::init_controller(const char id[], double kp, dou
 double PositionController::pid_controller(struct pid_s controller, double dt){
 	double outP = controller.kp * controller.error[0];
 	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
-	controller.derivative[0] = (controller.td/(controller.td+controller.nd+dt))*controller.derivative[1]+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
-	double out = outP + controller.integral + controller.derivative[0];
+	controller.derivative = (controller.td/(controller.td+controller.nd+dt))*controller.derivative+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
+	double out = outP + controller.integral + controller.derivative;
 
 	if(controller.upperlimit != 0.0){
 		double out_i = out;
@@ -217,7 +210,22 @@ double PositionController::pid_controller(struct pid_s controller, double dt){
 	}
 
 	controller.error[1] = controller.error[0];
-	controller.derivative[1] = controller.derivative[0];
 
 	return out;
+}
+
+void PositionController::positionreferenceCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
+    ref_pose.position = msg->position;
+    ref_pose.orientation = msg->orientation;
+    if (!first_ref_received)
+        first_ref_received = true;
+}
+
+void PositionController::gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
+    GT_pose.position = msg->position;
+    GT_pose.orientation = msg->orientation;
+    if(!first_pose_received){
+      RCLCPP_INFO_ONCE(this->get_logger(),"Init Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
+      first_pose_received = true;
+    }
 }

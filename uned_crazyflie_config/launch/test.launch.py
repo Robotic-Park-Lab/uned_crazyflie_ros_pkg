@@ -35,9 +35,8 @@ def generate_launch_description():
             shell=True,
             emulate_tty=True,
             parameters=[
-                {"CONTROLLER_TYPE": "PID"},
+                {"Feedback_topic": "ground_truth/pose"},
                 {"ROBOT_ID": "dron01"},
-                {"CONTROLLER_MODE": "close_loop"},
                 {"ZKp": 2.0},
                 {"ZKi": 0.5},
                 {"ZKd": 0.0},

@@ -21,7 +21,7 @@
 struct pid_s{
     double kp, ki, kd, td;
     int nd;
-    double error[2], integral, derivative[2], upperlimit, lowerlimit;
+    double error[2], integral, derivative, upperlimit, lowerlimit;
 };
 struct euler_angles {
     double roll, pitch, yaw;
@@ -58,6 +58,7 @@ public:
       this->declare_parameter("VKd");
       this->declare_parameter("VTd");
       this->declare_parameter("ROBOT_ID");
+      this->declare_parameter("Feedback_topic");
     }
 
     bool initialize();
@@ -70,11 +71,9 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr ref_pose_;
 
-    std::string robotid;
+    std::string robotid, feedback_topic, m_controller_type, m_controller_mode;
     double Kp, Ki, Kd, Td;
-    double dt = 0.004;
-    double m_x_init, m_y_init, m_z_init;
-    std::string  m_controller_type, m_robot_id, m_controller_mode, str_id;
+    double dt = 0.01;
     geometry_msgs::msg::Pose GT_pose, ref_pose;
     bool first_pose_received = false;
     bool first_ref_received = false;
@@ -90,27 +89,8 @@ private:
     struct euler_angles rpy_ref, rpy_state;
 
     // Function
-    void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
-        GT_pose.position = msg->position;
-        GT_pose.orientation = msg->orientation;
-        if(!first_pose_received){
-            ref_pose.position = msg->position;
-            ref_pose.orientation = msg->orientation;
-            first_pose_received = true;
-            u_feedback[0] = ref_pose.position.x;
-            v_feedback[0] = ref_pose.position.y;
-            w_feedback[0] = ref_pose.position.z;
-            RCLCPP_INFO(this->get_logger(),"Init Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
-        }
-    }
-    void positionreferenceCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
-        // RCLCPP_INFO(this->get_logger(),"New Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
-        ref_pose.position = msg->position;
-        ref_pose.orientation = msg->orientation;
-        if (!first_ref_received) {
-            first_ref_received = true;
-        }
-    }
+    void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg);
+    void positionreferenceCallback(const geometry_msgs::msg::Pose::SharedPtr msg);
     euler_angles quaternion2euler(geometry_msgs::msg::Quaternion quat);
     double pid_controller(struct pid_s controller, double dt);
     struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit);
