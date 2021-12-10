@@ -6,30 +6,23 @@ bool AttitudeRateController::initialize(){
     RCLCPP_INFO(this->get_logger(),"AttitudeRateController::inicialize() ok.");
 
     // Lectura de parámetros
-    RCLCPP_INFO(this->get_logger(),"TO-DO: Read Params.");
-    m_controller_type = "PID";
-    m_robot_id = "dron01";
-    m_controller_mode = "close loop";
-    RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s, \tMode: %s", m_controller_type.c_str(), m_robot_id.c_str(), m_controller_mode.c_str());
+    this->get_parameter("ROBOT_ID", robotid);
+    this->get_parameter("DEBUG", debug_flag);
+    m_controller_type = "PERIODIC PID";
+    RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s,", m_controller_type.c_str(), robotid.c_str());
 
     // Pitch Controller
-    str_id = "Pitch";
-    pitch_controller = init_controller(str_id.c_str(), 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
+    pitch_controller = init_controller("Pitch", 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
     // Roll Controller
-    str_id = "Roll";
-    roll_controller = init_controller(str_id.c_str(), 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
+    roll_controller = init_controller("Roll", 6.0, 3.0, 0.0, 0.0, 100, 50.0, -50.0);
     // Yaw Controller
-    str_id = "Yaw";
-    yaw_controller = init_controller(str_id.c_str(), 6.0, 1.0, 0.3499, 0.0583, 100, 20.0, -20.0);
+    yaw_controller = init_controller("Yaw", 6.0, 1.0, 0.3499, 0.0583, 100, 20.0, -20.0);
     // dPitch Controller
-    str_id = "dPitch";
-    dpitch_controller = init_controller(str_id.c_str(), 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
+    dpitch_controller = init_controller("dPitch", 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
     // dRoll Controller
-    str_id = "dRoll";
-    droll_controller = init_controller(str_id.c_str(), 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
+    droll_controller = init_controller("dRoll", 250.0, 500.0, 2.5, 0.01, 100, 720.0, -720.0);
     // dYaw Controller
-    str_id = "dYaw";
-    dyaw_controller = init_controller(str_id.c_str(), 120.0, 16.7, 0.0, 0.0, 100, 400.0, -400.0);
+    dyaw_controller = init_controller("dYaw", 120.0, 16.7, 0.0, 0.0, 100, 400.0, -400.0);
 
     // Publisher:
     pub_cmd_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("cmd_control", 10);
@@ -43,7 +36,6 @@ bool AttitudeRateController::initialize(){
 
     return true;
 }
-
 
 bool AttitudeRateController::iterate(){
     RCLCPP_INFO_ONCE(this->get_logger(), "AttitudeRateController::iterate(). ok.");
@@ -101,7 +93,6 @@ bool AttitudeRateController::iterate(){
   return true;
 }
 
-
 int main(int argc, char ** argv){
   try{
     rclcpp::init(argc, argv);
@@ -117,5 +108,84 @@ int main(int argc, char ** argv){
     return 0;
   } catch (std::exception &e){
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Exception: %s",e.what());
+    }
+}
+
+euler_angles AttitudeRateController::quaternion2euler(geometry_msgs::msg::Quaternion quat){
+    euler_angles rpy;
+
+    // roll (x-axis rotation)
+    double sinr_cosp = 2 * (quat.w * quat.x + quat.y * quat.z);
+    double cosr_cosp = 1 - 2 * (quat.x * quat.x + quat.y * quat.y);
+    rpy.roll = std::atan2(sinr_cosp, cosr_cosp) * (180 / 3.14159265);
+
+    // pitch (y-axis rotation)
+    double sinp = 2 * (quat.w * quat.y - quat.z * quat.x);
+    if (std::abs(sinp) >= 1)
+        rpy.pitch = std::copysign(3.14159265 / 2, sinp) * (180 / 3.14159265);
+    else
+        rpy.pitch = std::asin(sinp) * (180 / 3.14159265);
+
+    // yaw (z-axis rotation)
+    double siny_cosp = 2 * (quat.w * quat.z + quat.x * quat.y);
+    double cosy_cosp = 1 - 2 * (quat.y * quat.y + quat.z * quat.z);
+    rpy.yaw = std::atan2(siny_cosp, cosy_cosp) * (180 / 3.14159265);
+
+    return rpy;
+}
+
+double AttitudeRateController::pid_controller(struct pid_s &controller, double dt){
+    double outP = controller.kp * controller.error[0];
+    controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
+    controller.derivative = (controller.td/(controller.td+controller.nd+dt))*controller.derivative+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
+    double out = outP + controller.integral + controller.derivative;
+
+    double out_i = out;
+
+    if (out > controller.upperlimit)
+        out = controller.upperlimit;
+    if (out < controller.lowerlimit)
+        out = controller.lowerlimit;
+
+    controller.integral = controller.integral - (out - out_i) * sqrt(controller.kp / controller.ki);
+
+    controller.error[1] = controller.error[0];
+
+    return out;
+}
+
+struct pid_s AttitudeRateController::init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit) {
+  struct pid_s controller;
+
+  controller.kp = kp;
+  controller.ki = ki;
+  controller.kd = kd;
+  controller.td = td;
+  controller.nd = nd;
+  controller.error[0] = 0.0;
+  controller.error[1] = 0.0;
+  controller.integral = 0.0;
+  controller.derivative = 0.0;
+  controller.upperlimit = upperlimit;
+  controller.lowerlimit = lowerlimit;
+
+  RCLCPP_INFO(this->get_logger(),"%s Controller: kp: %0.2f \tki: %0.2f \tkd: %0.2f", id, controller.kp, controller.ki, controller.kd);
+  return controller;
+}
+
+void AttitudeRateController::gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg) {
+    GT_pose.position = msg->position;
+    GT_pose.orientation = msg->orientation;
+    if (!first_pose_received)
+        first_pose_received = true;
+}
+
+void AttitudeRateController::refcmdCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
+    ref_cmd.thrust = msg->data[0];
+    ref_cmd.roll = msg->data[1];
+    ref_cmd.pitch = msg->data[2];
+    ref_cmd.yaw = msg->data[3];
+    if (!first_ref_received){
+      first_ref_received = true;
     }
 }
