@@ -64,7 +64,7 @@ bool CrazyflieRateMixerController::iterate(){
 	// DYaw Controller
 	yaw_dron[1] = yaw_dron[0];
 	yaw_dron[0] = rpy_state.yaw;
-	dyaw_dron = (yaw_dron[0]-yaw_dron[1])/0.002;
+	dyaw_dron = (yaw_dron[0]-yaw_dron[1])/Ts;
 	dyaw_zcontroller.error[0] = dyaw_ref - dyaw_dron;
 	delta_yaw = pid_zcontroller(dyaw_zcontroller);
 

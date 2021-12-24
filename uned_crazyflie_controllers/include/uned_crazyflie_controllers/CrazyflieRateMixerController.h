@@ -77,9 +77,4 @@ class CrazyflieRateMixerController
     double fm = 2*0.2685*PI/30;
     double pitch_dron[2], roll_dron[2], yaw_dron[2];
 
-    double dpitch_error[3],dpitch[2], Dphi_q[3];
-
-    double droll_error[3], droll[2], Dtheta_q[3];
-
-    double dyaw_error[3], dyaw[2], Dpsi_q[3];
 };

@@ -82,10 +82,4 @@ class CrazyflieAttitudeController
     const double PI = 3.14159265;
     double kp, ki, kd, td;
 
-    double pitch_dron, pitch_error[3], dpitch[2], Phi_q[3];
-
-    double roll_dron, roll_error[3], droll[2], Theta_q[3];
-
-    double Yaw_q[3], yaw_error_signal[3], dyaw[2];
-
 };

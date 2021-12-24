@@ -10,6 +10,8 @@
   <arg name="y" default="0.0"/>
   <arg name="z" default="0.0"/>
   <arg name="user_account" default="kiko"/>
+  <arg name="attitude_pid_type" default="periodic"/>
+  <arg name="rate_pid_type" default="discrete"/>
   <!-- Delta Pitch Controller Params -->
   <arg name="dPitchKp" default="250.0"/>
   <arg name="dPitchKi" default="500.0"/>
@@ -57,7 +59,8 @@
     </include>
 
    <node name="crazyflie_driver" pkg="uned_crazyflie_driver" type="uned_crazyflie_driver_node" output="screen" />
-   <node name="attitude_controller" pkg="uned_crazyflie_controllers" type="discrete_pid_attitude_controller_node" output="screen">
+   <node name="attitude_controller" pkg="uned_crazyflie_controllers" type="discrete_pid_attitude_controller_node" output="screen"
+     if="$(eval arg('attitude_pid_type') == 'discrete')">
        <!-- Pitch Controller Params -->
        <param name="PitchKp" value="$(arg PitchKp)"/>
        <param name="PitchKi" value="$(arg PitchKi)"/>
@@ -74,7 +77,44 @@
        <param name="YawKd" value="$(arg YawKd)"/>
        <param name="YawTd" value="$(arg YawTd)"/>
    </node>
-   <node name="ratemixer_controller" pkg="uned_crazyflie_controllers" type="discrete_pid_ratemixer_controller_node" output="screen">
+   <node name="attitude_controller" pkg="uned_crazyflie_controllers" type="periodic_pid_attitude_controller_node" output="screen"
+     if="$(eval arg('attitude_pid_type') == 'periodic')">
+       <!-- Pitch Controller Params -->
+       <param name="PitchKp" value="$(arg PitchKp)"/>
+       <param name="PitchKi" value="$(arg PitchKi)"/>
+       <param name="PitchKd" value="$(arg PitchKd)"/>
+       <param name="PitchTd" value="$(arg PitchTd)"/>
+       <!-- Roll Controller Params -->
+       <param name="RollKp" value="$(arg RollKp)"/>
+       <param name="RollKi" value="$(arg RollKi)"/>
+       <param name="RollKd" value="$(arg RollKd)"/>
+       <param name="RollTd" value="$(arg RollTd)"/>
+       <!-- Yaw Controller Params -->
+       <param name="YawKp" value="$(arg YawKp)"/>
+       <param name="YawKi" value="$(arg YawKi)"/>
+       <param name="YawKd" value="$(arg YawKd)"/>
+       <param name="YawTd" value="$(arg YawTd)"/>
+   </node>
+   <node name="ratemixer_controller" pkg="uned_crazyflie_controllers" type="discrete_pid_ratemixer_controller_node" output="screen"
+     if="$(eval arg('rate_pid_type') == 'discrete')">
+        <!-- Delta Pitch Controller Params -->
+        <param name="dPitchKp" value="$(arg dPitchKp)"/>
+        <param name="dPitchKi" value="$(arg dPitchKi)"/>
+        <param name="dPitchKd" value="$(arg dPitchKd)"/>
+        <param name="dPitchTd" value="$(arg dPitchTd)"/>
+        <!-- Delta Roll Controller Params -->
+        <param name="dRollKp" value="$(arg dRollKp)"/>
+        <param name="dRollKi" value="$(arg dRollKi)"/>
+        <param name="dRollKd" value="$(arg dRollKd)"/>
+        <param name="dRollTd" value="$(arg dRollTd)"/>
+        <!-- Delta Yaw Controller Params -->
+        <param name="dYawKp" value="$(arg dYawKp)"/>
+        <param name="dYawKi" value="$(arg dYawKi)"/>
+        <param name="dYawKd" value="$(arg dYawKd)"/>
+        <param name="dYawTd" value="$(arg dYawTd)"/>
+   </node>
+   <node name="ratemixer_controller" pkg="uned_crazyflie_controllers" type="periodic_pid_ratemixer_controller_node" output="screen"
+     if="$(eval arg('rate_pid_type') == 'periodic')">
         <!-- Delta Pitch Controller Params -->
         <param name="dPitchKp" value="$(arg dPitchKp)"/>
         <param name="dPitchKi" value="$(arg dPitchKi)"/>

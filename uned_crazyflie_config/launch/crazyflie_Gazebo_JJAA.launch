@@ -2,7 +2,8 @@
 <launch>
   <arg name="robot_id" default="dron01"/>
   <arg name="mav_name" default="crazyflie2"/>
-  <arg name="position_controller" default="PID" />
+  <arg name="attitude_pid_type" default="periodic"/>
+  <arg name="rate_pid_type" default="discrete"/>
   <arg name="enable_logging" default="false" />
   <arg name="enable_ground_truth" default="true" />
   <arg name="enable_state_estimator" default="false" />
@@ -59,6 +60,8 @@
 
   <include file="$(find uned_crazyflie_config)/launch/crazyflie_driver.launch">
     <arg name="robot_id" value="$(arg robot_id)" />
+    <arg name="attitude_pid_type" value="$(arg attitude_pid_type)"/>
+    <arg name="rate_pid_type" value="$(arg rate_pid_type)"/>
     <arg name="x" value="$(arg x)"/>
     <arg name="y" value="$(arg y)"/>
     <arg name="z" value="$(arg z)"/>

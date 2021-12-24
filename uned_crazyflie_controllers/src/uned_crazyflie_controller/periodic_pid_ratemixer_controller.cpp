@@ -53,23 +53,23 @@ bool CrazyflieRateMixerController::iterate(){
 	// dPitch controller
 	pitch_dron[1] = pitch_dron[0];
 	pitch_dron[0] = rpy_state.pitch;
-	dpitch_dron = (pitch_dron[0] - pitch_dron[1]) / 0.002;
+	dpitch_dron = (pitch_dron[0] - pitch_dron[1]) / Ts;
 	dpitch_controller.error[0] = dpitch_ref - dpitch_dron;
-	delta_pitch = pid_controller(dpitch_controller, 0.002);
+	delta_pitch = pid_controller(dpitch_controller, Ts);
 
 	// DRoll Controller
 	roll_dron[1] = roll_dron[0];
 	roll_dron[0] = rpy_state.roll;
-	droll_dron = (roll_dron[0]-roll_dron[1])/0.002;
+	droll_dron = (roll_dron[0]-roll_dron[1])/Ts;
 	droll_controller.error[0] = droll_ref - droll_dron;
-	delta_roll = pid_controller(droll_controller, 0.002);
+	delta_roll = pid_controller(droll_controller, Ts);
 
 	// DYaw Controller
 	yaw_dron[1] = yaw_dron[0];
 	yaw_dron[0] = rpy_state.yaw;
-	dyaw_dron = (yaw_dron[0]-yaw_dron[1])/0.002;
+	dyaw_dron = (yaw_dron[0]-yaw_dron[1])/Ts;
 	dyaw_controller.error[0] = dyaw_ref - dyaw_dron;
-	delta_yaw = pid_controller(dyaw_controller, 0.002);
+	delta_yaw = pid_controller(dyaw_controller, Ts);
 
 	// Control Mixer
 	{
