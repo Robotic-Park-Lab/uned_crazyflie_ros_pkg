@@ -5,9 +5,9 @@ using std::placeholders::_1;
 bool TrajectoryController::initialize(){
     RCLCPP_INFO(this->get_logger(),"TrajectoryController::inicialize() ok.");
     // Crazyflie Pose Ref
-    ref_pose_ = this->create_publisher<geometry_msgs::msg::Pose>("pose_ref", 10);
+    ref_pose_ = this->create_publisher<geometry_msgs::msg::Pose>("goal_pose", 10);
     // Crazyflie Pose
-    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("dron01/pose", 10, std::bind(&TrajectoryController::gtposeCallback, this, _1));
+    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("cf_pose", 10, std::bind(&TrajectoryController::gtposeCallback, this, _1));
     start = time(NULL);
     end = time(NULL);
     t = end-start;

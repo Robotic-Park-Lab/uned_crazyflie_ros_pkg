@@ -3,10 +3,11 @@ using std::placeholders::_1;
 
 bool PositionController::initialize(){
 	RCLCPP_INFO(this->get_logger(),"PositionController::inicialize() ok.");
-	dt = 0.002;
+	dt = 0.01;
 	// Lectura de parámetros
 	this->get_parameter("ROBOT_ID", robotid);
 	this->get_parameter("Feedback_topic", feedback_topic);
+	this->get_parameter("DEBUG", debug_flag);
 	m_controller_type = "EVENT BASED PID";
 	RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s", m_controller_type.c_str(), robotid.c_str());
 	// Z Controller
@@ -67,6 +68,9 @@ bool PositionController::initialize(){
 	// Publisher:
 	// Referencias para los controladores PID Attitude y Rate
 	pub_cmd_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("onboard_cmd", 10);
+	pub_z_event_ = this->create_publisher<std_msgs::msg::Bool>("z_event", 10);
+	pub_w_event_ = this->create_publisher<std_msgs::msg::Bool>("w_event", 10);
+
 
 	// Subscriber:
 	// Crazyflie Pose {Real: /cf_pose; Sim: /ground_truth/pose}
@@ -86,6 +90,10 @@ bool PositionController::iterate(){
 				RCLCPP_INFO(this->get_logger(), "Z New Event. Dt: %.4f", z_threshold.dt);
 				z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
 				w_ref = pid_controller(z_controller, z_threshold.dt);
+				auto msg_event = std_msgs::msg::Bool();
+        msg_event.data = true;
+				pub_z_event_->publish(msg_event);
+
 			}
 
 			// W Controller
@@ -97,6 +105,9 @@ bool PositionController::iterate(){
 				w_controller.error[0] = w_ref - w_signal;
 				thrust = pid_controller(w_controller, w_threshold.dt);
 				thrust = thrust * 1000 + 38000;
+				auto msg_event = std_msgs::msg::Bool();
+        msg_event.data = true;
+				pub_w_event_->publish(msg_event);
 			}
 
 			// Convert quaternion to yw
@@ -143,19 +154,20 @@ bool PositionController::iterate(){
         if(debug_flag){
           RCLCPP_INFO(this->get_logger(), "Z: Error: \t%.2f \tSignal:%.2f", z_controller.error[0], w_ref);
           RCLCPP_INFO(this->get_logger(), "W: Error: \t%.2f \tSignal:%.2f", w_controller.error[0], thrust);
-          RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], u_ref);
-          RCLCPP_INFO(this->get_logger(), "U: Error: \t%.2f \tPitch:%.2f", u_controller.error[0], pitch);
-          RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], v_ref);
-          RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
+          // RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], u_ref);
+          // RCLCPP_INFO(this->get_logger(), "U: Error: \t%.2f \tPitch:%.2f", u_controller.error[0], pitch);
+          // RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], v_ref);
+          // RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
         }
         // Publish Control CMD
         auto msg_cmd = std_msgs::msg::Float64MultiArray();
         msg_cmd.data = { 0.0, 0.0, 0.0, rpy_ref.yaw };
-        if (abs(GT_pose.position.x) > 1.2 || abs(GT_pose.position.y) > 1.2)
+        if (abs(GT_pose.position.x) > 2.0 || abs(GT_pose.position.y) > 2.0)
             fail = true;
         if (!fail)
-            msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
+            msg_cmd.data = { thrust, 0.0, 15.0, rpy_ref.yaw };
 
+				// msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
         RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", msg_cmd.data[0], msg_cmd.data[1], msg_cmd.data[2], msg_cmd.data[3]);
         pub_cmd_->publish(msg_cmd);
 				events = false;
@@ -170,7 +182,7 @@ int main(int argc, char ** argv){
 	try{
 		rclcpp::init(argc, argv);
 		auto crazyflie_position_controller = std::make_shared<PositionController>();
-		rclcpp::Rate loop_rate(500);
+		rclcpp::Rate loop_rate(100);
 		crazyflie_position_controller->initialize();
 
 		while (rclcpp::ok()){
@@ -252,8 +264,12 @@ double PositionController::pid_controller(struct pid_s &controller, double dt){
 void PositionController::positionreferenceCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
     ref_pose.position = msg->position;
     ref_pose.orientation = msg->orientation;
-    if (!first_ref_received)
-        first_ref_received = true;
+    if (!first_ref_received){
+			z_threshold.dt = dt;
+			z_threshold.last_time = std::chrono::steady_clock::now();
+			first_ref_received = true;
+		}
+
 }
 
 void PositionController::gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){

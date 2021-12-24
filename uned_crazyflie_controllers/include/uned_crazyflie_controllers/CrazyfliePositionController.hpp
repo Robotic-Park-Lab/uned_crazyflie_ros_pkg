@@ -87,7 +87,7 @@ public:
 
 private:
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_cmd_;
-    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_omega_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_z_event_, pub_w_event_;
 
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr ref_pose_;
@@ -115,6 +115,7 @@ private:
 
     // Event Based Control
     bool events = false;
+    bool z_event, w_event;
     struct threshold z_threshold, w_threshold, x_threshold, u_threshold, y_threshold, v_threshold;
     // Function
     void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg);

@@ -83,10 +83,10 @@ bool PositionController::iterate(){
 
         x_global_error = ref_pose.position.x - GT_pose.position.x;
         y_global_error = ref_pose.position.y - GT_pose.position.y;
-        // X Controller
+        // X Controller -> U -> pitch
         x_controller.error[0] = x_global_error * cos(rpy_state.yaw) + y_global_error * sin(rpy_state.yaw);
         u_ref = pid_controller(x_controller, dt);
-        // Y Controller
+        // Y Controller -> V -> roll
         y_controller.error[0] = -x_global_error * sin(rpy_state.yaw) + y_global_error * cos(rpy_state.yaw);
         v_ref = pid_controller(y_controller, dt);
         // Speed
@@ -209,7 +209,7 @@ double PositionController::pid_controller(struct pid_s &controller, double dt){
 	}
 
 	controller.error[1] = controller.error[0];
-	events = true;
+
 	return out;
 }
 
