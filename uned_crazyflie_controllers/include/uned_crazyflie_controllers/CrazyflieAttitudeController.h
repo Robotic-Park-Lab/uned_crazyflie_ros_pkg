@@ -23,6 +23,11 @@ struct pid_s{
    int nd;
    double error[2], integral, derivative, upperlimit, lowerlimit;
 };
+struct pid_z{
+   double q[3], u, error[3];
+   double Ts, upperlimit, lowerlimit;
+   int nd;
+};
 struct euler_angles{
    double roll, pitch, yaw;
 };
@@ -56,10 +61,13 @@ class CrazyflieAttitudeController
     void rateMixerRefsCallback(const double dpitch, const double droll, const double dyaw);
     euler_angles quaternion2euler(geometry_msgs::Quaternion quat);
     double pid_controller(struct pid_s &controller, double dt);
+    double pid_zcontroller(struct pid_z &controller);
     struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit);
+    struct pid_z init_zcontroller(const char id[], double kp, double ki, double kd, double Ts, int nd, double upperlimit, double lowerlimit);
 
     // Controllers
     struct pid_s pitch_controller, roll_controller, yaw_controller;
+    struct pid_z pitch_zcontroller, roll_zcontroller, yaw_zcontroller;
     // Control Signals
     double pitch_ref, roll_ref, yaw_ref;
     double dpitch_ref, droll_ref, dyaw_ref;
@@ -70,6 +78,7 @@ class CrazyflieAttitudeController
     bool first_pose_received = false;
     bool first_ref_received = false;
     double dt = 0.002;
+    double Ts = 0.002;
     const double PI = 3.14159265;
     double kp, ki, kd, td;
 

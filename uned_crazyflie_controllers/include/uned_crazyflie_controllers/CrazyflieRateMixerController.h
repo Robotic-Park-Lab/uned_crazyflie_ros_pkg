@@ -21,6 +21,11 @@ struct pid_s{
    int nd;
    double error[2], integral, derivative, upperlimit, lowerlimit;
 };
+struct pid_z{
+   double q[3], u, error[3];
+   double Ts, upperlimit, lowerlimit;
+   int nd;
+};
 struct euler_angles{
    double roll, pitch, yaw;
 };
@@ -53,12 +58,17 @@ class CrazyflieRateMixerController
     void omegaCallback(const std_msgs::Float64::ConstPtr& msg);
     euler_angles quaternion2euler(geometry_msgs::Quaternion quat);
     double pid_controller(struct pid_s &controller, double dt);
+    double pid_zcontroller(struct pid_z &controller);
     struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit);
+    struct pid_z init_zcontroller(const char id[], double kp, double ki, double kd, double Ts, int nd, double upperlimit, double lowerlimit);
+
 
     std::string m_controller_type, m_robot_id, m_controller_mode;
     struct pid_s dpitch_controller, droll_controller, dyaw_controller;
+    struct pid_z dpitch_zcontroller, droll_zcontroller, dyaw_zcontroller;
     euler_angles rpy_state;
     double kp, ki, kd, td, delta_pitch,delta_roll, delta_yaw;
+    double Ts = 0.002;
     geometry_msgs::Pose m_GT_pose;
     Eigen::Vector4d ref_rotor_velocities;
 
