@@ -116,34 +116,35 @@ bool PositionController::iterate(){
 			rpy_ref = quaternion2euler(ref_pose.orientation);
 			rpy_state = quaternion2euler(GT_pose.orientation);
 
-			x_global_error = ref_pose.position.x - GT_pose.position.x;
-			y_global_error = ref_pose.position.y - GT_pose.position.y;
 			// X Controller
 			if (eval_threshold(x_threshold, GT_pose.position.x, ref_pose.position.x)){
 				RCLCPP_INFO(this->get_logger(), "X New Event. Dt: %.4f", x_threshold.dt);
-				x_controller.error[0] = x_global_error * cos(rpy_state.yaw) + y_global_error * sin(rpy_state.yaw);
+				x_controller.error[0] = ref_pose.position.x - GT_pose.position.x;
 				u_ref = pid_controller(x_controller, x_threshold.dt);
 			}
 			// Y Controller
 			if (eval_threshold(y_threshold, GT_pose.position.y, ref_pose.position.y)){
 				RCLCPP_INFO(this->get_logger(), "Y New Event. Dt: %.4f", y_threshold.dt);
-				y_controller.error[0] = -x_global_error * sin(rpy_state.yaw) + y_global_error * cos(rpy_state.yaw);
+				y_controller.error[0] = ref_pose.position.y - GT_pose.position.y;
 				v_ref = pid_controller(y_controller, y_threshold.dt);
 			}
+
 			// Speed
+			u_global_error = u_ref - GT_twist.linear.x;
+			v_global_error = v_ref - GT_twist.linear.y;
 			u_signal = GT_twist.linear.x * cos(rpy_state.yaw) + GT_twist.linear.y * sin(rpy_state.yaw);
 			v_signal = -GT_twist.linear.x * sin(rpy_state.yaw) + GT_twist.linear.y * cos(rpy_state.yaw);
 
 			// U Controller
 			if (eval_threshold(u_threshold, u_signal, u_ref)){
 				RCLCPP_INFO(this->get_logger(), "U New Event. Dt: %.4f", u_threshold.dt);
-				u_controller.error[0] = u_ref - u_signal;
+				u_controller.error[0] = u_global_error * cos(rpy_state.yaw) + v_global_error * sin(rpy_state.yaw);
 				pitch = pid_controller(u_controller, u_threshold.dt);
 			}
 			// V Controller
 			if (eval_threshold(v_threshold, v_signal, v_ref)){
 				RCLCPP_INFO(this->get_logger(), "V New Event. Dt: %.4f", v_threshold.dt);
-				v_controller.error[0] = v_ref - v_signal;
+				v_controller.error[0] = -u_global_error * sin(rpy_state.yaw) + v_global_error * cos(rpy_state.yaw);
 				roll = pid_controller(v_controller, v_threshold.dt);
 			}
 
@@ -153,9 +154,9 @@ bool PositionController::iterate(){
 					auto msg_cmd = std_msgs::msg::Float64MultiArray();
 					msg_cmd.data = { ref_pose.position.z, GT_pose.position.z, z_controller.error[0], w_ref, GT_twist.linear.z, w_controller.error[0], thrust};
 					pub_zcon_->publish(msg_cmd);
-					msg_cmd.data = { ref_pose.position.x, GT_pose.position.x, x_controller.error[0], u_ref, u_signal, u_controller.error[0], pitch};
+					msg_cmd.data = { ref_pose.position.x, GT_pose.position.x, x_controller.error[0], u_ref, u_signal, u_controller.error[0], pitch, rpy_state.yaw};
 					pub_xcon_->publish(msg_cmd);
-					msg_cmd.data = { ref_pose.position.y, GT_pose.position.y, y_controller.error[0], v_ref,v_signal, v_controller.error[0], roll};
+					msg_cmd.data = { ref_pose.position.y, GT_pose.position.y, y_controller.error[0], v_ref,v_signal, v_controller.error[0], roll, rpy_state.yaw};
 					pub_ycon_->publish(msg_cmd);
 					RCLCPP_INFO(this->get_logger(), "Z: Error: \t%.2f \tSignal:%.2f", z_controller.error[0], w_ref);
           RCLCPP_INFO(this->get_logger(), "W: Error: \t%.2f \tSignal:%.2f", w_controller.error[0], thrust);
@@ -164,8 +165,8 @@ bool PositionController::iterate(){
           RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], v_ref);
           RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
         }
-				roll = - 0.0;
 				pitch = 0.0;
+				roll = 0.0;
         // Publish Control CMD
         auto msg_cmd = std_msgs::msg::Float64MultiArray();
         msg_cmd.data = { 0.0, 0.0, 0.0, rpy_ref.yaw };
@@ -210,19 +211,19 @@ euler_angles PositionController::quaternion2euler(geometry_msgs::msg::Quaternion
     // roll (x-axis rotation)
     double sinr_cosp = 2 * (quat.w * quat.x + quat.y * quat.z);
     double cosr_cosp = 1 - 2 * (quat.x * quat.x + quat.y * quat.y);
-    rpy.roll = std::atan2(sinr_cosp, cosr_cosp) * (180 / 3.14159265);
+    rpy.roll = std::atan2(sinr_cosp, cosr_cosp); // * (180 / 3.14159265);
 
     // pitch (y-axis rotation)
     double sinp = 2 * (quat.w * quat.y - quat.z * quat.x);
     if (std::abs(sinp) >= 1)
-        rpy.pitch = std::copysign(3.14159265 / 2, sinp) * (180 / 3.14159265);
+        rpy.pitch = std::copysign(3.14159265 / 2, sinp); // * (180 / 3.14159265);
     else
-        rpy.pitch = std::asin(sinp) * (180 / 3.14159265);
+        rpy.pitch = std::asin(sinp); // * (180 / 3.14159265);
 
     // yaw (z-axis rotation)
     double siny_cosp = 2 * (quat.w * quat.z + quat.x * quat.y);
     double cosy_cosp = 1 - 2 * (quat.y * quat.y + quat.z * quat.z);
-    rpy.yaw = std::atan2(siny_cosp, cosy_cosp) * (180 / 3.14159265);
+    rpy.yaw = std::atan2(siny_cosp, cosy_cosp); // * (180 / 3.14159265);
 
     return rpy;
 }

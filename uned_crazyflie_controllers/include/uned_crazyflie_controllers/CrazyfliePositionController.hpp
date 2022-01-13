@@ -111,7 +111,7 @@ private:
     double w_signal, w_ref, thrust;
     // X-Y paremeters
     double x_global_error, y_global_error, u_ref, v_ref, u_feedback[2], v_feedback[2];
-    double u_signal, v_signal, pitch, roll;
+    double u_global_error, v_global_error, u_signal, v_signal, pitch, roll;
     // Angles
     struct euler_angles rpy_ref, rpy_state;
 
