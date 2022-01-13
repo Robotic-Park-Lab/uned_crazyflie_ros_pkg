@@ -124,22 +124,17 @@ class Logging:
 
         try:
             # self._cf.log.add_config(self._lg_stab_pose)
-            print('Test 00')
             self._cf.log.add_config(self._lg_stab_pose)
             self._cf.log.add_config(self._lg_stab_twist)
-            print('Test 01')
             # This callback will receive the data
             self._lg_stab_pose.data_received_cb.add_callback(self._stab_log_data)
             self._lg_stab_twist.data_received_cb.add_callback(self._stab_log_data)
-            print('Test 02')
             # This callback will be called on errors
             self._lg_stab_pose.error_cb.add_callback(self._stab_log_error)
             self._lg_stab_twist.error_cb.add_callback(self._stab_log_error)
-            print('Test 03')
             # Start the logging
             self._lg_stab_pose.start()
             self._lg_stab_twist.start()
-            print('Test 04')
         except KeyError as e:
             print('Could not start log configuration,'
                   '{} not found in TOC'.format(str(e)))

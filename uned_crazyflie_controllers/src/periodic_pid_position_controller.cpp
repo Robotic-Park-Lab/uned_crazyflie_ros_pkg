@@ -52,10 +52,16 @@ bool PositionController::initialize(){
     // Publisher:
     // Referencias para los controladores PID Attitude y Rate
     pub_cmd_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("onboard_cmd", 10);
-
+    // Controllers
+    if(debug_flag){
+  		pub_zcon_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("controller_z", 10);
+  		pub_xcon_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("controller_x", 10);
+  		pub_ycon_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("controller_y", 10);
+  	}
     // Subscriber:
     // Crazyflie Pose {Real: /cf_pose; Sim: /ground_truth/pose}
     GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>(feedback_topic, 10, std::bind(&PositionController::gtposeCallback, this, _1));
+    GT_twist_ = this->create_subscription<geometry_msgs::msg::Twist>("cf_twist", 10, std::bind(&PositionController::gtTwistCallback, this, _1));
     // Reference:
     ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("goal_pose", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
 
@@ -70,10 +76,7 @@ bool PositionController::iterate(){
         z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
         w_ref = pid_controller(z_controller, dt);
         // W Controller
-        w_feedback[1] = w_feedback[0];
-        w_feedback[0] = GT_pose.position.z;
-        w_signal = (w_feedback[0] - w_feedback[1]) / dt;
-        w_controller.error[0] = w_ref - w_signal;
+        w_controller.error[0] = w_ref - GT_twist.linear.z;
         thrust = pid_controller(w_controller, dt);
         thrust = thrust * 1000 + 38000;
 
@@ -90,12 +93,8 @@ bool PositionController::iterate(){
         y_controller.error[0] = -x_global_error * sin(rpy_state.yaw) + y_global_error * cos(rpy_state.yaw);
         v_ref = pid_controller(y_controller, dt);
         // Speed
-        u_feedback[1] = u_feedback[0];
-        u_feedback[0] = GT_pose.position.x;
-        u_signal = (u_feedback[0] - u_feedback[1]) / dt;
-        v_feedback[1] = v_feedback[0];
-        v_feedback[0] = GT_pose.position.y;
-        v_signal = (v_feedback[0] - v_feedback[1]) / dt;
+        u_signal = GT_twist.linear.x * cos(rpy_state.yaw) + GT_twist.linear.y * sin(rpy_state.yaw);
+        v_signal = -GT_twist.linear.x * sin(rpy_state.yaw) + GT_twist.linear.y * cos(rpy_state.yaw);
 
         // U Controller
         u_controller.error[0] = u_ref - u_signal;
@@ -106,6 +105,13 @@ bool PositionController::iterate(){
 
         // Debug
         if(debug_flag){
+          auto msg_cmd = std_msgs::msg::Float64MultiArray();
+					msg_cmd.data = { ref_pose.position.z, GT_pose.position.z, z_controller.error[0], w_ref, GT_twist.linear.z, w_controller.error[0], thrust};
+					pub_zcon_->publish(msg_cmd);
+					msg_cmd.data = { ref_pose.position.x, GT_pose.position.x, x_controller.error[0], u_ref, u_signal, u_controller.error[0], pitch};
+					pub_xcon_->publish(msg_cmd);
+					msg_cmd.data = { ref_pose.position.y, GT_pose.position.y, y_controller.error[0], v_ref,v_signal, v_controller.error[0], roll};
+					pub_ycon_->publish(msg_cmd);
           RCLCPP_INFO(this->get_logger(), "Z: Error: \t%.2f \tSignal:%.2f", z_controller.error[0], w_ref);
           RCLCPP_INFO(this->get_logger(), "W: Error: \t%.2f \tSignal:%.2f", w_controller.error[0], thrust);
           RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], u_ref);
@@ -117,7 +123,7 @@ bool PositionController::iterate(){
         auto msg_cmd = std_msgs::msg::Float64MultiArray();
         msg_cmd.data = { 0.0, 0.0, 0.0, rpy_ref.yaw };
         // msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
-        if (abs(GT_pose.position.x) > 1.2 || abs(GT_pose.position.y) > 1.2)
+        if (abs(GT_pose.position.x) > 0.8 || abs(GT_pose.position.y) > 0.8)
             fail = true;
         if (!fail)
             msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
@@ -227,4 +233,9 @@ void PositionController::gtposeCallback(const geometry_msgs::msg::Pose::SharedPt
       RCLCPP_INFO_ONCE(this->get_logger(),"Init Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
       first_pose_received = true;
     }
+}
+
+void PositionController::gtTwistCallback(const geometry_msgs::msg::Twist::SharedPtr msg){
+    GT_twist.linear = msg->linear;
+    GT_twist.angular = msg->angular;
 }
