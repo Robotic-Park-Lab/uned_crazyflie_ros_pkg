@@ -10,7 +10,8 @@ def generate_launch_description():
             executable='periodic_pid_position_controller',
             name='position_controller',
             parameters=[
-                {"Feedback_topic": "ground_truth/pose"},
+                {"Feedback_pose_topic": "odometry/pose/pose"},
+                {"Feedback_twist_topic": "odometry/twist/twist"},
                 {"ROBOT_ID": "dron01"},
                 {"DEBUG": True},
                 {"ZKp": 2.0, "ZKi": 0.5, "ZKd": 0.0, "ZTd": 0.0},

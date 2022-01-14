@@ -7,7 +7,8 @@ bool PositionController::initialize(){
 
     // Lectura de parámetros
     this->get_parameter("ROBOT_ID", robotid);
-    this->get_parameter("Feedback_topic", feedback_topic);
+    this->get_parameter("Feedback_pose_topic", feedback_pose_topic);
+  	this->get_parameter("Feedback_twist_topic", feedback_twist_topic);
     this->get_parameter("DEBUG", debug_flag);
     m_controller_type = "PERIODIC PID";
     RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s", m_controller_type.c_str(), robotid.c_str());
@@ -60,8 +61,8 @@ bool PositionController::initialize(){
   	}
     // Subscriber:
     // Crazyflie Pose {Real: /cf_pose; Sim: /ground_truth/pose}
-    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>(feedback_topic, 10, std::bind(&PositionController::gtposeCallback, this, _1));
-    GT_twist_ = this->create_subscription<geometry_msgs::msg::Twist>("cf_twist", 10, std::bind(&PositionController::gtTwistCallback, this, _1));
+    GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>(feedback_pose_topic, 10, std::bind(&PositionController::gtposeCallback, this, _1));
+    GT_twist_ = this->create_subscription<geometry_msgs::msg::Twist>(feedback_twist_topic, 10, std::bind(&PositionController::gtTwistCallback, this, _1));
     // Reference:
     ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("goal_pose", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
 
@@ -161,19 +162,19 @@ euler_angles PositionController::quaternion2euler(geometry_msgs::msg::Quaternion
     // roll (x-axis rotation)
     double sinr_cosp = 2 * (quat.w * quat.x + quat.y * quat.z);
     double cosr_cosp = 1 - 2 * (quat.x * quat.x + quat.y * quat.y);
-    rpy.roll = std::atan2(sinr_cosp, cosr_cosp) * (180 / 3.14159265);
+    rpy.roll = std::atan2(sinr_cosp, cosr_cosp); // * (180 / 3.14159265);
 
     // pitch (y-axis rotation)
     double sinp = 2 * (quat.w * quat.y - quat.z * quat.x);
     if (std::abs(sinp) >= 1)
-        rpy.pitch = std::copysign(3.14159265 / 2, sinp) * (180 / 3.14159265);
+        rpy.pitch = std::copysign(3.14159265 / 2, sinp); // * (180 / 3.14159265);
     else
-        rpy.pitch = std::asin(sinp) * (180 / 3.14159265);
+        rpy.pitch = std::asin(sinp); // * (180 / 3.14159265);
 
     // yaw (z-axis rotation)
     double siny_cosp = 2 * (quat.w * quat.z + quat.x * quat.y);
     double cosy_cosp = 1 - 2 * (quat.y * quat.y + quat.z * quat.z);
-    rpy.yaw = std::atan2(siny_cosp, cosy_cosp) * (180 / 3.14159265);
+    rpy.yaw = std::atan2(siny_cosp, cosy_cosp); // * (180 / 3.14159265);
 
     return rpy;
 }

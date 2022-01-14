@@ -67,7 +67,8 @@ public:
       this->declare_parameter("VKd", 0.);
       this->declare_parameter("VTd", 0.);
       this->declare_parameter("ROBOT_ID", "dron01");
-      this->declare_parameter("Feedback_topic", "cf_pose");
+      this->declare_parameter("Feedback_pose_topic", "cf_pose");
+      this->declare_parameter("Feedback_twist_topic", "cf_twist");
       this->declare_parameter("DEBUG", false);
       this->declare_parameter("Zco", 0.);
       this->declare_parameter("Zai", 0.);
@@ -93,7 +94,7 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_, ref_pose_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr GT_twist_;
 
-    std::string robotid, feedback_topic, m_controller_type, m_controller_mode;
+    std::string robotid, feedback_pose_topic, feedback_twist_topic, m_controller_type, m_controller_mode;
     // Params
     double Kp, Ki, Kd, Td, Co, Ai, Cn;
     double dt = 0.01;

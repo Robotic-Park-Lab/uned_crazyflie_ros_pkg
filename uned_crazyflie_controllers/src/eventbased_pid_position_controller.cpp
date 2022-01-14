@@ -6,7 +6,8 @@ bool PositionController::initialize(){
 	dt = 0.01;
 	// Lectura de parámetros
 	this->get_parameter("ROBOT_ID", robotid);
-	this->get_parameter("Feedback_topic", feedback_topic);
+	this->get_parameter("Feedback_pose_topic", feedback_pose_topic);
+	this->get_parameter("Feedback_twist_topic", feedback_twist_topic);
 	this->get_parameter("DEBUG", debug_flag);
 	m_controller_type = "EVENT BASED PID";
 	RCLCPP_INFO(this->get_logger(),"Controller Type: %s, \tRobot id: %s", m_controller_type.c_str(), robotid.c_str());
@@ -78,8 +79,8 @@ bool PositionController::initialize(){
 	}
 	// Subscriber:
 	// Crazyflie Pose {Real: /cf_pose; Sim: /ground_truth/pose}
-	GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>(feedback_topic, 10, std::bind(&PositionController::gtposeCallback, this, _1));
-	GT_twist_ = this->create_subscription<geometry_msgs::msg::Twist>("cf_twist", 10, std::bind(&PositionController::gtTwistCallback, this, _1));
+	GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>(feedback_pose_topic, 10, std::bind(&PositionController::gtposeCallback, this, _1));
+	GT_twist_ = this->create_subscription<geometry_msgs::msg::Twist>(feedback_twist_topic, 10, std::bind(&PositionController::gtTwistCallback, this, _1));
 	// Reference:
 	ref_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("goal_pose", 10, std::bind(&PositionController::positionreferenceCallback, this, _1));
 
@@ -101,7 +102,10 @@ bool PositionController::iterate(){
 			}
 
 			// W Controller
-			w_signal = GT_twist.linear.z;
+			// w_signal = GT_twist.linear.z;
+			w_feedback[1] = w_feedback[0];
+			w_feedback[0] = GT_pose.position.z;
+			w_signal = (w_feedback[0] - w_feedback[1]) / dt;
 			if (eval_threshold(w_threshold, w_signal, w_ref)){
 				RCLCPP_INFO(this->get_logger(), "W New Event. Dt: %.4f", w_threshold.dt);
 				w_controller.error[0] = w_ref - w_signal;
@@ -130,10 +134,14 @@ bool PositionController::iterate(){
 			}
 
 			// Speed
-			u_global_error = u_ref - GT_twist.linear.x;
-			v_global_error = v_ref - GT_twist.linear.y;
-			u_signal = GT_twist.linear.x * cos(rpy_state.yaw) + GT_twist.linear.y * sin(rpy_state.yaw);
-			v_signal = -GT_twist.linear.x * sin(rpy_state.yaw) + GT_twist.linear.y * cos(rpy_state.yaw);
+			u_feedback[1] = u_feedback[0];
+			u_feedback[0] = GT_pose.position.x;
+			u_signal = (u_feedback[0] - u_feedback[1]) / dt;
+			u_global_error = u_ref - u_signal;
+			v_feedback[1] = v_feedback[0];
+			v_feedback[0] = GT_pose.position.y;
+			v_signal = (v_feedback[0] - v_feedback[1]) / dt;
+			v_global_error = v_ref - v_signal;
 
 			// U Controller
 			if (eval_threshold(u_threshold, u_signal, u_ref)){
@@ -165,12 +173,12 @@ bool PositionController::iterate(){
           RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], v_ref);
           RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
         }
-				pitch = 0.0;
-				roll = 0.0;
+				// pitch = 0.0;
+				// roll = 0.0;
         // Publish Control CMD
         auto msg_cmd = std_msgs::msg::Float64MultiArray();
         msg_cmd.data = { 0.0, 0.0, 0.0, rpy_ref.yaw };
-        if (abs(GT_pose.position.x) > 2.0 || abs(GT_pose.position.y) > 2.0)
+        if (abs(GT_pose.position.x) > 4.0 || abs(GT_pose.position.y) > 4.0)
             fail = true;
         if (!fail)
             msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
