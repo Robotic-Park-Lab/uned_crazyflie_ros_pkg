@@ -3,6 +3,8 @@ using std::placeholders::_1;
 
 bool PositionController::initialize(){
 	RCLCPP_INFO(this->get_logger(),"PositionController::inicialize() ok.");
+	RCLCPP_WARN(this->get_logger(),"TO-DO: Anti-windup.");
+	RCLCPP_WARN(this->get_logger(),"TO-DO: Transferencia sin salto.");
 	dt = 0.01;
 	// Lectura de parámetros
 	this->get_parameter("ROBOT_ID", robotid);
@@ -34,7 +36,7 @@ bool PositionController::initialize(){
 	this->get_parameter("XKi", Ki);
 	this->get_parameter("XKd", Kd);
 	this->get_parameter("XTd", Td);
-	x_controller = init_controller("X", Kp, Ki, Kd, Td, 100, 30.0, -30.0);
+	x_controller = init_controller("X", Kp, Ki, Kd, Td, 100, 1.0, -1.0);
 	this->get_parameter("Xco", Co);
 	this->get_parameter("Xai", Ai);
 	x_threshold = init_triggering("X", Co, Ai);
@@ -52,7 +54,7 @@ bool PositionController::initialize(){
 	this->get_parameter("YKi", Ki);
 	this->get_parameter("YKd", Kd);
 	this->get_parameter("YTd", Td);
-	y_controller = init_controller("Y", Kp, Ki, Kd, Td, 100, 30.0, -30.0);
+	y_controller = init_controller("Y", Kp, Ki, Kd, Td, 100, 1.0, -1.0);
 	this->get_parameter("Yco", Co);
 	this->get_parameter("Yai", Ai);
 	y_threshold = init_triggering("Y", Co, Ai);

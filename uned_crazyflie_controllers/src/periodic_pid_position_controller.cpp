@@ -4,6 +4,8 @@ using std::placeholders::_1;
 
 bool PositionController::initialize(){
     RCLCPP_INFO(this->get_logger(),"PositionController::inicialize() ok.");
+    RCLCPP_WARN(this->get_logger(),"TO-DO: Anti-windup.");
+    RCLCPP_WARN(this->get_logger(),"TO-DO: Transferencia sin salto.");
 
     // Lectura de parámetros
     this->get_parameter("ROBOT_ID", robotid);
@@ -77,7 +79,10 @@ bool PositionController::iterate(){
         z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
         w_ref = pid_controller(z_controller, dt);
         // W Controller
-        w_controller.error[0] = w_ref - GT_twist.linear.z;
+        w_feedback[1] = w_feedback[0];
+  			w_feedback[0] = GT_pose.position.z;
+  			w_signal = (w_feedback[0] - w_feedback[1]) / dt;
+        w_controller.error[0] = w_ref - w_signal;
         thrust = pid_controller(w_controller, dt);
         thrust = thrust * 1000 + 38000;
 
@@ -85,35 +90,40 @@ bool PositionController::iterate(){
         rpy_ref = quaternion2euler(ref_pose.orientation);
         rpy_state = quaternion2euler(GT_pose.orientation);
 
-        x_global_error = ref_pose.position.x - GT_pose.position.x;
-        y_global_error = ref_pose.position.y - GT_pose.position.y;
         // X Controller -> U -> pitch
-        x_controller.error[0] = x_global_error * cos(rpy_state.yaw) + y_global_error * sin(rpy_state.yaw);
+        x_controller.error[0] = ref_pose.position.x - GT_pose.position.x;
         u_ref = pid_controller(x_controller, dt);
         // Y Controller -> V -> roll
-        y_controller.error[0] = -x_global_error * sin(rpy_state.yaw) + y_global_error * cos(rpy_state.yaw);
+        y_controller.error[0] = ref_pose.position.y - GT_pose.position.y;
         v_ref = pid_controller(y_controller, dt);
+
         // Speed
-        u_signal = GT_twist.linear.x * cos(rpy_state.yaw) + GT_twist.linear.y * sin(rpy_state.yaw);
-        v_signal = -GT_twist.linear.x * sin(rpy_state.yaw) + GT_twist.linear.y * cos(rpy_state.yaw);
+  			u_feedback[1] = u_feedback[0];
+  			u_feedback[0] = GT_pose.position.x;
+  			u_signal = (u_feedback[0] - u_feedback[1]) / dt;
+  			u_global_error = u_ref - u_signal;
+  			v_feedback[1] = v_feedback[0];
+  			v_feedback[0] = GT_pose.position.y;
+  			v_signal = (v_feedback[0] - v_feedback[1]) / dt;
+  			v_global_error = v_ref - v_signal;
 
         // U Controller
-        u_controller.error[0] = u_ref - u_signal;
+        u_controller.error[0] = u_global_error * cos(rpy_state.yaw) + v_global_error * sin(rpy_state.yaw);
         pitch = pid_controller(u_controller, dt);
         // V Controller
-        v_controller.error[0] = v_ref - v_signal;
+        v_controller.error[0] = -u_global_error * sin(rpy_state.yaw) + v_global_error * cos(rpy_state.yaw);
         roll = pid_controller(v_controller, dt);
 
         // Debug
         if(debug_flag){
-          auto msg_cmd = std_msgs::msg::Float64MultiArray();
+					auto msg_cmd = std_msgs::msg::Float64MultiArray();
 					msg_cmd.data = { ref_pose.position.z, GT_pose.position.z, z_controller.error[0], w_ref, GT_twist.linear.z, w_controller.error[0], thrust};
 					pub_zcon_->publish(msg_cmd);
-					msg_cmd.data = { ref_pose.position.x, GT_pose.position.x, x_controller.error[0], u_ref, u_signal, u_controller.error[0], pitch};
+					msg_cmd.data = { ref_pose.position.x, GT_pose.position.x, x_controller.error[0], u_ref, u_signal, u_controller.error[0], pitch, rpy_state.yaw};
 					pub_xcon_->publish(msg_cmd);
-					msg_cmd.data = { ref_pose.position.y, GT_pose.position.y, y_controller.error[0], v_ref,v_signal, v_controller.error[0], roll};
+					msg_cmd.data = { ref_pose.position.y, GT_pose.position.y, y_controller.error[0], v_ref,v_signal, v_controller.error[0], roll, rpy_state.yaw};
 					pub_ycon_->publish(msg_cmd);
-          RCLCPP_INFO(this->get_logger(), "Z: Error: \t%.2f \tSignal:%.2f", z_controller.error[0], w_ref);
+					RCLCPP_INFO(this->get_logger(), "Z: Error: \t%.2f \tSignal:%.2f", z_controller.error[0], w_ref);
           RCLCPP_INFO(this->get_logger(), "W: Error: \t%.2f \tSignal:%.2f", w_controller.error[0], thrust);
           RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], u_ref);
           RCLCPP_INFO(this->get_logger(), "U: Error: \t%.2f \tPitch:%.2f", u_controller.error[0], pitch);
@@ -157,26 +167,26 @@ int main(int argc, char ** argv){
 }
 
 euler_angles PositionController::quaternion2euler(geometry_msgs::msg::Quaternion quat) {
-    euler_angles rpy;
+  euler_angles rpy;
 
-    // roll (x-axis rotation)
-    double sinr_cosp = 2 * (quat.w * quat.x + quat.y * quat.z);
-    double cosr_cosp = 1 - 2 * (quat.x * quat.x + quat.y * quat.y);
-    rpy.roll = std::atan2(sinr_cosp, cosr_cosp); // * (180 / 3.14159265);
+  // roll (x-axis rotation)
+  double sinr_cosp = 2 * (quat.w * quat.x + quat.y * quat.z);
+  double cosr_cosp = 1 - 2 * (quat.x * quat.x + quat.y * quat.y);
+  rpy.roll = std::atan2(sinr_cosp, cosr_cosp); // * (180 / 3.14159265);
 
-    // pitch (y-axis rotation)
-    double sinp = 2 * (quat.w * quat.y - quat.z * quat.x);
-    if (std::abs(sinp) >= 1)
-        rpy.pitch = std::copysign(3.14159265 / 2, sinp); // * (180 / 3.14159265);
-    else
-        rpy.pitch = std::asin(sinp); // * (180 / 3.14159265);
+  // pitch (y-axis rotation)
+  double sinp = 2 * (quat.w * quat.y - quat.z * quat.x);
+  if (std::abs(sinp) >= 1)
+      rpy.pitch = std::copysign(3.14159265 / 2, sinp); // * (180 / 3.14159265);
+  else
+      rpy.pitch = std::asin(sinp); // * (180 / 3.14159265);
 
-    // yaw (z-axis rotation)
-    double siny_cosp = 2 * (quat.w * quat.z + quat.x * quat.y);
-    double cosy_cosp = 1 - 2 * (quat.y * quat.y + quat.z * quat.z);
-    rpy.yaw = std::atan2(siny_cosp, cosy_cosp); // * (180 / 3.14159265);
+  // yaw (z-axis rotation)
+  double siny_cosp = 2 * (quat.w * quat.z + quat.x * quat.y);
+  double cosy_cosp = 1 - 2 * (quat.y * quat.y + quat.z * quat.z);
+  rpy.yaw = std::atan2(siny_cosp, cosy_cosp); // * (180 / 3.14159265);
 
-    return rpy;
+  return rpy;
 }
 
 struct pid_s PositionController::init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit){
@@ -199,13 +209,13 @@ struct pid_s PositionController::init_controller(const char id[], double kp, dou
 }
 
 double PositionController::pid_controller(struct pid_s &controller, double dt){
-	double outP = controller.kp * controller.error[0];
+  double outP = controller.kp * controller.error[0];
 	controller.integral = controller.integral + controller.ki * controller.error[1] * dt;
 	controller.derivative = (controller.td/(controller.td+controller.nd+dt))*controller.derivative+(controller.kd*controller.nd/(controller.td+controller.nd*dt))*(controller.error[0]-controller.error[1]);
 	double out = outP + controller.integral + controller.derivative;
 
 	if(controller.upperlimit != 0.0){
-		// double out_i = out;
+		double out_i = out;
 
 		if (out > controller.upperlimit)
 			out = controller.upperlimit;
@@ -216,6 +226,8 @@ double PositionController::pid_controller(struct pid_s &controller, double dt){
 	}
 
 	controller.error[1] = controller.error[0];
+
+	return out;
 
 	return out;
 }
