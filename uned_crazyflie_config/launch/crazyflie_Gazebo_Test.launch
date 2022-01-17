@@ -2,7 +2,7 @@
 <launch>
   <arg name="robot_id" default="dron01"/>
   <arg name="mav_name" default="crazyflie2"/>
-  <arg name="attitude_pid_type" default="periodic"/>
+  <arg name="attitude_pid_type" default="discrete"/>
   <arg name="rate_pid_type" default="discrete"/>
   <arg name="enable_logging" default="false" />
   <arg name="enable_ground_truth" default="true" />
@@ -19,12 +19,12 @@
   <arg name="verbose" default="false"/>
   <!-- Delta Pitch Controller Params -->
   <arg name="dPitchKp" default="250.0"/>
-  <arg name="dPitchKi" default="500.0"/>
+  <arg name="dPitchKi" default="0.0"/>
   <arg name="dPitchKd" default="0.0"/>
   <arg name="dPitchTd" default="0.0"/>
   <!-- Delta Roll Controller Params -->
   <arg name="dRollKp" default="250.0"/>
-  <arg name="dRollKi" default="500.0"/>
+  <arg name="dRollKi" default="0.0"/>
   <arg name="dRollKd" default="0.0"/>
   <arg name="dRollTd" default="0.0"/>
   <!-- Delta Yaw Controller Params -->

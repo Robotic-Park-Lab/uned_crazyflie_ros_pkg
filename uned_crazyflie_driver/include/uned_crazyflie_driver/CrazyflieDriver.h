@@ -14,7 +14,9 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/String.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Twist.h>
 #include <mav_msgs/Actuators.h>
+#include <nav_msgs/Odometry.h>
 #include <uned_crazyflie_controllers/AttitudeRefs.h>
 
 class CrazyflieDriverSim

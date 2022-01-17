@@ -56,6 +56,8 @@
     <arg name="paused" value="$(arg paused)"/>
     <arg name="gui" value="$(arg gui)" />
     <arg name="verbose" value="$(arg verbose)"/>
+    <arg name="pub_clock_frequency" default="500"/>
+    <arg name="use_clock_frequency" default="true"/>
   </include>
 
   <include file="$(find uned_crazyflie_config)/launch/crazyflie_driver.launch">
