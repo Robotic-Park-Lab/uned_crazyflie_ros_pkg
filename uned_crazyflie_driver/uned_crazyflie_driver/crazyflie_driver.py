@@ -288,16 +288,18 @@ class CFDriver(Node):
                 self.get_logger().info('Already flying')
             else:
                 self.take_off()
-        if msg.data == 'land':
+        elif msg.data == 'land':
             if self.scf._is_flying:
                 self.descent()
             else:
                 self.get_logger().info('In land')
-        if msg.data == 'gohome':
+        elif msg.data == 'gohome':
             if self.scf._is_flying:
                 self.gohome()
             else:
                 self.get_logger().info('In land')
+        else:
+            self.get_logger().error('"%s": Unknown order' % msg.data)
 
     def cmd_control_callback(self, msg):
             self.cmd_motion_.roll = msg.data[1]
