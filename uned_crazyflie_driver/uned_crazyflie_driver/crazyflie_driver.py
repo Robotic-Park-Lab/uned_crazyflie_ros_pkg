@@ -40,23 +40,23 @@ class CMD_Motion():
     def ckeck_pose(self):
         # X Check
         if abs(self.x) > xy_warn:
-            if abs(self.x) > xy_warn:
+            if abs(self.x) > xy_lim:
                 self.logger.error('X: Error')
                 if self.x > 0:
-                    self.x = 0.9
+                    self.x = 0.95 * xy_warn
                 else:
-                    self.x = -0.9
+                    self.x = -0.95 * xy_warn
                 self.logger.warning('New Point: %s' % self.pose_str_())
             else:
                 self.logger.warning('X: Warning')
         # Y Check
         if abs(self.y) > xy_warn:
-            if abs(self.y) > xy_warn:
+            if abs(self.y) > xy_lim:
                 self.logger.error('Y: Error')
                 if self.y > 0:
-                    self.y = 0.9
+                    self.y = 0.95 * xy_warn
                 else:
-                    self.y = -0.9
+                    self.y = -0.95 * xy_warn
                 self.logger.warning('New Point: %s' % self.pose_str_())
             else:
                 self.logger.warning('Y: Warning')
