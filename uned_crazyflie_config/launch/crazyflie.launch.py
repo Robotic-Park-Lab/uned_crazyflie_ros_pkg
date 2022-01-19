@@ -17,7 +17,8 @@ def generate_launch_description():
         shell=True,
         emulate_tty=True,
         parameters=[
-            {'cf_uri': 'radio://0/80/2M/E7E7E7E701'}
+            {'cf_uri': 'radio://0/80/2M/E7E7E7E701'},
+            {'cf_control_mode': 'HighLevel'}
         ])
     return LaunchDescription([
         dron01_node

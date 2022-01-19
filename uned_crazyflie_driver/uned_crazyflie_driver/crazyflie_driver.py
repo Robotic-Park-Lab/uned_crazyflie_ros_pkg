@@ -114,9 +114,9 @@ class Logging:
         self._lg_stab_twist.add_variable('stateEstimate.vy', 'float')
         self._lg_stab_twist.add_variable('stateEstimate.vz', 'float')
         # Other data. TO-DO
-        self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
-        self._lg_stab_data.add_variable('controller.cmd_thrust', 'float')
-        self._lg_stab_data.add_variable('pm.vbat', 'FP16')
+        # self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
+        # self._lg_stab_data.add_variable('controller.cmd_thrust', 'float')
+        # self._lg_stab_data.add_variable('pm.vbat', 'FP16')
         try:
             # self._cf.log.add_config(self._lg_stab_pose)
             self._cf.log.add_config(self._lg_stab_pose)
@@ -134,17 +134,19 @@ class Logging:
             self.parent.get_logger().info('Could not start log configuration,'
                   '{} not found in TOC'.format(str(e)))
         except AttributeError:
-            self.parent.get_logger().info('Could not add Stabilizer log config, bad configuration.')
+            self.parent.get_logger().error('Could not add Stabilizer log config, bad configuration.')
 
     def _stab_log_error(self, logconf, msg):
-        self.parent.get_logger().info('Error when logging %s: %s' % (logconf.name, msg))
+        self.parent.get_logger().error('Error when logging %s: %s' % (logconf.name, msg))
 
     def _stab_log_data(self, timestamp, data, logconf):
         if(logconf.name == "Pose"):
             self.parent.pose_callback(data)
-        if(logconf.name == "Twist"):
+        elif(logconf.name == "Twist"):
             self.parent.twist_callback(data)
-        # if (logconf.name == "Twist"):
+        else:
+            self.parent.get_logger().error('Error: %s: not valid logconf' % logconf.name)
+        # elif (logconf.name == "Data"):
         #     self.parent.data_callback(data)
 
     def _connection_failed(self, link_uri, msg):
@@ -165,40 +167,40 @@ class CFDriver(Node):
         super().__init__('cf_driver')
         # Params
         self.declare_parameter('cf_uri', 'radio://0/80/2M/E7E7E7E701')
-        # Publisher
-        self.publisher_pose = self.create_publisher(Pose, 'cf_pose', 10)
-        self.publisher_twist = self.create_publisher(Twist, 'cf_twist', 10)
-        # Subscription
-        self.sub_order = self.create_subscription(String, 'cf_order',
-                                                  self.order_callback, 10)
-        self.sub_pose = self.create_subscription(Pose, 'pose',
-                                                 self.newpose_callback, 10)
-        self.sub_goal_pose = self.create_subscription(Pose, 'goal_pose',
-                                                      self.goalpose_callback,
-                                                      10)
-        self.sub_cmd = self.create_subscription(Float64MultiArray, 'onboard_cmd',
-                                                self.cmd_control_callback, 10)
-        timer_period = 0.01  # seconds
-        self.iterate_loop = self.create_timer(timer_period, self.iterate)
-        self.CONTROL_MODE = 'HighLevel'
+        self.declare_parameter('cf_control_mode', 'HighLevel')
         """
         Test:
         HighLevel: HighLevel
         OffBoard: Trajectory + Position
         LowLevel: Trajectory + Position + Attitude
         """
+        # Publisher
+        self.publisher_pose = self.create_publisher(Pose, 'cf_pose', 10)
+        self.publisher_twist = self.create_publisher(Twist, 'cf_twist', 10)
+        # Subscription
+        self.sub_order = self.create_subscription(String, 'cf_order', self.order_callback, 10)
+        self.sub_pose = self.create_subscription(Pose, 'pose', self.newpose_callback, 10)
+        self.sub_goal_pose = self.create_subscription(Pose, 'goal_pose', self.goalpose_callback, 10)
+        self.sub_cmd = self.create_subscription(Float64MultiArray, 'onboard_cmd', self.cmd_control_callback, 10)
+        timer_period = 0.01  # seconds
+        self.iterate_loop = self.create_timer(timer_period, self.iterate)
+
         self.initialize()
 
     def initialize(self):
         self.get_logger().info('CrazyflieDriver::inicialize() ok.')
+        # Read & Check ROS Parameters
         dron_id = self.get_parameter('cf_uri').get_parameter_value().string_value
-        # uri = uri_helper.uri_from_env(dron_id)
         self.get_logger().info('Crazyflie ID: %s!' % dron_id)
+        self.CONTROL_MODE = self.get_parameter('cf_control_mode').get_parameter_value().string_value
+        self.get_logger().info('Crazyflie Control Mode: %s!' % self.CONTROL_MODE)
+        # Connection
         cflib.crtp.init_drivers()
         available = cflib.crtp.scan_interfaces()
         for i in available:
             self.get_logger().info("Interface with URI [%s] found and name/comment [%s]" % (i[0], i[1]))
         self.scf = Logging(dron_id, self)
+        # Init Variables
         self.scf.init_pose = False
         if self.CONTROL_MODE == 'OffBoard':
             self.scf._is_flying = True
@@ -233,7 +235,7 @@ class CFDriver(Node):
         self.cmd_motion_.ckeck_pose()
 
     def descent(self):
-        self.cmd_motion_.z = 0.18
+        self.cmd_motion_.z = 0.15
         self.get_logger().info('CrazyflieDriver::Descent.')
         t_end = Timer(2, self.take_land)
         t_end.start()
@@ -245,7 +247,6 @@ class CFDriver(Node):
         self.scf._cf.commander.send_stop_setpoint()
         self.scf.init_pose = False
         self.scf._is_flying = False
-        self.CONTROL_MODE = 'Stop'
 
     def iterate(self):
         if self.CONTROL_MODE == 'HighLevel':
@@ -277,6 +278,8 @@ class CFDriver(Node):
         msg.angular.y = data['gyro.y']
         msg.angular.z = data['gyro.z']
         self.publisher_twist.publish(msg)
+
+    # TO-DO: data_callback(self, data):
 
     def order_callback(self, msg):
         self.get_logger().info('Order: "%s"' % msg.data)
