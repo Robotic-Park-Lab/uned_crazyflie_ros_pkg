@@ -232,13 +232,12 @@ class CFDriver(Node):
         self.get_logger().info('CrazyflieDriver::Go Home.')
         self.cmd_motion_.x = 0.0
         self.cmd_motion_.y = 0.0
-        self.cmd_motion_.ckeck_pose()
 
     def descent(self):
         self.cmd_motion_.z = 0.15
         self.get_logger().info('CrazyflieDriver::Descent.')
-        t_end = Timer(2, self.take_land)
-        t_end.start()
+        t_desc = Timer(2, self.take_land)
+        t_desc.start()
 
     def take_land(self):
         self.get_logger().info('CrazyflieDriver::Take Land.')
@@ -250,9 +249,10 @@ class CFDriver(Node):
 
     def iterate(self):
         if self.CONTROL_MODE == 'HighLevel':
+            self.get_logger().warning('TO-DO. Check if it is necessary')
             if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
                 self.cmd_motion_.send_pose_data_(self.scf._cf)
-        if self.CONTROL_MODE == 'OffBoard':
+        elif self.CONTROL_MODE == 'OffBoard':
             self.cmd_motion_.send_offboard_setpoint_(self.scf._cf)
 
     def pose_callback(self, data):
@@ -302,12 +302,14 @@ class CFDriver(Node):
             self.get_logger().error('"%s": Unknown order' % msg.data)
 
     def cmd_control_callback(self, msg):
+        if self.CONTROL_MODE == 'OffBoard':
             self.cmd_motion_.roll = msg.data[1]
             self.cmd_motion_.pitch = msg.data[2]
             self.cmd_motion_.yaw = msg.data[3]
             self.cmd_motion_.thrust = int(msg.data[0])
-            if self.CONTROL_MODE == 'OffBoard':
-                self.get_logger().warning('Command: %s' % self.cmd_motion_.str_())
+            self.get_logger().debug('Command: %s' % self.cmd_motion_.str_())
+        else:
+            self.get_logger().warning('New command control order. Offboard control disabled')
 
     def newpose_callback(self, msg):
         self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
@@ -316,15 +318,12 @@ class CFDriver(Node):
             self.cmd_motion_.x = msg.position.x
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
-            self.get_logger().info(self.cmd_motion_.pose_str_())
-        if ((abs(msg.position.x)>1.0) or (abs(msg.position.y)>1.0) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
+            self.get_logger().info('Init pose: %s' % self.cmd_motion_.pose_str_())
+        if ((abs(msg.position.x)>xy_lim) or (abs(msg.position.y)>xy_lim) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
             self.CONTROL_MODE = 'HighLevel'
             self.scf._is_flying = True
             self.get_logger().error('CrazyflieDriver::Out.')
-            self.cmd_motion_.x = 0.0
-            self.cmd_motion_.y = 0.0
-            self.cmd_motion_.z = 0.7
-            self.cmd_motion_.send_pose_data_(self.scf._cf)
+            self.gohome()
             t_end = Timer(3, self.descent)
             t_end.start()
 
@@ -334,7 +333,7 @@ class CFDriver(Node):
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.cmd_motion_.ckeck_pose()
-            self.get_logger().info(self.cmd_motion_.pose_str_())
+            self.get_logger().info('New Goal pose: %s' % self.cmd_motion_.pose_str_())
 #
 
 
