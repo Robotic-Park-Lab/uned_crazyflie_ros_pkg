@@ -88,21 +88,15 @@ class Logging:
         self._cf.disconnected.add_callback(self._disconnected)
         self._cf.connection_failed.add_callback(self._connection_failed)
         self._cf.connection_lost.add_callback(self._connection_lost)
-
         self.parent.get_logger().info('Connecting to %s' % link_uri)
-
         # Try to connect to the Crazyflie
         self._cf.open_link(link_uri)
-
         # Variable used to keep main loop occupied until disconnect
         self.is_connected = True
 
-
     def _connected(self, link_uri):
-        """ This callback is called form the Crazyflie API when a Crazyflie
-        has been connected and the TOCs have been downloaded."""
         self.parent.get_logger().info('Connected to %s' % link_uri)
-        # The definition of the logconfig can be made before connecting
+        # POSE3D
         self._lg_stab_pose = LogConfig(name='Pose', period_in_ms=10)
         self._lg_stab_pose.add_variable('stateEstimate.x', 'float')
         self._lg_stab_pose.add_variable('stateEstimate.y', 'float')
@@ -110,10 +104,7 @@ class Logging:
         self._lg_stab_pose.add_variable('stabilizer.roll', 'float')
         self._lg_stab_pose.add_variable('stabilizer.pitch', 'float')
         self._lg_stab_pose.add_variable('stabilizer.yaw', 'float')
-        # self._lg_stab.add_variable('controller.cmd_thrust', 'float')
-        # The fetch-as argument can be set to FP16 to save space
-        # in the log packet
-        # self._lg_stab.add_variable('pm.vbat', 'FP16')
+        # TWIST
         self._lg_stab_twist = LogConfig(name='Twist', period_in_ms=10)
         self._lg_stab_twist.add_variable('gyro.x', 'float')
         self._lg_stab_twist.add_variable('gyro.y', 'float')
@@ -121,7 +112,10 @@ class Logging:
         self._lg_stab_twist.add_variable('stateEstimate.vx', 'float')
         self._lg_stab_twist.add_variable('stateEstimate.vy', 'float')
         self._lg_stab_twist.add_variable('stateEstimate.vz', 'float')
-
+        # Other data. TO-DO
+        self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
+        self._lg_stab_data.add_variable('controller.cmd_thrust', 'float')
+        self._lg_stab_data.add_variable('pm.vbat', 'FP16')
         try:
             # self._cf.log.add_config(self._lg_stab_pose)
             self._cf.log.add_config(self._lg_stab_pose)
@@ -136,26 +130,21 @@ class Logging:
             self._lg_stab_pose.start()
             self._lg_stab_twist.start()
         except KeyError as e:
-            print('Could not start log configuration,'
+            self.parent.get_logger().info('Could not start log configuration,'
                   '{} not found in TOC'.format(str(e)))
         except AttributeError:
             self.parent.get_logger().info('Could not add Stabilizer log config, bad configuration.')
 
     def _stab_log_error(self, logconf, msg):
-        self.parent.get_logger().info('Error when logging %s: %s'
-                                      % (logconf.name, msg))
+        self.parent.get_logger().info('Error when logging %s: %s' % (logconf.name, msg))
 
     def _stab_log_data(self, timestamp, data, logconf):
         if(logconf.name == "Pose"):
             self.parent.pose_callback(data)
         if(logconf.name == "Twist"):
             self.parent.twist_callback(data)
-        '''
-        print(f'[{timestamp}][{logconf.name}]: ', end='')
-        for name, value in data.items():
-           print(f'{name}: {value:3.3f} ', end='')
-        print()
-        '''
+        # if (logconf.name == "Twist"):
+        #     self.parent.data_callback(data)
 
     def _connection_failed(self, link_uri, msg):
         self.parent.get_logger().info('Connection to %s failed: %s' % (link_uri, msg))
@@ -190,10 +179,10 @@ class CFDriver(Node):
                                                 self.cmd_control_callback, 10)
         timer_period = 0.01  # seconds
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
-        self.CONTROL_MODE = 'OffBoard'
+        self.CONTROL_MODE = 'HighLevel'
         """
         Test:
-        HighLevel: Trajectory
+        HighLevel: HighLevel
         OffBoard: Trajectory + Position
         LowLevel: Trajectory + Position + Attitude
         """
