@@ -70,10 +70,11 @@ class CMD_Motion():
                 ' Z: ' + str(self.z)+' Yaw: ' + str(self.yaw))
 
     def send_pose_data_(self, cf):
+        self.logger.info('Goal Pose: %s' % self.pose_str_())
         cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
 
     def send_offboard_setpoint_(self, cf):
-        # self.logger.info('Command: %s' % self.str_())
+        self.logger.info('Command: %s' % self.str_())
         cf.commander.send_setpoint(self.roll, self.pitch, self.yaw,
                                    self.thrust)
 
