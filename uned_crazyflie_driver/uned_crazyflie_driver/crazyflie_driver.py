@@ -10,7 +10,7 @@ from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Twist
 from uned_crazyflie_config.msg import StateEstimate
-from uned_crazyflie_config.msg import Cmdsignal
+from uned_crazyflie_config.msg import Pidcontroller
 from vicon_receiver.msg import Position
 
 import cflib.crtp
@@ -117,6 +117,8 @@ class Logging:
         # self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
         # self._lg_stab_data.add_variable('controller.cmd_thrust', 'float')
         # self._lg_stab_data.add_variable('pm.vbat', 'FP16')
+        self._cf.param.add_update_callback(group='posCtlPid', name='xKp', cb=self.param_stab_est_callback)
+        self._cf.param.add_update_callback(group='posCtlPid', name='zKi', cb=self.param_stab_est_callback)
         try:
             # self._cf.log.add_config(self._lg_stab_pose)
             self._cf.log.add_config(self._lg_stab_pose)
@@ -148,6 +150,9 @@ class Logging:
             self.parent.get_logger().error('Error: %s: not valid logconf' % logconf.name)
         # elif (logconf.name == "Data"):
         #     self.parent.data_callback(data)
+
+    def param_stab_est_callback(self, name, value):
+        self.parent.get_logger().info('Parameter %s: %s' %(name, value))
 
     def _connection_failed(self, link_uri, msg):
         self.parent.get_logger().info('Connection to %s failed: %s' % (link_uri, msg))
@@ -182,9 +187,11 @@ class CFDriver(Node):
         self.sub_pose = self.create_subscription(Pose, 'pose', self.newpose_callback, 10)
         self.sub_goal_pose = self.create_subscription(Pose, 'goal_pose', self.goalpose_callback, 10)
         self.sub_cmd = self.create_subscription(Float64MultiArray, 'onboard_cmd', self.cmd_control_callback, 10)
+        self.sub_controller = self.create_subscription(Pidcontroller, 'controllers_params', self.controllers_params_callback, 10)
+
         timer_period = 0.01  # seconds
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
-
+        self.get_logger().warning('TO-DO. Check if iterate is necessary at HighLevel Case')
         self.initialize()
 
     def initialize(self):
@@ -223,6 +230,7 @@ class CFDriver(Node):
         # Init Motors
         self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
 
+
     def take_off(self):
         self.get_logger().info('CrazyflieDriver::Take Off.')
         self.cmd_motion_.z = self.cmd_motion_.z + 1.0
@@ -249,7 +257,6 @@ class CFDriver(Node):
 
     def iterate(self):
         if self.CONTROL_MODE == 'HighLevel':
-            self.get_logger().warning('TO-DO. Check if it is necessary')
             if (self.cmd_motion_.z > 0.05 and self.scf._is_flying):
                 self.cmd_motion_.send_pose_data_(self.scf._cf)
         elif self.CONTROL_MODE == 'OffBoard':
@@ -310,6 +317,29 @@ class CFDriver(Node):
             self.get_logger().debug('Command: %s' % self.cmd_motion_.str_())
         else:
             self.get_logger().warning('New command control order. Offboard control disabled')
+
+    def controllers_params_callback(self, msg):
+        self.get_logger().info('New %s controller parameters' % msg.id)
+        if msg.id == 'X':
+            groupstr = 'posCtlPid'
+            namestr = 'xKp'
+            full_name = groupstr + '.' + namestr
+            self.scf._cf.param.set_value(groupstr + '.' + namestr, msg.kp)
+            time.sleep(1)
+            self.scf._cf.param.set_value(full_name, 2)
+            time.sleep(1)
+            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
+        elif msg.id == 'Y':
+            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
+        elif msg.id == 'Z':
+            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
+        elif msg.id == 'VX':
+            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
+        elif msg.id == 'VY':
+            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
+        elif msg.id == 'VZ':
+            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
+        self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
 
     def newpose_callback(self, msg):
         self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
