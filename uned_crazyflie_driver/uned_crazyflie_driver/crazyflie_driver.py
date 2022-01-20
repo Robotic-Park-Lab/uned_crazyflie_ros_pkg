@@ -16,7 +16,6 @@ from vicon_receiver.msg import Position
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
-from cflib.utils import uri_helper
 
 end_test = False
 not_fail = True
@@ -84,13 +83,13 @@ class Logging:
 
         self._cf = Crazyflie(rw_cache='./cache')
         self.parent = parent
+        self.parent.get_logger().info('Connecting to %s' % link_uri)
         # Connect some callbacks from the Crazyflie API
         self._cf.connected.add_callback(self._connected)
         self._cf.disconnected.add_callback(self._disconnected)
         self._cf.connection_failed.add_callback(self._connection_failed)
         self._cf.connection_lost.add_callback(self._connection_lost)
-        self.parent.get_logger().info('Connecting to %s' % link_uri)
-        # Try to connect to the Crazyflie
+
         self._cf.open_link(link_uri)
         # Variable used to keep main loop occupied until disconnect
         self.is_connected = True
@@ -123,7 +122,6 @@ class Logging:
         self._cf.param.add_update_callback(group='pid_rate', cb=self.param_stab_est_callback)
         # self._cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
         try:
-            # self._cf.log.add_config(self._lg_stab_pose)
             self._cf.log.add_config(self._lg_stab_pose)
             self._cf.log.add_config(self._lg_stab_twist)
             # This callback will receive the data
@@ -158,14 +156,14 @@ class Logging:
         self.parent.get_logger().info('Parameter %s: %s' %(name, value))
 
     def _connection_failed(self, link_uri, msg):
-        self.parent.get_logger().info('Connection to %s failed: %s' % (link_uri, msg))
+        self.parent.get_logger().error('Connection to %s failed: %s' % (link_uri, msg))
         self.is_connected = False
 
     def _connection_lost(self, link_uri, msg):
-        self.parent.get_logger().info('Connection to %s lost: %s' % (link_uri, msg))
+        self.parent.get_logger().error('Connection to %s lost: %s' % (link_uri, msg))
 
     def _disconnected(self, link_uri):
-        self.parent.get_logger().info('Disconnected from %s' % link_uri)
+        self.parent.get_logger().warning('Disconnected from %s' % link_uri)
         self.is_connected = False
         rclpy.shutdown()
 
@@ -232,7 +230,6 @@ class CFDriver(Node):
         self.scf._cf.param.set_value('kalman.resetEstimation', '0')
         # Init Motors
         self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
-
 
     def take_off(self):
         self.get_logger().info('CrazyflieDriver::Take Off.')
