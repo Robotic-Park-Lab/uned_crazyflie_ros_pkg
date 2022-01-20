@@ -113,6 +113,7 @@ class Logging:
         self._lg_stab_twist.add_variable('stateEstimate.vy', 'float')
         self._lg_stab_twist.add_variable('stateEstimate.vz', 'float')
         # Other data. TO-DO
+        self.parent.get_logger().warning('TO-DO: Add _lg_stab_data')
         # self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
         # self._lg_stab_data.add_variable('controller.cmd_thrust', 'float')
         # self._lg_stab_data.add_variable('pm.vbat', 'FP16')

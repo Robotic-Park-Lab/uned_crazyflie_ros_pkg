@@ -22,6 +22,7 @@ from cflib.crazyflie.swarm import Swarm
 # List of URIs, comment the one you do not want to fly
 uris = set()
 dron = list()
+publisher = set()
 
 ############################
 ## CF Swarm Logging Class ##
@@ -41,6 +42,10 @@ class CFLogging:
 
     def _connected(self, link_uri):
         self.parent.get_logger().info('Connected to %s -> Crazyflie %s' % (link_uri, self.link_uri[-2:]))
+        # ROS
+        id = 'dron' + self.link_uri[-2:]
+        self.publisher_pose = self.parent.create_publisher(Pose, id + '/cf_pose', 10)
+        self.publisher_twist = self.parent.create_publisher(Twist, id + '/cf_twist', 10)
         # POSE3D
         self._lg_stab_pose = LogConfig(name='Pose', period_in_ms=10)
         self._lg_stab_pose.add_variable('stateEstimate.x', 'float')
@@ -58,6 +63,7 @@ class CFLogging:
         self._lg_stab_twist.add_variable('stateEstimate.vy', 'float')
         self._lg_stab_twist.add_variable('stateEstimate.vz', 'float')
         # Other data. TO-DO
+        self.parent.get_logger().warning('Crazyflie %s. TO-DO: Add _lg_stab_data' % self.link_uri[-2:])
         # self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
         # self._lg_stab_data.add_variable('controller.cmd_thrust', 'float')
         # self._lg_stab_data.add_variable('pm.vbat', 'FP16')
@@ -82,22 +88,20 @@ class CFLogging:
             self.parent.get_logger().info('Could not start log configuration,'
                   '{} not found in TOC'.format(str(e)))
         except AttributeError:
-            self.parent.get_logger().error('Could not add Stabilizer log config, bad configuration.')
-
+            self.parent.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.link_uri[-2:])
 
     def _stab_log_error(self, logconf, msg):
         self.parent.get_logger().error('Crazyflie %s. Error when logging %s: %s' % (self.link_uri[-2:], logconf.name, msg))
 
     def _stab_log_data(self, timestamp, data, logconf):
         if(logconf.name == "Pose"):
-            self.parent.pose_callback(timestamp, data, self.link_uri[-2:])
+            self.pose_callback(timestamp, data)
         elif(logconf.name == "Twist"):
-            self.parent.twist_callback(timestamp, data, self.link_uri[-2:])
+            self.twist_callback(timestamp, data)
         else:
             self.parent.get_logger().error('Crazyflie %s. Error: %s: not valid logconf' % (self.link_uri[-2:], logconf.name))
         # elif (logconf.name == "Data"):
         #     self.parent.data_callback(timestamp, data, self.link_uri[-2:])
-        # self.parent.data_callback(timestamp, data, self.link_uri[-2:])
 
     def param_stab_est_callback(self, name, value):
         self.parent.get_logger().info('Crazyflie %s. Parameter %s: %s' %(self.link_uri[-2:], name, value))
@@ -113,6 +117,33 @@ class CFLogging:
         self.parent.get_logger().warning('Crazyflie %s. Disconnected from %s' % (self.link_uri[-2:], link_uri))
         self.is_connected = False
 
+    def pose_callback(self, timestamp, data):
+        msg = Pose()
+        msg.position.x = data['stateEstimate.x']
+        msg.position.y = data['stateEstimate.y']
+        msg.position.z = data['stateEstimate.z']
+        roll = data['stabilizer.roll']
+        pitch = data['stabilizer.pitch']
+        yaw = data['stabilizer.yaw']
+        msg.orientation.x = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+        msg.orientation.y = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+        msg.orientation.z = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+        msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+
+        self.publisher_pose.publish(msg)
+
+    def twist_callback(self, timestamp, data, n):
+        msg = Twist()
+        msg.linear.x = data['stateEstimate.vx']
+        msg.linear.y = data['stateEstimate.vy']
+        msg.linear.z = data['stateEstimate.vz']
+        msg.angular.x = data['gyro.x']
+        msg.angular.y = data['gyro.y']
+        msg.angular.z = data['gyro.z']
+
+        self.publisher_twist.publish(msg)
+
+
 #####################
 ## CF Swarm Class  ##
 #####################
@@ -121,15 +152,7 @@ class CFSwarmDriver(Node):
         super().__init__('swarm_driver')
         # Params
         self.declare_parameter('cf_first_uri', 'radio://0/80/2M/E7E7E7E701')
-        self.declare_parameter('cf_num_uri', 2)
-        # Publisher
-        self.publisher01_pose_ = self.create_publisher(Pose, 'dron01/cf_pose', 10)
-        self.publisher01_twist_ = self.create_publisher(Twist, 'dron01/cf_twist', 10)
-        self.publisher02_pose_ = self.create_publisher(Pose, 'dron02/cf_pose', 10)
-        self.publisher02_twist_ = self.create_publisher(Twist, 'dron02/cf_twist', 10)
-        self.publisher01_ = self.create_publisher(StateEstimate, 'dron01/cf_data', 10)
-        self.publisher02_ = self.create_publisher(StateEstimate, 'dron02/cf_data', 10)
-        # Subscription
+        self.declare_parameter('cf_num_uri', 1)
 
         timer_period = 0.1
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
@@ -161,52 +184,9 @@ class CFSwarmDriver(Node):
 
 
     def iterate(self):
-        self.get_logger().info('SwarmDriver::iterate() ok.')
+        self.get_logger().debug('SwarmDriver::iterate() ok.')
 
-    def data_callback(self, timestamp, data, n):
-        msg = StateEstimate()
-        msg.timestamp = timestamp
-        msg.x = data['stateEstimate.x']
-        msg.y = data['stateEstimate.y']
-        msg.z = data['stateEstimate.z']
-        msg.roll = data['stabilizer.roll']
-        msg.pitch = data['stabilizer.pitch']
-        # msg.yaw = data['stabilizer.yaw']
-        msg.thrust = data['controller.cmd_thrust']
-        if n == '01':
-            self.publisher01_.publish(msg)
-        if n == '02':
-            self.publisher02_.publish(msg)
 
-    def pose_callback(self, timestamp, data, n):
-        msg = Pose()
-        msg.position.x = data['stateEstimate.x']
-        msg.position.y = data['stateEstimate.y']
-        msg.position.z = data['stateEstimate.z']
-        roll = data['stabilizer.roll']
-        pitch = data['stabilizer.pitch']
-        yaw = data['stabilizer.yaw']
-        msg.orientation.x = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-        msg.orientation.y = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
-        msg.orientation.z = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
-        msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-        if n == '01':
-            self.publisher01_pose_.publish(msg)
-        elif n == '02':
-            self.publisher02_pose_.publish(msg)
-
-    def twist_callback(self, timestamp, data, n):
-        msg = Twist()
-        msg.linear.x = data['stateEstimate.vx']
-        msg.linear.y = data['stateEstimate.vy']
-        msg.linear.z = data['stateEstimate.vz']
-        msg.angular.x = data['gyro.x']
-        msg.angular.y = data['gyro.y']
-        msg.angular.z = data['gyro.z']
-        if n == '01':
-            self.publisher01_twist_.publish(msg)
-        if n == '02':
-            self.publisher02_twist_.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)
