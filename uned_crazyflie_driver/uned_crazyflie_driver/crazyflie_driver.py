@@ -117,8 +117,11 @@ class Logging:
         # self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
         # self._lg_stab_data.add_variable('controller.cmd_thrust', 'float')
         # self._lg_stab_data.add_variable('pm.vbat', 'FP16')
-        self._cf.param.add_update_callback(group='posCtlPid', name='xKp', cb=self.param_stab_est_callback)
-        self._cf.param.add_update_callback(group='posCtlPid', name='zKi', cb=self.param_stab_est_callback)
+        self._cf.param.add_update_callback(group='posCtlPid', cb=self.param_stab_est_callback)
+        self._cf.param.add_update_callback(group='velCtlPid', cb=self.param_stab_est_callback)
+        self._cf.param.add_update_callback(group='pid_attitude', cb=self.param_stab_est_callback)
+        self._cf.param.add_update_callback(group='pid_rate', cb=self.param_stab_est_callback)
+        # self._cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
         try:
             # self._cf.log.add_config(self._lg_stab_pose)
             self._cf.log.add_config(self._lg_stab_pose)
@@ -320,25 +323,69 @@ class CFDriver(Node):
 
     def controllers_params_callback(self, msg):
         self.get_logger().info('New %s controller parameters' % msg.id)
-        if msg.id == 'X':
+        if msg.id == 'x':
             groupstr = 'posCtlPid'
-            namestr = 'xKp'
-            full_name = groupstr + '.' + namestr
-            self.scf._cf.param.set_value(groupstr + '.' + namestr, msg.kp)
-            time.sleep(1)
-            self.scf._cf.param.set_value(full_name, 2)
-            time.sleep(1)
-            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
-        elif msg.id == 'Y':
-            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
-        elif msg.id == 'Z':
-            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
-        elif msg.id == 'VX':
-            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
-        elif msg.id == 'VY':
-            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
-        elif msg.id == 'VZ':
-            self.get_logger().warning('TO-DO: Send %s Data parameters' % msg.id)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'yVelMax', msg.upperlimit)
+        elif msg.id == 'y':
+            groupstr = 'posCtlPid'
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+            self.scf._cf.param.set_value(groupstr + '.x' + msg.id + 'VelMax', msg.upperlimit)
+        elif msg.id == 'z':
+            groupstr = 'posCtlPid'
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'VelMax', msg.upperlimit)
+        elif msg.id == 'vx':
+            groupstr = 'velCtlPid'
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+        elif msg.id == 'vy':
+            groupstr = 'velCtlPid'
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+        elif msg.id == 'vz':
+            groupstr = 'velCtlPid'
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+        elif msg.id == 'roll':
+            groupstr = 'pid_attitude'
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
+        elif msg.id == 'pitch':
+            groupstr = 'pid_attitude'
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
+        elif msg.id == 'yaw':
+            groupstr = 'pid_attitude'
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
+        elif msg.id == 'droll':
+            groupstr = 'pid_rate'
+            self.scf._cf.param.set_value(groupstr + '.' + 'roll_kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + 'roll_ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + 'roll_kd', msg.kd)
+        elif msg.id == 'dpitch':
+            groupstr = 'pid_rate'
+            self.scf._cf.param.set_value(groupstr + '.' + 'pitch_kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + 'pitch_ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + 'pitch_kd', msg.kd)
+        elif msg.id == 'dyaw':
+            groupstr = 'pid_rate'
+            self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kp', msg.kp)
+            self.scf._cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
+            self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
         self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
 
     def newpose_callback(self, msg):
