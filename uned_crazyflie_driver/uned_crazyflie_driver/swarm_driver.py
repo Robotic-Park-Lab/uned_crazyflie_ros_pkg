@@ -36,6 +36,7 @@ class CMD_Motion():
         self.y = 0.0
         self.z = 0.0
         self.logger = logger
+        self.flight_time = 1.0
 
     def ckeck_pose(self):
         # X Check
@@ -71,7 +72,9 @@ class CMD_Motion():
 
     def send_pose_data_(self, cf):
         self.logger.info('Goal Pose: %s' % self.pose_str_())
-        cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
+        # cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
+        cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, self.flight_time)
+
 
     def send_offboard_setpoint_(self, cf):
         self.logger.info('Command: %s' % self.str_())
@@ -167,8 +170,8 @@ class CFLogging:
         self.scf.cf.param.set_value('kalman.resetEstimation', '1')
         time.sleep(0.1)
         self.scf.cf.param.set_value('kalman.resetEstimation', '0')
-        # Init Motors
-        self.scf.cf.commander.send_setpoint(0.0, 0.0, 0, 0)
+        # Init HighLevel
+        self.scf.cf.param.set_value('commander.enHighLevel', '1')
 
     def _stab_log_error(self, logconf, msg):
         self.parent.get_logger().error('Crazyflie %s. Error when logging %s: %s' % (self.link_uri[-2:], logconf.name, msg))
@@ -200,6 +203,7 @@ class CFLogging:
     def take_off(self):
         self.parent.get_logger().info('CF%s::Take Off.' % self.link_uri[-2:])
         self.cmd_motion_.z = self.cmd_motion_.z + 1.0
+        self.cmd_motion_.send_pose_data_(self.scf.cf)
         self._is_flying = True
 
     def gohome(self):
@@ -209,13 +213,15 @@ class CFLogging:
 
     def descent(self):
         self.cmd_motion_.z = 0.15
+        self.cmd_motion_.send_pose_data_(self.scf.cf)
         self.parent.get_logger().info('CF%s::Descent.' % self.link_uri[-2:])
-        t_desc = Timer(2, self.take_land)
-        t_desc.start()
+        self.t_desc = Timer(2, self.take_land)
+        self.t_desc.start()
 
     def take_land(self):
         self.parent.get_logger().info('CF%s::Take Land.' % self.link_uri[-2:])
         self.cmd_motion_.z = 0.0
+        self.cmd_motion_.send_pose_data_(self.scf.cf)
         self.scf.cf.commander.send_setpoint(0.0, 0.0, 0, 0)
         self.scf.cf.commander.send_stop_setpoint()
         self.init_pose = False
@@ -366,6 +372,7 @@ class CFLogging:
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.cmd_motion_.ckeck_pose()
+            self.cmd_motion_.send_pose_data_(self.scf.cf)
             self.parent.get_logger().info('CF%s::New Goal pose: %s' % (self.link_uri[-2:], self.cmd_motion_.pose_str_()))
 
 
@@ -378,6 +385,10 @@ class CFSwarmDriver(Node):
         # Params
         self.declare_parameter('cf_first_uri', 'radio://0/80/2M/E7E7E7E701')
         self.declare_parameter('cf_num_uri', 1)
+        # Subscription
+        self.sub_order = self.create_subscription(String, 'swarm/cf_order', self.order_callback, 10)
+        # self.sub_pose = self.create_subscription(Pose, 'swarm/pose', self.newpose_callback, 10)
+        # self.sub_goal_pose = self.create_subscription(Pose, 'swarm/goal_pose', self.goalpose_callback, 10)
 
         timer_period = 0.1
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
@@ -407,10 +418,19 @@ class CFSwarmDriver(Node):
             cf = CFLogging(self.cf_swarm._cfs[uri], self, uri)
             dron.append(cf)
 
-
     def iterate(self):
         self.get_logger().debug('SwarmDriver::iterate() ok.')
 
+    def order_callback(self, msg):
+        self.get_logger().info('SWARM::Order: "%s"' % msg.data)
+        if msg.data == 'take_off':
+            for cf in dron:
+                cf.take_off()
+        elif msg.data == 'land':
+            for cf in dron:
+                cf.descent()
+        else:
+            self.get_logger().error('SWARM::"%s": Unknown order' % msg.data)
 
 
 def main(args=None):
