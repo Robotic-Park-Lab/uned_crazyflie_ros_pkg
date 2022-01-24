@@ -293,19 +293,19 @@ class CFDriver(Node):
         self.get_logger().info('Order: "%s"' % msg.data)
         if msg.data == 'take_off':
             if self.scf._is_flying:
-                self.get_logger().info('Already flying')
+                self.get_logger().warning('Already flying')
             else:
                 self.take_off()
         elif msg.data == 'land':
             if self.scf._is_flying:
                 self.descent()
             else:
-                self.get_logger().info('In land')
+                self.get_logger().warning('In land')
         elif msg.data == 'gohome':
             if self.scf._is_flying:
                 self.gohome()
             else:
-                self.get_logger().info('In land')
+                self.get_logger().warning('In land')
         else:
             self.get_logger().error('"%s": Unknown order' % msg.data)
 
