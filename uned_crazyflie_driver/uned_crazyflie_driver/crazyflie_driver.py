@@ -6,6 +6,8 @@ import numpy as np
 
 from rclpy.node import Node
 from std_msgs.msg import String
+from std_msgs.msg import UInt16
+from std_msgs.msg import Float64
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Twist
@@ -69,7 +71,7 @@ class CMD_Motion():
                 ' Z: ' + str(self.z)+' Yaw: ' + str(self.yaw))
 
     def send_pose_data_(self, cf):
-        self.logger.info('Goal Pose: %s' % self.pose_str_())
+        # self.logger.info('Goal Pose: %s' % self.pose_str_())
         cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
 
     def send_offboard_setpoint_(self, cf):
@@ -113,32 +115,40 @@ class Logging:
         self._lg_stab_twist.add_variable('stateEstimate.vy', 'float')
         self._lg_stab_twist.add_variable('stateEstimate.vz', 'float')
         # Other data. TO-DO
-        self.parent.get_logger().warning('TO-DO: Add _lg_stab_data')
-        # self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
-        # self._lg_stab_data.add_variable('controller.cmd_thrust', 'float')
+        self.parent.get_logger().warning('TO-DO: Test Add _lg_stab_data')
+        self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
+        self._lg_stab_data.add_variable('posEbCtl.Zcount', 'uint16_t')
+        self._lg_stab_data.add_variable('posEbCtl.Zlasthold', 'float')
         # self._lg_stab_data.add_variable('pm.vbat', 'FP16')
+        # Params
         self._cf.param.add_update_callback(group='posCtlPid', cb=self.param_stab_est_callback)
         self._cf.param.add_update_callback(group='velCtlPid', cb=self.param_stab_est_callback)
+        self._cf.param.add_update_callback(group='posEbCtlPid', cb=self.param_stab_est_callback)
+        self._cf.param.add_update_callback(group='velEbCtlPid', cb=self.param_stab_est_callback)
         self._cf.param.add_update_callback(group='pid_attitude', cb=self.param_stab_est_callback)
         self._cf.param.add_update_callback(group='pid_rate', cb=self.param_stab_est_callback)
         # self._cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
         try:
             self._cf.log.add_config(self._lg_stab_pose)
             self._cf.log.add_config(self._lg_stab_twist)
+            self._cf.log.add_config(self._lg_stab_data)
             # This callback will receive the data
             self._lg_stab_pose.data_received_cb.add_callback(self._stab_log_data)
             self._lg_stab_twist.data_received_cb.add_callback(self._stab_log_data)
+            self._lg_stab_data.data_received_cb.add_callback(self._stab_log_data)
             # This callback will be called on errors
             self._lg_stab_pose.error_cb.add_callback(self._stab_log_error)
             self._lg_stab_twist.error_cb.add_callback(self._stab_log_error)
+            self._lg_stab_data.error_cb.add_callback(self._stab_log_error)
             # Start the logging
             self._lg_stab_pose.start()
             self._lg_stab_twist.start()
+            self._lg_stab_data.start()
         except KeyError as e:
             self.parent.get_logger().info('Could not start log configuration,'
                   '{} not found in TOC'.format(str(e)))
         except AttributeError:
-            self.parent.get_logger().error('Could not add Stabilizer log config, bad configuration.')
+            self.parent.get_logger().error('Could not add some log config, bad configuration.')
 
     def _stab_log_error(self, logconf, msg):
         self.parent.get_logger().error('Error when logging %s: %s' % (logconf.name, msg))
@@ -148,10 +158,12 @@ class Logging:
             self.parent.pose_callback(data)
         elif(logconf.name == "Twist"):
             self.parent.twist_callback(data)
+        elif(logconf.name == "Data"):
+            self.parent.data_callback(data)
+            print('[%d][%s]: %s' % (timestamp, logconf.name, data))
         else:
             self.parent.get_logger().error('Error: %s: not valid logconf' % logconf.name)
-        # elif (logconf.name == "Data"):
-        #     self.parent.data_callback(data)
+
 
     def param_stab_est_callback(self, name, value):
         self.parent.get_logger().info('Parameter %s: %s' %(name, value))
@@ -184,6 +196,8 @@ class CFDriver(Node):
         # Publisher
         self.publisher_pose = self.create_publisher(Pose, 'cf_pose', 10)
         self.publisher_twist = self.create_publisher(Twist, 'cf_twist', 10)
+        self.publisher_data = self.create_publisher(UInt16, 'cf_data', 10)
+        self.publisher_test = self.create_publisher(Float64, 'cf_test', 10)
         # Subscription
         self.sub_order = self.create_subscription(String, 'cf_order', self.order_callback, 10)
         self.sub_pose = self.create_subscription(Pose, 'pose', self.newpose_callback, 10)
@@ -234,7 +248,7 @@ class CFDriver(Node):
 
     def take_off(self):
         self.get_logger().info('CrazyflieDriver::Take Off.')
-        self.cmd_motion_.z = self.cmd_motion_.z + 1.0
+        self.cmd_motion_.z = self.cmd_motion_.z + 0.7
         self.scf._is_flying = True
 
     def gohome(self):
@@ -287,7 +301,13 @@ class CFDriver(Node):
         msg.angular.z = data['gyro.z']
         self.publisher_twist.publish(msg)
 
-    # TO-DO: data_callback(self, data):
+    def data_callback(self, data):
+        msg = UInt16()
+        msg.data = data['posEbCtl.Zcount']
+        self.publisher_data.publish(msg)
+        msg = Float64()
+        msg.data = data['posEbCtl.Zlasthold']
+        self.publisher_test.publish(msg)
 
     def order_callback(self, msg):
         self.get_logger().info('Order: "%s"' % msg.data)
