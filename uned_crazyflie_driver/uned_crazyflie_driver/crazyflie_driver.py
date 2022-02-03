@@ -7,6 +7,7 @@ import numpy as np
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_msgs.msg import UInt16
+from std_msgs.msg import UInt16MultiArray
 from std_msgs.msg import Float64
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Pose
@@ -118,7 +119,8 @@ class Logging:
         self.parent.get_logger().warning('TO-DO: Test Add _lg_stab_data')
         self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
         self._lg_stab_data.add_variable('posEbCtl.Zcount', 'uint16_t')
-        self._lg_stab_data.add_variable('posEbCtl.Zlasthold', 'float')
+        self._lg_stab_data.add_variable('posEbCtl.Ycount', 'uint16_t')
+        self._lg_stab_data.add_variable('posEbCtl.Xcount', 'uint16_t')
         # self._lg_stab_data.add_variable('pm.vbat', 'FP16')
         # Params
         self._cf.param.add_update_callback(group='posCtlPid', cb=self.param_stab_est_callback)
@@ -164,7 +166,6 @@ class Logging:
         else:
             self.parent.get_logger().error('Error: %s: not valid logconf' % logconf.name)
 
-
     def param_stab_est_callback(self, name, value):
         self.parent.get_logger().info('Parameter %s: %s' %(name, value))
 
@@ -193,11 +194,16 @@ class CFDriver(Node):
         OffBoard: Trajectory + Position
         LowLevel: Trajectory + Position + Attitude
         """
+        self.declare_parameter('cf_controller_type', 'EventBased')
+        """
+        Test: -
+        Continuous: Continuous PID
+        EventBased: Event Based PID
+        """
         # Publisher
         self.publisher_pose = self.create_publisher(Pose, 'cf_pose', 10)
         self.publisher_twist = self.create_publisher(Twist, 'cf_twist', 10)
-        self.publisher_data = self.create_publisher(UInt16, 'cf_data', 10)
-        self.publisher_test = self.create_publisher(Float64, 'cf_test', 10)
+        self.publisher_data = self.create_publisher(UInt16MultiArray, 'cf_data', 10)
         # Subscription
         self.sub_order = self.create_subscription(String, 'cf_order', self.order_callback, 10)
         self.sub_pose = self.create_subscription(Pose, 'pose', self.newpose_callback, 10)
@@ -207,7 +213,6 @@ class CFDriver(Node):
 
         timer_period = 0.01  # seconds
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
-        self.get_logger().warning('TO-DO. Check if iterate is necessary at HighLevel Case')
         self.initialize()
 
     def initialize(self):
@@ -217,6 +222,8 @@ class CFDriver(Node):
         self.get_logger().info('Crazyflie ID: %s!' % dron_id)
         self.CONTROL_MODE = self.get_parameter('cf_control_mode').get_parameter_value().string_value
         self.get_logger().info('Crazyflie Control Mode: %s!' % self.CONTROL_MODE)
+        self.CONTROLLER_TYPE = self.get_parameter('cf_controller_type').get_parameter_value().string_value
+        self.get_logger().info('Crazyflie Controller Type: %s!' % self.CONTROLLER_TYPE)
         # Connection
         cflib.crtp.init_drivers()
         available = cflib.crtp.scan_interfaces()
@@ -245,6 +252,9 @@ class CFDriver(Node):
         self.scf._cf.param.set_value('kalman.resetEstimation', '0')
         # Init Motors
         self.scf._cf.commander.send_setpoint(0.0, 0.0, 0, 0)
+        # Controller type
+        if (self.CONTROLLER_TYPE == 'EventBased'):
+            self.scf._cf.param.set_value('controller.eventBased', '1')
 
     def take_off(self):
         self.get_logger().info('CrazyflieDriver::Take Off.')
@@ -302,12 +312,9 @@ class CFDriver(Node):
         self.publisher_twist.publish(msg)
 
     def data_callback(self, data):
-        msg = UInt16()
-        msg.data = data['posEbCtl.Zcount']
+        msg = UInt16MultiArray()
+        msg.data = {data['posEbCtl.Xcount'], data['posEbCtl.Ycount'], data['posEbCtl.Zcount']}
         self.publisher_data.publish(msg)
-        msg = Float64()
-        msg.data = data['posEbCtl.Zlasthold']
-        self.publisher_test.publish(msg)
 
     def order_callback(self, msg):
         self.get_logger().info('Order: "%s"' % msg.data)
@@ -341,70 +348,147 @@ class CFDriver(Node):
 
     def controllers_params_callback(self, msg):
         self.get_logger().info('New %s controller parameters' % msg.id)
-        if msg.id == 'x':
-            groupstr = 'posCtlPid'
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'yVelMax', msg.upperlimit)
-        elif msg.id == 'y':
-            groupstr = 'posCtlPid'
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
-            self.scf._cf.param.set_value(groupstr + '.x' + msg.id + 'VelMax', msg.upperlimit)
-        elif msg.id == 'z':
-            groupstr = 'posCtlPid'
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'VelMax', msg.upperlimit)
-        elif msg.id == 'vx':
-            groupstr = 'velCtlPid'
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
-        elif msg.id == 'vy':
-            groupstr = 'velCtlPid'
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
-        elif msg.id == 'vz':
-            groupstr = 'velCtlPid'
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
-        elif msg.id == 'roll':
-            groupstr = 'pid_attitude'
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
-        elif msg.id == 'pitch':
-            groupstr = 'pid_attitude'
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
-        elif msg.id == 'yaw':
-            groupstr = 'pid_attitude'
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
-        elif msg.id == 'droll':
-            groupstr = 'pid_rate'
-            self.scf._cf.param.set_value(groupstr + '.' + 'roll_kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + 'roll_ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + 'roll_kd', msg.kd)
-        elif msg.id == 'dpitch':
-            groupstr = 'pid_rate'
-            self.scf._cf.param.set_value(groupstr + '.' + 'pitch_kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + 'pitch_ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + 'pitch_kd', msg.kd)
-        elif msg.id == 'dyaw':
-            groupstr = 'pid_rate'
-            self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kp', msg.kp)
-            self.scf._cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
-            self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
-        self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
+        if (self.CONTROLLER_TYPE == 'Continuous'):
+            if msg.id == 'x':
+                groupstr = 'posCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'yVelMax', msg.upperlimit)
+            elif msg.id == 'y':
+                groupstr = 'posCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+                self.scf._cf.param.set_value(groupstr + '.x' + msg.id + 'VelMax', msg.upperlimit)
+            elif msg.id == 'z':
+                groupstr = 'posCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'VelMax', msg.upperlimit)
+            elif msg.id == 'vx':
+                groupstr = 'velCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+            elif msg.id == 'vy':
+                groupstr = 'velCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+            elif msg.id == 'vz':
+                groupstr = 'velCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+            elif msg.id == 'roll':
+                groupstr = 'pid_attitude'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
+            elif msg.id == 'pitch':
+                groupstr = 'pid_attitude'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
+            elif msg.id == 'yaw':
+                groupstr = 'pid_attitude'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
+            elif msg.id == 'droll':
+                groupstr = 'pid_rate'
+                self.scf._cf.param.set_value(groupstr + '.' + 'roll_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + 'roll_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + 'roll_kd', msg.kd)
+            elif msg.id == 'dpitch':
+                groupstr = 'pid_rate'
+                self.scf._cf.param.set_value(groupstr + '.' + 'pitch_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + 'pitch_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + 'pitch_kd', msg.kd)
+            elif msg.id == 'dyaw':
+                groupstr = 'pid_rate'
+                self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
+            elf.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
+        elif (self.CONTROLLER_TYPE == 'EventBased'):
+            if msg.id == 'x':
+                groupstr = 'posEbCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Co', msg.co)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ai', msg.ai)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'yVelMax', msg.upperlimit)
+            elif msg.id == 'y':
+                groupstr = 'posEbCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Co', msg.co)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ai', msg.ai)
+                self.scf._cf.param.set_value(groupstr + '.x' + msg.id + 'VelMax', msg.upperlimit)
+            elif msg.id == 'z':
+                groupstr = 'posEbCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Co', msg.co)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ai', msg.ai)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'VelMax', msg.upperlimit)
+            elif msg.id == 'vx':
+                groupstr = 'velEbCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Co', msg.co)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ai', msg.ai)
+            elif msg.id == 'vy':
+                groupstr = 'velEbCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Co', msg.co)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ai', msg.ai)
+            elif msg.id == 'vz':
+                groupstr = 'velEbCtlPid'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Kd', msg.kd)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Co', msg.co)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + 'Ai', msg.ai)
+            elif msg.id == 'roll':
+                groupstr = 'pid_attitude'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
+            elif msg.id == 'pitch':
+                groupstr = 'pid_attitude'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
+            elif msg.id == 'yaw':
+                groupstr = 'pid_attitude'
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + msg.id + '_kd', msg.kd)
+            elif msg.id == 'droll':
+                groupstr = 'pid_rate'
+                self.scf._cf.param.set_value(groupstr + '.' + 'roll_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + 'roll_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + 'roll_kd', msg.kd)
+            elif msg.id == 'dpitch':
+                groupstr = 'pid_rate'
+                self.scf._cf.param.set_value(groupstr + '.' + 'pitch_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + 'pitch_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + 'pitch_kd', msg.kd)
+            elif msg.id == 'dyaw':
+                groupstr = 'pid_rate'
+                self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kp', msg.kp)
+                self.scf._cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
+                self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
 
     def newpose_callback(self, msg):
         self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)

@@ -18,7 +18,8 @@ def generate_launch_description():
         emulate_tty=True,
         parameters=[
             {'cf_uri': 'radio://0/80/2M/E7E7E7E701'},
-            {'cf_control_mode': 'HighLevel'}
+            {'cf_control_mode': 'HighLevel'},
+            {'cf_controller_type': 'EventBased'}
         ])
     vicon_node = Node(
         package='vicon_receiver',
@@ -27,7 +28,13 @@ def generate_launch_description():
         parameters=[
             {'hostname': hostname, 'buffer_size': buffer_size, 'namespace': topic_namespace}
         ])
+    rqt_node = Node(
+            package='rqt_gui',
+            executable='rqt_gui',
+            name='interface'
+        )
     return LaunchDescription([
         dron01_node,
-        vicon_node
+        vicon_node,
+        rqt_node
     ])
