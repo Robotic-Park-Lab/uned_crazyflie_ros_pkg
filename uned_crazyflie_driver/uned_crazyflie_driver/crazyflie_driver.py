@@ -115,8 +115,7 @@ class Logging:
         self._lg_stab_twist.add_variable('stateEstimate.vx', 'float')
         self._lg_stab_twist.add_variable('stateEstimate.vy', 'float')
         self._lg_stab_twist.add_variable('stateEstimate.vz', 'float')
-        # Other data. TO-DO
-        self.parent.get_logger().warning('TO-DO: Test Add _lg_stab_data')
+        # Other data.
         self._lg_stab_data = LogConfig(name='Data', period_in_ms=10)
         self._lg_stab_data.add_variable('posEbCtl.Zcount', 'uint16_t')
         self._lg_stab_data.add_variable('posEbCtl.Ycount', 'uint16_t')
@@ -412,7 +411,7 @@ class CFDriver(Node):
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kp', msg.kp)
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
-            elf.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
+            self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
         elif (self.CONTROLLER_TYPE == 'EventBased'):
             if msg.id == 'x':
                 groupstr = 'posEbCtlPid'
@@ -489,7 +488,8 @@ class CFDriver(Node):
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kp', msg.kp)
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
-
+            self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
+            
     def newpose_callback(self, msg):
         self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
         if not self.scf.init_pose:

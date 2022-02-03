@@ -16,8 +16,9 @@ def generate_launch_description():
         emulate_tty=True,
         parameters=[
             {'cf_uri': 'radio://0/80/2M/E7E7E7E701'},
-            {'cf_control_mode': 'HighLevel'},
-            {'cf_num_uri': 1}
+            {'cf_num_uri': 2},
+            {'cf_control_mode': '{HighLevel, HighLevel}'},
+            {'cf_controller_type': '{EventBased, Continuous}'}
         ])
     vicon_node = Node(
         package='vicon_receiver',
