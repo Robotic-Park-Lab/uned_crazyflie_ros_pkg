@@ -128,6 +128,8 @@ class Logging:
         self._cf.param.add_update_callback(group='velEbCtlPid', cb=self.param_stab_est_callback)
         self._cf.param.add_update_callback(group='pid_attitude', cb=self.param_stab_est_callback)
         self._cf.param.add_update_callback(group='pid_rate', cb=self.param_stab_est_callback)
+        self._cf.param.add_update_callback(group='controller', cb=self.param_stab_est_callback)
+
         # self._cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
         try:
             self._cf.log.add_config(self._lg_stab_pose)
@@ -161,7 +163,7 @@ class Logging:
             self.parent.twist_callback(data)
         elif(logconf.name == "Data"):
             self.parent.data_callback(data)
-            print('[%d][%s]: %s' % (timestamp, logconf.name, data))
+            # print('[%d][%s]: %s' % (timestamp, logconf.name, data))
         else:
             self.parent.get_logger().error('Error: %s: not valid logconf' % logconf.name)
 
@@ -489,7 +491,7 @@ class CFDriver(Node):
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
             self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
-            
+
     def newpose_callback(self, msg):
         self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
         if not self.scf.init_pose:

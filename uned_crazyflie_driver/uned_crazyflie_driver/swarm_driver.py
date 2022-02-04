@@ -87,7 +87,7 @@ class CMD_Motion():
 ## CF Swarm Logging Class ##
 ############################
 class CFLogging:
-    def __init__(self, scf, parent, link_uri):
+    def __init__(self, scf, parent, link_uri, ctrl_mode, ctrl_type):
         self.parent = parent
         self.parent.get_logger().info('Connecting to %s' % link_uri)
         self.scf = scf
@@ -96,7 +96,10 @@ class CFLogging:
         self.scf.cf.disconnected.add_callback(self._disconnected)
         self.scf.cf.connection_failed.add_callback(self._connection_failed)
         self.scf.cf.connection_lost.add_callback(self._connection_lost)
-
+        self.CONTROL_MODE = ctrl_mode
+        self.parent.get_logger().info('CF%s::Control Mode: %s!' % (self.link_uri[-2:], self.CONTROL_MODE))
+        self.scf.CONTROLLER_TYPE = ctrl_type
+        self.parent.get_logger().info('CF%s::Controller Type: %s!' % (self.link_uri[-2:], self.scf.CONTROLLER_TYPE))
         self.scf.cf.open_link(link_uri)
 
     def _connected(self, link_uri):
@@ -106,7 +109,7 @@ class CFLogging:
         # Publisher
         self.publisher_pose = self.parent.create_publisher(Pose, id + '/cf_pose', 10)
         self.publisher_twist = self.parent.create_publisher(Twist, id + '/cf_twist', 10)
-        self.publisher_data = self.create_publisher(UInt16MultiArray, id + '/cf_data', 10)
+        self.publisher_data = self.parent.create_publisher(UInt16MultiArray, id + '/cf_data', 10)
         # Subscription
         self.sub_order = self.parent.create_subscription(String, id + '/cf_order', self.order_callback, 10)
         self.sub_pose = self.parent.create_subscription(Pose, id + '/pose', self.newpose_callback, 10)
@@ -136,17 +139,20 @@ class CFLogging:
         self._lg_stab_data.add_variable('posEbCtl.Xcount', 'uint16_t')
         # self._lg_stab_data.add_variable('pm.vbat', 'FP16')
         # Params
-        self._cf.param.add_update_callback(group='posCtlPid', cb=self.param_stab_est_callback)
-        self._cf.param.add_update_callback(group='velCtlPid', cb=self.param_stab_est_callback)
-        self._cf.param.add_update_callback(group='posEbCtlPid', cb=self.param_stab_est_callback)
-        self._cf.param.add_update_callback(group='velEbCtlPid', cb=self.param_stab_est_callback)
-        self._cf.param.add_update_callback(group='pid_attitude', cb=self.param_stab_est_callback)
-        self._cf.param.add_update_callback(group='pid_rate', cb=self.param_stab_est_callback)
+        self.scf.cf.param.add_update_callback(group='posCtlPid', cb=self.param_stab_est_callback)
+        self.scf.cf.param.add_update_callback(group='velCtlPid', cb=self.param_stab_est_callback)
+        self.scf.cf.param.add_update_callback(group='posEbCtlPid', cb=self.param_stab_est_callback)
+        self.scf.cf.param.add_update_callback(group='velEbCtlPid', cb=self.param_stab_est_callback)
+        self.scf.cf.param.add_update_callback(group='pid_attitude', cb=self.param_stab_est_callback)
+        self.scf.cf.param.add_update_callback(group='pid_rate', cb=self.param_stab_est_callback)
         # self.scf.cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
+        self.scf.cf.param.add_update_callback(group='controller', cb=self.param_stab_est_callback)
+        self.scf.cf.param.add_update_callback(group='commander', cb=self.param_stab_est_callback)
+
         try:
             self.scf.cf.log.add_config(self._lg_stab_pose)
             self.scf.cf.log.add_config(self._lg_stab_twist)
-            self._cf.log.add_config(self._lg_stab_data)
+            self.scf.cf.log.add_config(self._lg_stab_data)
             # This callback will receive the data
             self._lg_stab_pose.data_received_cb.add_callback(self._stab_log_data)
             self._lg_stab_twist.data_received_cb.add_callback(self._stab_log_data)
@@ -169,20 +175,6 @@ class CFLogging:
         self.init_pose = False
         self.cmd_motion_ = CMD_Motion(self.parent.get_logger())
         self.scf.cf.commander.set_client_xmode(True)
-        time.sleep(2.0)
-        # Disable Flow deck to EKF
-        # self.scf.cf.param.set_value('motion.disable', '1')
-        # Init Kalman Filter
-        self.scf.cf.param.set_value('stabilizer.estimator', '2')
-        # Set the std deviation for the quaternion data pushed into the
-        # kalman filter. The default value seems to be a bit too low.
-        self.scf.cf.param.set_value('locSrv.extQuatStdDev', 0.06)
-        # Reset Estimator
-        self.scf.cf.param.set_value('kalman.resetEstimation', '1')
-        time.sleep(0.1)
-        self.scf.cf.param.set_value('kalman.resetEstimation', '0')
-        # Init HighLevel
-        self.scf.cf.param.set_value('commander.enHighLevel', '1')
 
     def _stab_log_error(self, logconf, msg):
         self.parent.get_logger().error('Crazyflie %s. Error when logging %s: %s' % (self.link_uri[-2:], logconf.name, msg))
@@ -194,11 +186,12 @@ class CFLogging:
             self.twist_callback(data)
         elif(logconf.name == "Data"):
             self.data_callback(data)
+            #print('[%d]CF%s[%s]: %s' % (timestamp, self.link_uri[-2:], logconf.name, data))
         else:
-            self.parent.get_logger().error('Crazyflie %s. Error: %s: not valid logconf' % (self.link_uri[-2:], logconf.name))
+            self.parent.get_logger().error('CF%s. Error: %s: not valid logconf' % (self.link_uri[-2:], logconf.name))
 
     def param_stab_est_callback(self, name, value):
-        self.parent.get_logger().info('Crazyflie %s. Parameter %s: %s' %(self.link_uri[-2:], name, value))
+        self.parent.get_logger().info('CF%s. Parameter %s: %s' %(self.link_uri[-2:], name, value))
 
     def _connection_failed(self, link_uri, msg):
         self.parent.get_logger().error('Crazyflie %s. Connection to %s failed: %s' % (self.link_uri[-2:], link_uri, msg))
@@ -212,10 +205,13 @@ class CFLogging:
         self.is_connected = False
 
     def take_off(self):
-        self.parent.get_logger().info('CF%s::Take Off.' % self.link_uri[-2:])
-        self.cmd_motion_.z = self.cmd_motion_.z + 1.0
-        self.cmd_motion_.send_pose_data_(self.scf.cf)
-        self._is_flying = True
+        if(self._is_flying):
+            self.get_logger().warning('CF%s::Already flying' % self.link_uri[-2:])
+        else:
+            self.parent.get_logger().info('CF%s::Take Off.' % self.link_uri[-2:])
+            self.cmd_motion_.z = self.cmd_motion_.z + 0.5
+            self.cmd_motion_.send_pose_data_(self.scf.cf)
+            self._is_flying = True
 
     def gohome(self):
         self.parent.get_logger().info('CF%s::Go Home.' % self.link_uri[-2:])
@@ -239,7 +235,7 @@ class CFLogging:
         self.init_pose = False
         self._is_flying = False
 
-    def pose_callback(self, timestamp, data):
+    def pose_callback(self, data):
         msg = Pose()
         msg.position.x = data['stateEstimate.x']
         msg.position.y = data['stateEstimate.y']
@@ -254,7 +250,7 @@ class CFLogging:
 
         self.publisher_pose.publish(msg)
 
-    def twist_callback(self, timestamp, data):
+    def twist_callback(self, data):
         msg = Twist()
         msg.linear.x = data['stateEstimate.vx']
         msg.linear.y = data['stateEstimate.vy']
@@ -264,6 +260,11 @@ class CFLogging:
         msg.angular.z = data['gyro.z']
 
         self.publisher_twist.publish(msg)
+
+    def data_callback(self, data):
+        msg = UInt16MultiArray()
+        msg.data = {data['posEbCtl.Xcount'], data['posEbCtl.Ycount'], data['posEbCtl.Zcount']}
+        self.publisher_data.publish(msg)
 
     def order_callback(self, msg):
         self.parent.get_logger().info('CF%s::Order: "%s"' % (self.link_uri[-2:], msg.data))
@@ -297,7 +298,7 @@ class CFLogging:
 
     def controllers_params_callback(self, msg):
         self.parent.get_logger().info('CF%s: New %s controller parameters' % (self.link_uri[-2:], msg.id))
-        if (self.CONTROLLER_TYPE == 'Continuous'):
+        if (self.scf.CONTROLLER_TYPE == 'Continuous'):
             if msg.id == 'x':
                 groupstr = 'posCtlPid'
                 self.scf.cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
@@ -362,7 +363,7 @@ class CFLogging:
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
             self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
-        elif (self.CONTROLLER_TYPE == 'EventBased'):
+        elif (self.scf.CONTROLLER_TYPE == 'EventBased'):
             if msg.id == 'x':
                 groupstr = 'posEbCtlPid'
                 self.scf.cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
@@ -491,7 +492,7 @@ class CFSwarmDriver(Node):
         # Subscription
         self.sub_order = self.create_subscription(String, 'swarm/cf_order', self.order_callback, 10)
         # self.sub_pose = self.create_subscription(Pose, 'swarm/pose', self.newpose_callback, 10)
-        # self.sub_goal_pose = self.create_subscription(Pose, 'swarm/goal_pose', self.goalpose_callback, 10)
+        self.sub_goal_pose = self.create_subscription(Pose, 'swarm/goal_pose', self.goalpose_callback, 10)
 
         self.initialize()
 
@@ -520,14 +521,28 @@ class CFSwarmDriver(Node):
         cflib.crtp.init_drivers()
         factory = CachedCfFactory(rw_cache='./cache')
         self.cf_swarm = Swarm(uris, factory=factory)
+        i = 0
         for uri in uris:
-            cf = CFLogging(self.cf_swarm._cfs[uri], self, uri)
+            cf = CFLogging(self.cf_swarm._cfs[uri], self, uri, control_mode[i], controller_type[i])
             dron.append(cf)
-            # cf.CONTROL_MODE = control_mode[i]
-            # cf.CONTROLLER_TYPE = controller_type[i]
-            # if (cf.CONTROLLER_TYPE == 'EventBased'):
-            #     cf.scf.cf.param.set_value('controller.eventBased', '1')
-            # i += 1
+            i += 1
+        self.cf_swarm.parallel_safe(self.update_params)
+
+    def update_params(self, scf):
+        # Disable Flow deck to EKF
+        # scf.cf.param.set_value('motion.disable', '1')
+        # Init Kalman Filter
+        scf.cf.param.set_value('stabilizer.estimator', '2')
+        # Set the std deviation for the quaternion data pushed into the
+        # kalman filter. The default value seems to be a bit too low.
+        scf.cf.param.set_value('locSrv.extQuatStdDev', 0.06)
+        # Reset Estimator
+        scf.cf.param.set_value('kalman.resetEstimation', '1')
+        scf.cf.param.set_value('kalman.resetEstimation', '0')
+        # Init HighLevel
+        scf.cf.param.set_value('commander.enHighLevel', '1')
+        if (scf.CONTROLLER_TYPE == 'EventBased'):
+            scf.cf.param.set_value('controller.eventBased', '1')
 
     def order_callback(self, msg):
         self.get_logger().info('SWARM::Order: "%s"' % msg.data)
@@ -540,6 +555,15 @@ class CFSwarmDriver(Node):
         else:
             self.get_logger().error('SWARM::"%s": Unknown order' % msg.data)
 
+    def goalpose_callback(self, msg):
+        for cf in dron:
+            cf.cmd_motion_.x = cf.cmd_motion_.x + msg.position.x
+            cf.cmd_motion_.y = cf.cmd_motion_.y + msg.position.y
+            cf.cmd_motion_.z = cf.cmd_motion_.z + msg.position.z
+            cf.cmd_motion_.ckeck_pose()
+            cf.cmd_motion_.send_pose_data_(cf.scf.cf)
+
+        self.get_logger().info('SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' % (msg.position.x, msg.position.y, msg.position.z))
 
 def main(args=None):
     rclpy.init(args=args)
