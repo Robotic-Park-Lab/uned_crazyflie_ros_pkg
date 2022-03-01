@@ -23,14 +23,23 @@ TO-DO.
 - Crazyflie python library: [Robotic-Park-Lab branch](https://github.com/Robotic-Park-Lab/crazyflie-lib-python)
 
 
-### - Windows 10 - ROS2 Galactic Gochelone
+### - Windows 10
 La configuración del entorno de trabajo para el paquete desarrollado se muestra a continuación.
 ```
 md \dev_ws\src
 cd \dev_ws\src
-git clone -b ros2-galactic-windows https://github.com/Robotic-Park-Lab/uned_crazyflie_ros_pkg.git
+git clone -b ros2-galactic https://github.com/Robotic-Park-Lab/uned_crazyflie_ros_pkg.git
 cd ..
 colcon build --merge-install
+```
+
+### - Ubuntu 20.04
+La configuración del entorno de trabajo para el paquete desarrollado se muestra a continuación.
+```
+cd \path_ws\src
+git clone -b ros2-galactic https://github.com/Robotic-Park-Lab/uned_crazyflie_ros_pkg.git
+cd ..
+colcon build --symlink-install
 ```
 
 ## Uso 🔧
