@@ -1,13 +1,24 @@
+#include <cstdio>
+#include <chrono>
+#include <array>
+#include <cstring>
+#include <iostream>
+#include <fstream>
+#include <time.h>
 #include <chrono>
 #include <functional>
-#include <memory>
-#include <string>
-#include <thread>
-#include <time.h>
-
-#include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/string.hpp"
-#include "geometry_msgs/msg/pose.hpp"
+#include <vector>
+#include <typeinfo>
+#include <Eigen/Eigen>
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp/logger.hpp>
+#include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/float64.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
+#include <std_msgs/msg/string.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/twist.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
 
 using namespace std::chrono_literals;
 
@@ -26,6 +37,11 @@ class TrajectoryController : public rclcpp::Node
     rclcpp::Publisher<geometry_msgs::msg::Pose>::SharedPtr ref_pose_;
 
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
+
+    std::string robotid;
+    bool fail = false;
+    bool debug_flag = false;
+
     void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
         GT_pose.position = msg->position;
         GT_pose.orientation = msg->orientation;
@@ -39,9 +55,12 @@ class TrajectoryController : public rclcpp::Node
     geometry_msgs::msg::Pose GT_pose, ref_pose;
     bool first_pose_received = false;
     bool new_ref = true;
-    bool end_dataset = false;
     size_t count_;
     double start = 0.0;
     double end = 0.0;
     double t = 0.0;
+    std::vector<std::vector<double>> trayectory;
+    std::vector<double> file_pose;
+
+    bool readFile(std::string name);
 };
