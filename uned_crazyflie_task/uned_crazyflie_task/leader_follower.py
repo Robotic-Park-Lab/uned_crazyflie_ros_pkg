@@ -3,6 +3,7 @@ import time
 import rclpy
 from threading import Timer
 import numpy as np
+import math
 
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -22,7 +23,6 @@ from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.swarm import Swarm
-
 
 # List of URIs, comment the one you do not want to fly
 uris = set()
@@ -89,11 +89,13 @@ class CMD_Motion():
 ## CF Swarm Logging Class ##
 ############################
 class CFLogging:
-    def __init__(self, scf, parent, link_uri, ctrl_mode, ctrl_type):
+    def __init__(self, scf, parent, link_uri, ctrl_mode, ctrl_type, role):
         self.parent = parent
         self.parent.get_logger().info('Connecting to %s' % link_uri)
         self.scf = scf
+        self.role = role
         self.link_uri = link_uri
+        self.last_pose = Pose()
         self.scf.cf.connected.add_callback(self._connected)
         self.scf.cf.disconnected.add_callback(self._disconnected)
         self.scf.cf.connection_failed.add_callback(self._connection_failed)
@@ -107,17 +109,17 @@ class CFLogging:
     def _connected(self, link_uri):
         self.parent.get_logger().info('Connected to %s -> Crazyflie %s' % (link_uri, self.link_uri[-2:]))
         # ROS
-        id = 'dron' + self.link_uri[-2:]
+        self.id = 'dron' + self.link_uri[-2:]
         # Publisher
-        self.publisher_pose = self.parent.create_publisher(Pose, id + '/cf_pose', 10)
-        self.publisher_twist = self.parent.create_publisher(Twist, id + '/cf_twist', 10)
-        self.publisher_data = self.parent.create_publisher(UInt16MultiArray, id + '/cf_data', 10)
+        self.publisher_pose = self.parent.create_publisher(Pose, self.id + '/cf_pose', 10)
+        self.publisher_twist = self.parent.create_publisher(Twist, self.id + '/cf_twist', 10)
+        self.publisher_data = self.parent.create_publisher(UInt16MultiArray, self.id + '/cf_data', 10)
         # Subscription
-        self.sub_order = self.parent.create_subscription(String, id + '/cf_order', self.order_callback, 10)
-        self.sub_pose = self.parent.create_subscription(Pose, id + '/pose', self.newpose_callback, 10)
-        self.sub_goal_pose = self.parent.create_subscription(Pose, id + '/goal_pose', self.goalpose_callback, 10)
-        self.sub_cmd = self.parent.create_subscription(Float64MultiArray, id + '/onboard_cmd', self.cmd_control_callback, 10)
-        self.sub_controller = self.parent.create_subscription(Pidcontroller, id + '/controllers_params', self.controllers_params_callback, 10)
+        self.sub_order = self.parent.create_subscription(String, self.id + '/cf_order', self.order_callback, 10)
+        self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
+        self.sub_goal_pose = self.parent.create_subscription(Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
+        self.sub_cmd = self.parent.create_subscription(Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
+        self.sub_controller = self.parent.create_subscription(Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
         # POSE3D
         self._lg_stab_pose = LogConfig(name='Pose', period_in_ms=10)
         self._lg_stab_pose.add_variable('stateEstimate.x', 'float')
@@ -251,6 +253,11 @@ class CFLogging:
         msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
 
         self.publisher_pose.publish(msg)
+        if(self.role == 'leader'):
+            x = np.array([self.last_pose.position.x-msg.position.x,self.last_pose.position.y-msg.position.y,self.last_pose.position.z-msg.position.z])
+            if (np.linalg.norm(x)>0.1 and self._is_flying):
+                self.last_pose = msg
+                self.parent.task_manager(self.id, msg.position.x, msg.position.y, msg.position.z, yaw, self.role)
 
     def twist_callback(self, data):
         msg = Twist()
@@ -474,9 +481,11 @@ class CFLogging:
 #####################
 class CFSwarmDriver(Node):
     def __init__(self):
-        super().__init__('swarm_driver')
+        super().__init__('leader_follower_swarm')
         # Params
         self.declare_parameter('cf_first_uri', 'radio://0/80/2M/E7E7E7E701')
+        self.declare_parameter('cf_role', 'leader, follower')
+        self.declare_parameter('cf_relationship', 'dron01-dron02')
         self.declare_parameter('cf_num_uri', 1)
         self.declare_parameter('cf_control_mode', 'HighLevel')
         """
@@ -499,7 +508,7 @@ class CFSwarmDriver(Node):
         self.initialize()
 
     def initialize(self):
-        self.get_logger().info('SwarmDriver::inicialize() ok.')
+        self.get_logger().info('Follower-Leader::inicialize() ok.')
         # Read Params
         dron_id = self.get_parameter('cf_first_uri').get_parameter_value().string_value
         n = self.get_parameter('cf_num_uri').get_parameter_value().integer_value
@@ -507,7 +516,10 @@ class CFSwarmDriver(Node):
         control_mode = aux.split(', ')
         aux = self.get_parameter('cf_controller_type').get_parameter_value().string_value
         controller_type = aux.split(', ')
-
+        aux = self.get_parameter('cf_role').get_parameter_value().string_value
+        roles = aux.split(', ')
+        aux = self.get_parameter('cf_relationship').get_parameter_value().string_value
+        self.relationship = aux.split(', ')
         # Define crazyflie URIs
         uris.add(dron_id)
         id_address = dron_id[-10:]
@@ -525,7 +537,7 @@ class CFSwarmDriver(Node):
         self.cf_swarm = Swarm(uris, factory=factory)
         i = 0
         for uri in uris:
-            cf = CFLogging(self.cf_swarm._cfs[uri], self, uri, control_mode[i], controller_type[i])
+            cf = CFLogging(self.cf_swarm._cfs[uri], self, uri, control_mode[i], controller_type[i], roles[i])
             dron.append(cf)
             i += 1
         self.cf_swarm.parallel_safe(self.update_params)
@@ -566,6 +578,24 @@ class CFSwarmDriver(Node):
             cf.cmd_motion_.send_pose_data_(cf.scf.cf)
 
         self.get_logger().info('SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' % (msg.position.x, msg.position.y, msg.position.z))
+
+    def task_manager(self, id, x, y, z, yaw, role):
+        self.get_logger().info('%s role: %s!' % (id, role))
+        for rel in self.relationship:
+            if(rel.find(id) == 0):
+                for cf in dron:
+                    if(cf.link_uri[-2:]==rel[-2:]):
+                        self.get_logger().info('New goal pose to follower %s!' % rel[-6:])
+                        msg = Pose()
+                        msg.position.x = x + 0.2
+                        msg.position.y = y
+                        msg.position.z = z
+                        cf.goalpose_callback(msg)
+                        break
+                self.get_logger().info('Follower %s not available!' % rel[-6:])
+
+
+
 
 def main(args=None):
     rclpy.init(args=args)
