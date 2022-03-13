@@ -30,6 +30,10 @@ add_executable(eventbased_pid_position_controller src/eventbased_pid_position_co
 ament_target_dependencies(eventbased_pid_position_controller
     rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
 
+add_executable(generalized_predictive_controller src/generalized_predictive_controller.cpp)
+ament_target_dependencies(generalized_predictive_controller
+    rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+
 add_executable(periodic_pid_position_controller src/periodic_pid_position_controller.cpp)
 ament_target_dependencies(periodic_pid_position_controller
     rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
@@ -42,7 +46,7 @@ add_executable(trajectory_controller src/trajectory_controller.cpp)
 ament_target_dependencies(trajectory_controller
     rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
 
-install(TARGETS eventbased_pid_position_controller periodic_pid_position_controller trajectory_controller periodic_pid_attituderate_controller
+install(TARGETS eventbased_pid_position_controller periodic_pid_position_controller trajectory_controller periodic_pid_attituderate_controller generalized_predictive_controller
     DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/${PROJECT_NAME}/
