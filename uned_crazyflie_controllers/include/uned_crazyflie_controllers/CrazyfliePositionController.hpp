@@ -3,9 +3,12 @@
 #include <array>
 #include <cstring>
 #include <iostream>
+#include <fstream>
 #include <time.h>
 #include <chrono>
 #include <functional>
+#include <vector>
+#include <typeinfo>
 #include <Eigen/Eigen>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/logger.hpp>
@@ -120,6 +123,19 @@ private:
     bool events = false;
     bool z_event, w_event;
     struct threshold z_threshold, w_threshold, x_threshold, u_threshold, y_threshold, v_threshold;
+
+    // GPC
+    std::vector<std::vector<double>> gpc_trayectory, w1;
+    std::vector<double> ref_gpc_pose;
+    int N = 100; //Horizonte de predicción
+    double du = 0.0;
+    double u = 0.0;
+    double Gp[10] = {0.0285, 0.0594, 0.0904, 0.1215, 0.1525, 0.1836, 0.2146, 0.2457, 0.2767, 0.3078};
+    double f[10] = {0.0};
+    double Fp[10][3] = {{2.0821, -1.1642, 0.0821},{3.1709, -2.3418, 0.1709},{4.2603, -3.5206, 0.2603},{5.3497, -4.6994, 0.3497},{6.4391, -5.8783, 0.4391},{7.5286, -7.0571, 0.5286},{8.6180, -8.2360, 0.6180},{9.7074, -9.4148, 0.7074},{10.7968, -10.5937, 0.7968},{11.8863, -11.7725, 0.8863}};
+    double yaux[3] = {0.0};
+    double K[10] = {1.5892, 2.0468, 1.2086, 0.3940, -0.0124, -0.1114, -0.0821, -0.0340, -0.0026, 0.0151};
+
     // Function
     void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg);
     void gtTwistCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
@@ -129,4 +145,5 @@ private:
     struct pid_s init_controller(const char id[], double kp, double ki, double kd, double td, int nd, double upperlimit, double lowerlimit);
     struct threshold init_triggering(const char id[], double co, double a);
     bool eval_threshold(struct threshold &trigger, double signal, double ref);
+    bool readFile(std::string name);
 };
