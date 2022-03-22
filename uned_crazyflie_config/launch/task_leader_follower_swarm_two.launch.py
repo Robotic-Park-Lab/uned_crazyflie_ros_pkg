@@ -7,18 +7,20 @@ def generate_launch_description():
     buffer_size = 200
     topic_namespace = 'vicon'
 
-    dron01_node = Node(
-        package='uned_crazyflie_driver',
-        executable='swarm_driver',
-        name='swarm',
+    swarm_node = Node(
+        package='uned_crazyflie_task',
+        executable='leader_follower',
+        name='LeaderFollower',
         output='screen',
         shell=True,
         emulate_tty=True,
         parameters=[
             {'cf_uri': 'radio://0/80/2M/E7E7E7E701'},
-            {'cf_num_uri': 5},
-            {'cf_control_mode': 'HighLevel, HighLevel, HighLevel, HighLevel, HighLevel'},
-            {'cf_controller_type': 'EventBased, Continuous, Continuous, Continuous, Continuous'}
+            {'cf_num_uri': 2},
+            {'cf_control_mode': 'HighLevel, HighLevel'},
+            {'cf_controller_type': 'EventBased, EventBased'},
+            {'cf_role': 'leader, follower'},
+            {'cf_relationship': 'dron01-dron02, dron02-dron01'},
         ])
     vicon_node = Node(
         package='vicon_receiver',
@@ -33,7 +35,7 @@ def generate_launch_description():
         name='interface'
     )
     return LaunchDescription([
-        dron01_node,
+        swarm_node,
         vicon_node,
         rqt_node
     ])

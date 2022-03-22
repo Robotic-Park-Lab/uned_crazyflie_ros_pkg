@@ -29,7 +29,7 @@ uris = set()
 dron = list()
 publisher = set()
 xy_warn = 1.0
-xy_lim = 1.3
+xy_lim = 1.5
 
 class CMD_Motion():
     def __init__(self, logger):
@@ -76,7 +76,7 @@ class CMD_Motion():
                 ' Z: ' + str(self.z)+' Yaw: ' + str(self.yaw))
 
     def send_pose_data_(self, cf):
-        # self.logger.info('Goal Pose: %s' % self.pose_str_())
+        self.logger.info('Goal Pose: %s' % self.pose_str_())
         # cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
         cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, self.flight_time)
 
@@ -90,26 +90,28 @@ class CMD_Motion():
 ############################
 class CFLogging:
     def __init__(self, scf, parent, link_uri, ctrl_mode, ctrl_type, role):
-        self.parent = parent
-        self.parent.get_logger().info('Connecting to %s' % link_uri)
-        self.scf = scf
         self.role = role
         self.link_uri = link_uri
+        self.parent = parent
+        self.scf = scf
+        self.id = 'dron' + self.link_uri[-2:]
         self.last_pose = Pose()
+        self.max_vel = 0.5
+        self.parent.get_logger().info('Connecting to %s' % link_uri)
+        self.parent.get_logger().info('%s role: %s!' % (self.id, self.role))
         self.scf.cf.connected.add_callback(self._connected)
         self.scf.cf.disconnected.add_callback(self._disconnected)
         self.scf.cf.connection_failed.add_callback(self._connection_failed)
         self.scf.cf.connection_lost.add_callback(self._connection_lost)
+        self.scf.cf.open_link(link_uri)
         self.CONTROL_MODE = ctrl_mode
         self.parent.get_logger().info('CF%s::Control Mode: %s!' % (self.link_uri[-2:], self.CONTROL_MODE))
         self.scf.CONTROLLER_TYPE = ctrl_type
         self.parent.get_logger().info('CF%s::Controller Type: %s!' % (self.link_uri[-2:], self.scf.CONTROLLER_TYPE))
-        self.scf.cf.open_link(link_uri)
 
     def _connected(self, link_uri):
         self.parent.get_logger().info('Connected to %s -> Crazyflie %s' % (link_uri, self.link_uri[-2:]))
         # ROS
-        self.id = 'dron' + self.link_uri[-2:]
         # Publisher
         self.publisher_pose = self.parent.create_publisher(Pose, self.id + '/cf_pose', 10)
         self.publisher_twist = self.parent.create_publisher(Twist, self.id + '/cf_twist', 10)
@@ -143,13 +145,15 @@ class CFLogging:
         self._lg_stab_data.add_variable('posEbCtl.Xcount', 'uint16_t')
         # self._lg_stab_data.add_variable('pm.vbat', 'FP16')
         # Params
+        '''
         self.scf.cf.param.add_update_callback(group='posCtlPid', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='velCtlPid', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='posEbCtlPid', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='velEbCtlPid', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='pid_attitude', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='pid_rate', cb=self.param_stab_est_callback)
-        # self.scf.cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
+        '''
+        self.scf.cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='controller', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='commander', cb=self.param_stab_est_callback)
 
@@ -209,35 +213,36 @@ class CFLogging:
         self.is_connected = False
 
     def take_off(self):
-        if(self._is_flying):
-            self.get_logger().warning('CF%s::Already flying' % self.link_uri[-2:])
-        else:
-            self.parent.get_logger().info('CF%s::Take Off.' % self.link_uri[-2:])
-            self.cmd_motion_.z = self.cmd_motion_.z + 0.5
-            self.cmd_motion_.send_pose_data_(self.scf.cf)
-            self._is_flying = True
+        self.parent.get_logger().info('CF%s::Take Off.' % self.link_uri[-2:])
+        self.cmd_motion_.flight_time = 0.75/self.max_vel
+        self.cmd_motion_.z = 0.75
+        self.cmd_motion_.send_pose_data_(self.scf.cf)
+        self._is_flying = True
 
     def gohome(self):
         self.parent.get_logger().info('CF%s::Go Home.' % self.link_uri[-2:])
+        self.cmd_motion_.flight_time = max([self.cmd_motion_.x-0.0, self.cmd_motion_.y-0.0])/self.max_vel
         self.cmd_motion_.x = 0.0
         self.cmd_motion_.y = 0.0
         self.cmd_motion_.send_pose_data_(self.scf.cf)
 
     def descent(self):
-        self.cmd_motion_.z = 0.15
+        self.cmd_motion_.z = 0.1
+        self.cmd_motion_.flight_time = (self.cmd_motion_.z-0.1)/self.max_vel
         self.cmd_motion_.send_pose_data_(self.scf.cf)
         self.parent.get_logger().info('CF%s::Descent.' % self.link_uri[-2:])
+        self._is_flying = False
         self.t_desc = Timer(2, self.take_land)
         self.t_desc.start()
 
     def take_land(self):
         self.parent.get_logger().info('CF%s::Take Land.' % self.link_uri[-2:])
-        self.cmd_motion_.z = 0.0
-        self.cmd_motion_.send_pose_data_(self.scf.cf)
+        # self.cmd_motion_.flight_time = (self.cmd_motion_.z-0.0)/self.max_vel
+        # self.cmd_motion_.z = 0.0
+        # self.cmd_motion_.send_pose_data_(self.scf.cf)
         self.scf.cf.commander.send_setpoint(0.0, 0.0, 0, 0)
         self.scf.cf.commander.send_stop_setpoint()
         self.init_pose = False
-        self._is_flying = False
 
     def pose_callback(self, data):
         msg = Pose()
@@ -255,7 +260,7 @@ class CFLogging:
         self.publisher_pose.publish(msg)
         if(self.role == 'leader'):
             x = np.array([self.last_pose.position.x-msg.position.x,self.last_pose.position.y-msg.position.y,self.last_pose.position.z-msg.position.z])
-            if (np.linalg.norm(x)>0.1 and self._is_flying):
+            if (np.linalg.norm(x)>0.05 and self._is_flying):
                 self.last_pose = msg
                 self.parent.task_manager(self.id, msg.position.x, msg.position.y, msg.position.z, yaw, self.role)
 
@@ -451,13 +456,18 @@ class CFLogging:
             self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
 
     def newpose_callback(self, msg):
-        self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
+
         if not self.init_pose:
+            self.last_pose = msg
+            self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
             self.init_pose = True
             self.cmd_motion_.x = msg.position.x
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.parent.get_logger().info('CF%s::Init pose: %s' % (self.link_uri[-2:], self.cmd_motion_.pose_str_()))
+        x = np.array([self.last_pose.position.x-msg.position.x,self.last_pose.position.y-msg.position.y,self.last_pose.position.z-msg.position.z])
+        if (np.linalg.norm(x)>0.05):
+            self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
         if ((abs(msg.position.x)>xy_lim) or (abs(msg.position.y)>xy_lim) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
             self.CONTROL_MODE = 'HighLevel'
             self._is_flying = True
@@ -468,10 +478,14 @@ class CFLogging:
 
     def goalpose_callback(self, msg):
         if self.CONTROL_MODE == 'HighLevel':
+            delta = [abs(self.cmd_motion_.x-msg.position.x), abs(self.cmd_motion_.y-msg.position.y), abs(self.cmd_motion_.z-msg.position.z)]
             self.cmd_motion_.x = msg.position.x
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.cmd_motion_.ckeck_pose()
+            self.cmd_motion_.flight_time = max(delta)/self.max_vel
+            print(delta)
+            print(self.cmd_motion_.flight_time)
             self.cmd_motion_.send_pose_data_(self.scf.cf)
             self.parent.get_logger().info('CF%s::New Goal pose: %s' % (self.link_uri[-2:], self.cmd_motion_.pose_str_()))
 
@@ -575,6 +589,8 @@ class CFSwarmDriver(Node):
             cf.cmd_motion_.y = cf.cmd_motion_.y + msg.position.y
             cf.cmd_motion_.z = cf.cmd_motion_.z + msg.position.z
             cf.cmd_motion_.ckeck_pose()
+            delta = [abs(msg.position.x), abs(msg.position.y), abs(msg.position.z)]
+            self.cmd_motion_.flight_time = max(delta)/self.max_vel
             cf.cmd_motion_.send_pose_data_(cf.scf.cf)
 
         self.get_logger().info('SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' % (msg.position.x, msg.position.y, msg.position.z))
@@ -587,14 +603,11 @@ class CFSwarmDriver(Node):
                     if(cf.link_uri[-2:]==rel[-2:]):
                         self.get_logger().info('New goal pose to follower %s!' % rel[-6:])
                         msg = Pose()
-                        msg.position.x = x + 0.2
-                        msg.position.y = y
+                        msg.position.x = x + 0.3
+                        msg.position.y = y + 0.3
                         msg.position.z = z
                         cf.goalpose_callback(msg)
                         break
-                self.get_logger().info('Follower %s not available!' % rel[-6:])
-
-
 
 
 def main(args=None):

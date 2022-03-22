@@ -13,10 +13,16 @@ def generate_launch_description():
         emulate_tty=True,
         parameters=[
             {'cf_uri': 'radio://0/80/2M/E7E7E7E701'},
-            {'cf_num_uri': 2},
-            {'cf_control_mode': 'HighLevel, HighLevel'},
-            {'cf_controller_type': 'EventBased, Continuous'}
+            {'cf_num_uri': 3},
+            {'cf_control_mode': 'HighLevel, HighLevel, HighLevel, HighLevel'},
+            {'cf_controller_type': 'EventBased, Continuous, Continuous, Continuous'}
         ])
+    rqt_node = Node(
+        package='rqt_gui',
+        executable='rqt_gui',
+        name='interface'
+    )
     return LaunchDescription([
-        dron01_node
+        dron01_node,
+        rqt_node
     ])
