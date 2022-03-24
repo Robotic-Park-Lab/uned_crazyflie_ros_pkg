@@ -10,6 +10,9 @@ bool TrajectoryController::initialize(){
     this->get_parameter("DEBUG", debug_flag);
 
     readFile("example.txt");
+    last_pose.position.x = 0;
+    last_pose.position.y = 0;
+    last_pose.position.z = 0;
 
     // Crazyflie Pose Ref
     ref_pose_ = this->create_publisher<geometry_msgs::msg::Pose>("goal_pose", 10);
@@ -20,22 +23,24 @@ bool TrajectoryController::initialize(){
 }
 
 bool TrajectoryController::iterate(){
-//      if(first_pose_received && new_ref){
-      // Leer horizonte de referencias
-      auto first_pose = trayectory.begin();
-      auto aux_pose = first_pose[0];
-      double aux = aux_pose[0];
+      if(first_pose_received){
+        auto first_pose = trayectory.begin();
+        auto aux_pose = first_pose[0];
+        double aux = aux_pose[0];
 
-      RCLCPP_INFO(this->get_logger(),"Time %f", aux);
-      auto msg = geometry_msgs::msg::Pose();
-      msg.position.x = aux_pose[1];
-      msg.position.y = aux_pose[2];
-      msg.position.z = aux_pose[3];
+        if(last_pose.position.x != aux_pose[1] || last_pose.position.y != aux_pose[2] || last_pose.position.z != aux_pose[3]){
+          auto msg = geometry_msgs::msg::Pose();
+          msg.position.x = aux_pose[1];
+          msg.position.y = aux_pose[2];
+          msg.position.z = aux_pose[3];
 
-      ref_pose_->publish(msg);
-      
-      trayectory.erase(first_pose);
-//    }
+          ref_pose_->publish(msg);
+          last_pose = msg;
+        }
+
+
+        trayectory.erase(first_pose);
+    }
 
     return true;
 }
@@ -81,4 +86,15 @@ bool TrajectoryController::readFile(std::string name){
 		RCLCPP_INFO(this->get_logger(),"Unable to open file");
 
 	return true;
+}
+
+void TrajectoryController::gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
+    GT_pose.position = msg->position;
+    GT_pose.orientation = msg->orientation;
+    if(!first_pose_received){
+        ref_pose.position = msg->position;
+        ref_pose.orientation = msg->orientation;
+        first_pose_received = true;
+        RCLCPP_INFO(this->get_logger(),"Initial Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
+    }
 }

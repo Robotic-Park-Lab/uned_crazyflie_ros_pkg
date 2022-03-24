@@ -16,7 +16,7 @@ def generate_launch_description():
         emulate_tty=True,
         parameters=[
             {'cf_uri': 'radio://0/80/2M/E7E7E7E701'},
-            {'cf_num_uri': 5},
+            {'cf_num_uri': 1},
             {'cf_control_mode': 'HighLevel, HighLevel, HighLevel, HighLevel, HighLevel'},
             {'cf_controller_type': 'EventBased, Continuous, Continuous, Continuous, Continuous'}
         ])
@@ -32,8 +32,15 @@ def generate_launch_description():
         executable='rqt_gui',
         name='interface'
     )
+    trayectory_node = Node(
+        package='uned_crazyflie_controllers',
+        executable='trajectory_controller',
+        namespace='dron01',
+        name='trayectory'
+    )
     return LaunchDescription([
         dron01_node,
         vicon_node,
-        rqt_node
+        rqt_node,
+        trayectory_node
     ])

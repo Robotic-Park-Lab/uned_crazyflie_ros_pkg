@@ -41,17 +41,7 @@ class TrajectoryController : public rclcpp::Node
     std::string robotid;
     bool fail = false;
     bool debug_flag = false;
-
-    void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
-        GT_pose.position = msg->position;
-        GT_pose.orientation = msg->orientation;
-        if(!first_pose_received){
-            ref_pose.position = msg->position;
-            ref_pose.orientation = msg->orientation;
-            first_pose_received = true;
-            RCLCPP_INFO(this->get_logger(),"Initial Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
-        }
-    }
+    geometry_msgs::msg::Pose last_pose;
     geometry_msgs::msg::Pose GT_pose, ref_pose;
     bool first_pose_received = false;
     bool new_ref = true;
@@ -63,4 +53,5 @@ class TrajectoryController : public rclcpp::Node
     std::vector<double> file_pose;
 
     bool readFile(std::string name);
+    void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg);
 };
