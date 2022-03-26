@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="robot_id1" default="dron01"/>
+  <arg name="robot_id2" default="dron02"/>
+  <arg name="robot_id3" default="dron03"/>
+  <arg name="robot_id4" default="dron04"/>
+  <arg name="robot_id5" default="dron05"/>
+  <arg name="mav_name" default="crazyflie2"/>
+  <arg name="attitude_pid_type" default="periodic"/>
+  <arg name="rate_pid_type" default="discrete"/>
+  <arg name="enable_logging" default="false" />
+  <arg name="enable_ground_truth" default="true" />
+  <arg name="enable_state_estimator" default="false" />
+  <arg name="log_file" default="$(arg mav_name)" />
+  <arg name="x1" default="0.0"/>
+  <arg name="y1" default="0.0"/>
+  <arg name="z1" default="0.0"/>
+  <arg name="x2" default="0.5"/>
+  <arg name="y2" default="0.5"/>
+  <arg name="z2" default="0.0"/>
+  <arg name="x3" default="-0.5"/>
+  <arg name="y3" default="0.5"/>
+  <arg name="z3" default="0.0"/>
+  <arg name="x5" default="0.5"/>
+  <arg name="y5" default="-0.5"/>
+  <arg name="z5" default="0.0"/>
+  <arg name="x4" default="-0.5"/>
+  <arg name="y4" default="-0.5"/>
+  <arg name="z4" default="0.0"/>
+  <arg name="user_account" default="kiko"/>
+  <arg name="world_name" default="basic_crazyflie.world"/>
+  <arg name="paused" value="false"/>
+  <arg name="debug" default="false"/>
+  <arg name="gui" default="true"/>
+  <arg name="verbose" default="false"/>
+  <rosparam command="load" file="$(find uned_crazyflie_config)/resource/bridge.yaml" />
+
+  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find uned_interface)/Config/models"/>
+  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find uned_interface)/Config/models"/>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find uned_interface)/Config/worlds/$(arg world_name)" />
+    <arg name="debug" value="$(arg debug)" />
+    <arg name="paused" value="$(arg paused)"/>
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="verbose" value="$(arg verbose)"/>
+    <arg name="pub_clock_frequency" default="500"/>
+    <arg name="use_clock_frequency" default="true"/>
+  </include>
+
+  <include file="$(find uned_crazyflie_config)/launch/crazyflie_driver.launch">
+    <arg name="robot_id" value="$(arg robot_id1)" />
+    <arg name="attitude_pid_type" value="$(arg attitude_pid_type)"/>
+    <arg name="rate_pid_type" value="$(arg rate_pid_type)"/>
+    <arg name="x" value="$(arg x1)"/>
+    <arg name="y" value="$(arg y1)"/>
+    <arg name="z" value="$(arg z1)"/>
+  </include>
+  <include file="$(find uned_crazyflie_config)/launch/crazyflie_driver.launch">
+    <arg name="robot_id" value="$(arg robot_id2)" />
+    <arg name="attitude_pid_type" value="$(arg attitude_pid_type)"/>
+    <arg name="rate_pid_type" value="$(arg rate_pid_type)"/>
+    <arg name="x" value="$(arg x2)"/>
+    <arg name="y" value="$(arg y2)"/>
+    <arg name="z" value="$(arg z2)"/>
+  </include>
+  <include file="$(find uned_crazyflie_config)/launch/crazyflie_driver.launch">
+    <arg name="robot_id" value="$(arg robot_id3)" />
+    <arg name="attitude_pid_type" value="$(arg attitude_pid_type)"/>
+    <arg name="rate_pid_type" value="$(arg rate_pid_type)"/>
+    <arg name="x" value="$(arg x3)"/>
+    <arg name="y" value="$(arg y3)"/>
+    <arg name="z" value="$(arg z3)"/>
+  </include>
+
+</launch>

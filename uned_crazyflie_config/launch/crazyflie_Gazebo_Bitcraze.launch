@@ -47,6 +47,7 @@
   <arg name="YawKi" default="1.0"/>
   <arg name="YawKd" default="0.349"/>
   <arg name="YawTd" default="0.0581"/>
+  <rosparam command="load" file="$(find uned_crazyflie_config)/resource/bridge.yaml" />
 
   <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find uned_interface)/Config/models"/>
   <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find uned_interface)/Config/models"/>

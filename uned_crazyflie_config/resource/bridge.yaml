@@ -1,5 +1,41 @@
 topics:
   -
-    topic: /chatter  # ROS1 topic name
-    type: std_msgs/msg/String  # ROS2 type name
+    topic: /dron01/ground_truth/pose  # ROS1 topic name
+    type: geometry_msgs/msg/Pose  # ROS2 type name
+    queue_size: 1  # For the publisher back to ROS1
+  -
+    topic: /dron02/ground_truth/pose  # ROS1 topic name
+    type: geometry_msgs/msg/Pose  # ROS2 type name
+    queue_size: 1  # For the publisher back to ROS1
+  -
+    topic: /dron03/ground_truth/pose  # ROS1 topic name
+    type: geometry_msgs/msg/Pose  # ROS2 type name
+    queue_size: 1  # For the publisher back to ROS1
+  -
+    topic: /dron04/ground_truth/pose  # ROS1 topic name
+    type: geometry_msgs/msg/Pose  # ROS2 type name
+    queue_size: 1  # For the publisher back to ROS1
+  -
+    topic: /dron05/ground_truth/pose  # ROS1 topic name
+    type: geometry_msgs/msg/Pose  # ROS2 type name
+    queue_size: 1  # For the publisher back to ROS1
+  -
+    topic: /dron01/onboard_cmd  # ROS1 topic name
+    type: std_msgs/msg/Float64MultiArray  # ROS2 type name
+    queue_size: 1  # For the publisher back to ROS1
+  -
+    topic: /dron02/onboard_cmd  # ROS1 topic name
+    type: std_msgs/msg/Float64MultiArray  # ROS2 type name
+    queue_size: 1  # For the publisher back to ROS1
+  -
+    topic: /dron03/onboard_cmd  # ROS1 topic name
+    type: std_msgs/msg/Float64MultiArray  # ROS2 type name
+    queue_size: 1  # For the publisher back to ROS1
+  -
+    topic: /dron04/onboard_cmd  # ROS1 topic name
+    type: std_msgs/msg/Float64MultiArray  # ROS2 type name
+    queue_size: 1  # For the publisher back to ROS1
+  -
+    topic: /dron05/onboard_cmd  # ROS1 topic name
+    type: std_msgs/msg/Float64MultiArray  # ROS2 type name
     queue_size: 1  # For the publisher back to ROS1

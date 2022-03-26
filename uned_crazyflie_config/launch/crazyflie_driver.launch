@@ -9,7 +9,6 @@
   <arg name="x" default="0.0"/>
   <arg name="y" default="0.0"/>
   <arg name="z" default="0.0"/>
-  <arg name="user_account" default="kiko"/>
   <arg name="attitude_pid_type" default="periodic"/>
   <arg name="rate_pid_type" default="discrete"/>
   <!-- Delta Pitch Controller Params -->

@@ -41,7 +41,7 @@ bool CrazyfliePositionController::initialize()
 	// Crazyflie Pose
 	m_sub_GT_pose = m_nh.subscribe( "ground_truth/pose", 10, &CrazyfliePositionController::gtposeCallback, this);
 	// Reference:
-	m_sub_pos_ref = m_nh.subscribe( "position_reference", 10, &CrazyfliePositionController::positionreferenceCallback, this);
+	m_sub_pos_ref = m_nh.subscribe( "goal_pose", 10, &CrazyfliePositionController::positionreferenceCallback, this);
 
 	u_feedback[0] = m_x_init;
 	v_feedback[0] = m_y_init;
