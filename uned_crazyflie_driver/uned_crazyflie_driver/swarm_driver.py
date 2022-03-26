@@ -24,7 +24,6 @@ from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.swarm import Swarm
 
-
 # List of URIs, comment the one you do not want to fly
 uris = set()
 dron = list()
@@ -242,19 +241,20 @@ class CFLogging:
         self.init_pose = False
 
     def pose_callback(self, data):
-        msg = Pose()
-        msg.position.x = data['stateEstimate.x']
-        msg.position.y = data['stateEstimate.y']
-        msg.position.z = data['stateEstimate.z']
-        roll = data['stabilizer.roll']
-        pitch = data['stabilizer.pitch']
-        yaw = data['stabilizer.yaw']
-        msg.orientation.x = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-        msg.orientation.y = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
-        msg.orientation.z = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
-        msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+        if self.init_pose:
+            msg = Pose()
+            msg.position.x = data['stateEstimate.x']
+            msg.position.y = data['stateEstimate.y']
+            msg.position.z = data['stateEstimate.z']
+            roll = data['stabilizer.roll']
+            pitch = data['stabilizer.pitch']
+            yaw = data['stabilizer.yaw']
+            msg.orientation.x = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+            msg.orientation.y = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+            msg.orientation.z = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+            msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
 
-        self.publisher_pose.publish(msg)
+            self.publisher_pose.publish(msg)
 
     def twist_callback(self, data):
         msg = Twist()
@@ -451,6 +451,7 @@ class CFLogging:
 
         if not self.init_pose:
             self.last_pose = msg
+            self.publisher_pose.publish(msg)
             self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
             self.init_pose = True
             self.cmd_motion_.x = msg.position.x
@@ -578,6 +579,8 @@ class CFSwarmDriver(Node):
             cf.cmd_motion_.y = cf.cmd_motion_.y + msg.position.y
             cf.cmd_motion_.z = cf.cmd_motion_.z + msg.position.z
             cf.cmd_motion_.ckeck_pose()
+            delta = [abs(msg.position.x), abs(msg.position.y), abs(msg.position.z)]
+            self.cmd_motion_.flight_time = max(delta)/self.max_vel
             cf.cmd_motion_.send_pose_data_(cf.scf.cf)
 
         self.get_logger().info('SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' % (msg.position.x, msg.position.y, msg.position.z))

@@ -41,8 +41,7 @@ class TrajectoryController : public rclcpp::Node
     std::string robotid;
     bool fail = false;
     bool debug_flag = false;
-    geometry_msgs::msg::Pose last_pose;
-    geometry_msgs::msg::Pose GT_pose, ref_pose;
+    geometry_msgs::msg::Pose last_pose, GT_pose, ref_pose;
     bool first_pose_received = false;
     bool new_ref = true;
     size_t count_;

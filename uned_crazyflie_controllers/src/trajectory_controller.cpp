@@ -26,7 +26,6 @@ bool TrajectoryController::iterate(){
       if(first_pose_received){
         auto first_pose = trayectory.begin();
         auto aux_pose = first_pose[0];
-        double aux = aux_pose[0];
 
         if(last_pose.position.x != aux_pose[1] || last_pose.position.y != aux_pose[2] || last_pose.position.z != aux_pose[3]){
           auto msg = geometry_msgs::msg::Pose();
@@ -34,8 +33,11 @@ bool TrajectoryController::iterate(){
           msg.position.y = aux_pose[2];
           msg.position.z = aux_pose[3];
 
-          ref_pose_->publish(msg);
           last_pose = msg;
+
+          msg.position.x = msg.position.x * 0.5 + ref_pose.position.x;
+          msg.position.y = msg.position.y * 0.5 + ref_pose.position.y;
+          ref_pose_->publish(msg);
         }
 
 
@@ -89,8 +91,6 @@ bool TrajectoryController::readFile(std::string name){
 }
 
 void TrajectoryController::gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
-    GT_pose.position = msg->position;
-    GT_pose.orientation = msg->orientation;
     if(!first_pose_received){
         ref_pose.position = msg->position;
         ref_pose.orientation = msg->orientation;
