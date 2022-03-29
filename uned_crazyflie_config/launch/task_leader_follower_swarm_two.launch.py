@@ -3,7 +3,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    hostname = '10.196.88.156'
+    hostname = '10.196.92.136'
     buffer_size = 200
     topic_namespace = 'vicon'
 
@@ -15,8 +15,8 @@ def generate_launch_description():
         shell=True,
         emulate_tty=True,
         parameters=[
-            {'cf_uri': 'radio://0/80/2M/E7E7E7E701'},
-            {'cf_num_uri': 3},
+            {'cf_first_uri': 'radio://0/80/2M/E7E7E7E701'},
+            {'cf_num_uri': 2},
             {'cf_control_mode': 'HighLevel, HighLevel, HighLevel'},
             {'cf_controller_type': 'EventBased, EventBased, EventBased'},
             {'cf_role': 'leader, leader, follower'},
@@ -34,15 +34,8 @@ def generate_launch_description():
         executable='rqt_gui',
         name='interface'
     )
-    trayectory_node = Node(
-        package='uned_crazyflie_controllers',
-        executable='trajectory_controller',
-        namespace='dron01',
-        name='trayectory'
-    )
     return LaunchDescription([
         swarm_node,
         vicon_node,
-        trayectory_node,
         rqt_node
     ])

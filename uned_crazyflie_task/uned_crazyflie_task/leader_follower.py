@@ -78,7 +78,7 @@ class CMD_Motion():
     def send_pose_data_(self, cf):
         self.logger.info('Goal Pose: %s' % self.pose_str_())
         # cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
-        cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, self.flight_time)
+        cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.5)
 
     def send_offboard_setpoint_(self, cf):
         self.logger.info('Command: %s' % self.str_())
@@ -95,7 +95,7 @@ class CFLogging:
         self.parent = parent
         self.scf = scf
         self.id = 'dron' + link_uri[-2:]
-        print(self.id)
+        self.ready = False
         self.last_pose = Pose()
         self.parent.get_logger().info('Connecting to %s' % link_uri)
         self.parent.get_logger().info('%s role: %s!' % (self.id, self.role))
@@ -219,6 +219,12 @@ class CFLogging:
         self.cmd_motion_.z = 0.75
         self.cmd_motion_.send_pose_data_(self.scf.cf)
         self._is_flying = True
+        self.t_ready = Timer(2, self._ready)
+        self.t_ready.start()
+
+    def _ready(self):
+        self.parent.get_logger().info('CF%s::Ready!!.' % self.scf.cf.link_uri[-2:])
+        self.ready = True
 
     def gohome(self):
         self.parent.get_logger().info('CF%s::Go Home.' % self.scf.cf.link_uri[-2:])
@@ -232,6 +238,7 @@ class CFLogging:
         self.parent.get_logger().info('CF%s::Descent.' % self.scf.cf.link_uri[-2:])
         self.t_desc = Timer(2, self.take_land)
         self._is_flying = False
+        self.ready = False
         self.t_desc.start()
 
     def take_land(self):
@@ -259,7 +266,7 @@ class CFLogging:
             self.publisher_pose.publish(msg)
             if(self.role == 'leader'):
                 x = np.array([self.last_pose.position.x-msg.position.x,self.last_pose.position.y-msg.position.y,self.last_pose.position.z-msg.position.z])
-                if (np.linalg.norm(x)>0.05):
+                if (np.linalg.norm(x)>0.10):
                     self.last_pose = msg
                     self.parent.task_manager(self.id, msg.position.x, msg.position.y, msg.position.z, yaw, self.role)
 
@@ -455,7 +462,6 @@ class CFLogging:
             self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
 
     def newpose_callback(self, msg):
-
         if not self.init_pose:
             self.last_pose = msg
             self.publisher_pose.publish(msg)
@@ -465,8 +471,8 @@ class CFLogging:
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.parent.get_logger().info('CF%s::Init pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
-        x = np.array([self.last_pose.position.x-msg.position.x,self.last_pose.position.y-msg.position.y,self.last_pose.position.z-msg.position.z])
-        if (np.linalg.norm(x)>0.05):
+        x = np.array([msg.position.x,msg.position.y,msg.position.z])
+        if (np.linalg.norm(x)>0.01):
             self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
         if ((abs(msg.position.x)>xy_lim) or (abs(msg.position.y)>xy_lim) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
             self.CONTROL_MODE = 'HighLevel'
@@ -547,6 +553,12 @@ class CFSwarmDriver(Node):
         self.cf_swarm = Swarm(uris, factory=factory)
         i = 0
         for uri in uris:
+            if(uri == 'radio://0/80/2M/E7E7E7E701'):
+                roles[i] = 'leader'
+            if(uri == 'radio://0/80/2M/E7E7E7E702'):
+                roles[i] = 'leader'
+            if(uri == 'radio://0/80/2M/E7E7E7E703'):
+                roles[i] = 'follower'
             cf = CFLogging(self.cf_swarm._cfs[uri], self, uri, control_mode[i], controller_type[i], roles[i])
             dron.append(cf)
             print(uri)
@@ -602,11 +614,11 @@ class CFSwarmDriver(Node):
         for rel in self.relationship:
             if(rel.find(id) == 0):
                 for cf in dron:
-                    if(cf.scf.cf.link_uri[-2:]==rel[-2:]):
+                    if(cf.scf.cf.link_uri[-2:]==rel[-2:] and cf.ready):
                         self.get_logger().info('New goal pose to follower %s!' % rel[-6:])
                         msg = Pose()
-                        msg.position.x = x + 0.3
-                        msg.position.y = y + 0.3
+                        msg.position.x = x + 0.25
+                        msg.position.y = y + 0.25
                         msg.position.z = z + 0.1
                         cf.goalpose_callback(msg)
                         break

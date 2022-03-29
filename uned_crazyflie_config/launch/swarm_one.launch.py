@@ -12,10 +12,10 @@ def generate_launch_description():
         shell=True,
         emulate_tty=True,
         parameters=[
-            {'cf_uri': 'radio://0/80/2M/E7E7E7E701'},
+            {'cf_first_uri': 'radio://0/80/2M/E7E7E7E703'},
             {'cf_num_uri': 1},
             {'cf_control_mode': 'HighLevel'},
-            {'cf_controller_type': 'EventBased'}
+            {'cf_controller_type': 'Continuous'}
         ])
     return LaunchDescription([
         dron01_node

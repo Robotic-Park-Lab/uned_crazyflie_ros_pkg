@@ -3,7 +3,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    hostname = '10.196.88.156'
+    hostname = '10.196.92.136'
     buffer_size = 200
     topic_namespace = 'vicon'
 
@@ -15,8 +15,8 @@ def generate_launch_description():
         shell=True,
         emulate_tty=True,
         parameters=[
-            {'cf_uri': 'radio://0/80/2M/E7E7E7E701'},
-            {'cf_num_uri': 1},
+            {'cf_first_uri': 'radio://0/80/2M/E7E7E7E701'},
+            {'cf_num_uri': 3},
             {'cf_control_mode': 'HighLevel, HighLevel, HighLevel, HighLevel, HighLevel'},
             {'cf_controller_type': 'EventBased, Continuous, Continuous, Continuous, Continuous'}
         ])
@@ -41,6 +41,5 @@ def generate_launch_description():
     return LaunchDescription([
         dron01_node,
         vicon_node,
-        rqt_node,
-        trayectory_node
+        rqt_node
     ])
