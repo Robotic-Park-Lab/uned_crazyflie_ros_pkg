@@ -1,0 +1,1 @@
+add_library(fuzzyController fuzzyController.c fuzzyController.h)
