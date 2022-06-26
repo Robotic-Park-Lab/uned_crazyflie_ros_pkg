@@ -75,15 +75,39 @@ class CMD_Motion():
         return ('X: ' + str(self.x) + ' Y: ' + str(self.y) +
                 ' Z: ' + str(self.z)+' Yaw: ' + str(self.yaw))
 
-    def send_pose_data_(self, cf):
-        self.logger.info('Goal Pose: %s' % self.pose_str_())
-        # cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
-        cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.5)
+    def send_pose_data_(self, cf, relative_pose=False):
+        if(relative_pose):
+            # cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.5, relative=relative_pose)
+            self.logger.info('Goal Pose: %s' % (self.pose_str_()))
+            cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.1)
+        else:
+            self.logger.info('Goal Pose: %s' % (self.pose_str_()))
+            # cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
+            cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.5)
+    
 
     def send_offboard_setpoint_(self, cf):
         self.logger.info('Command: %s' % self.str_())
         cf.commander.send_setpoint(self.roll, self.pitch, self.yaw,
                                    self.thrust)
+
+class Agent():
+    def __init__(self, parent, x, y, z, id):
+        self.id = id
+        self.x = x
+        self.y = y
+        self.z = z
+        self.pose = Pose()
+        self.parent = parent
+        self.parent.get_logger().info('Agent: %s' % self.str_())
+        self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.gtpose_callback, 10)
+
+    def str_(self):
+        return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
+                ' Y: ' + str(self.y)+' Z: ' + str(self.z))
+
+    def gtpose_callback(self, msg):
+        self.pose = msg
 
 ############################
 ## CF Swarm Logging Class ##
@@ -91,12 +115,13 @@ class CMD_Motion():
 class CFLogging:
     def __init__(self, scf, parent, link_uri, ctrl_mode, ctrl_type, role):
         self.role = role
-        self.ready = False
         self.parent = parent
         self.scf = scf
         self.id = 'dron' + link_uri[-2:]
         self.ready = False
+        self.pose = Pose()
         self.last_pose = Pose()
+        self.agent_list = list()
         self.parent.get_logger().info('Connecting to %s' % link_uri)
         self.parent.get_logger().info('%s role: %s!' % (self.id, self.role))
         self.scf.cf.connected.add_callback(self._connected)
@@ -141,10 +166,10 @@ class CFLogging:
         self._lg_stab_twist.add_variable('stateEstimate.vz', 'float')
         '''
         # Other data.
-        self._lg_stab_data = LogConfig(name='Data', period_in_ms=50)
-        self._lg_stab_data.add_variable('posEbCtl.Zcount', 'uint16_t')
-        self._lg_stab_data.add_variable('posEbCtl.Ycount', 'uint16_t')
-        self._lg_stab_data.add_variable('posEbCtl.Xcount', 'uint16_t')
+        # self._lg_stab_data = LogConfig(name='Data', period_in_ms=50)
+        # self._lg_stab_data.add_variable('posEbCtl.Zcount', 'uint16_t')
+        # self._lg_stab_data.add_variable('posEbCtl.Ycount', 'uint16_t')
+        # self._lg_stab_data.add_variable('posEbCtl.Xcount', 'uint16_t')
         # self._lg_stab_data.add_variable('pm.vbat', 'FP16')
         # Params
         '''
@@ -162,19 +187,19 @@ class CFLogging:
         try:
             self.scf.cf.log.add_config(self._lg_stab_pose)
             # self.scf.cf.log.add_config(self._lg_stab_twist)
-            self.scf.cf.log.add_config(self._lg_stab_data)
+            # self.scf.cf.log.add_config(self._lg_stab_data)
             # This callback will receive the data
             self._lg_stab_pose.data_received_cb.add_callback(self._stab_log_data)
             # self._lg_stab_twist.data_received_cb.add_callback(self._stab_log_data)
-            self._lg_stab_data.data_received_cb.add_callback(self._stab_log_data)
+            # self._lg_stab_data.data_received_cb.add_callback(self._stab_log_data)
             # This callback will be called on errors
             self._lg_stab_pose.error_cb.add_callback(self._stab_log_error)
             # self._lg_stab_twist.error_cb.add_callback(self._stab_log_error)
-            self._lg_stab_data.error_cb.add_callback(self._stab_log_error)
+            # self._lg_stab_data.error_cb.add_callback(self._stab_log_error)
             # Start the logging
             self._lg_stab_pose.start()
             # self._lg_stab_twist.start()
-            self._lg_stab_data.start()
+            # self._lg_stab_data.start()
         except KeyError as e:
             self.parent.get_logger().info('Could not start log configuration,'
                   '{} not found in TOC'.format(str(e)))
@@ -262,13 +287,8 @@ class CFLogging:
             msg.orientation.y = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
             msg.orientation.z = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
             msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-
+            self.pose = msg
             self.publisher_pose.publish(msg)
-            if(self.role == 'leader'):
-                x = np.array([self.last_pose.position.x-msg.position.x,self.last_pose.position.y-msg.position.y,self.last_pose.position.z-msg.position.z])
-                if (np.linalg.norm(x)>0.10):
-                    self.last_pose = msg
-                    self.parent.task_manager(self.id, msg.position.x, msg.position.y, msg.position.z, yaw, self.role)
 
     def twist_callback(self, data):
         msg = Twist()
@@ -515,10 +535,14 @@ class CFSwarmDriver(Node):
         Continuous: Continuous PID
         EventBased: Event Based PID
         """
+        self.publisher_status = self.create_publisher(String,'swarm/status', 10)
+
         # Subscription
         self.sub_order = self.create_subscription(String, 'swarm/cf_order', self.order_callback, 10)
         # self.sub_pose = self.create_subscription(Pose, 'swarm/pose', self.newpose_callback, 10)
         self.sub_goal_pose = self.create_subscription(Pose, 'swarm/goal_pose', self.goalpose_callback, 10)
+
+        self.timer_task = self.create_timer(0.02, self.task_manager)
 
         self.initialize()
 
@@ -554,12 +578,22 @@ class CFSwarmDriver(Node):
         i = 0
         for uri in uris:
             if(uri == 'radio://0/80/2M/E7E7E7E701'):
-                roles[i] = 'leader'
+                roles[i] = 'consensus'
             if(uri == 'radio://0/80/2M/E7E7E7E702'):
-                roles[i] = 'leader'
+                roles[i] = 'consensus'
             if(uri == 'radio://0/80/2M/E7E7E7E703'):
-                roles[i] = 'follower'
+                roles[i] = 'consensus'
+            
             cf = CFLogging(self.cf_swarm._cfs[uri], self, uri, control_mode[i], controller_type[i], roles[i])
+            for rel in self.relationship:
+                if(rel.find(cf.id) == 0):
+                    aux = rel.split('_')
+                    aux_str = aux[1]
+                    rel_pose = aux[2].split('/')
+                    robot = Agent(self, float(rel_pose[0]), float(rel_pose[1]), float(rel_pose[2]), aux[1])
+                    print('CF: %s: Agent: %s \tx: %s \ty: %s \tz: %s' % (aux[0], aux[1], rel_pose[0], rel_pose[1], rel_pose[2]))
+                    cf.agent_list.append(robot)
+
             dron.append(cf)
             print(uri)
             while not cf.scf.cf.param.is_updated:
@@ -591,11 +625,20 @@ class CFSwarmDriver(Node):
         if msg.data == 'take_off':
             for cf in dron:
                 cf.take_off()
+            self.swarm_ready = Timer(2, self._ready)
+            self.swarm_ready.start()
         elif msg.data == 'land':
             for cf in dron:
                 cf.descent()
         else:
             self.get_logger().error('SWARM::"%s": Unknown order' % msg.data)
+
+    def _ready(self):
+        self.get_logger().info('SWARM::Ready!!')
+        msg = String()
+        msg.data = 'Ready'
+        self.publisher_status.publish(msg)
+        print('Test')
 
     def goalpose_callback(self, msg):
         for cf in dron:
@@ -609,19 +652,29 @@ class CFSwarmDriver(Node):
 
         self.get_logger().info('SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' % (msg.position.x, msg.position.y, msg.position.z))
 
-    def task_manager(self, id, x, y, z, yaw, role):
-        self.get_logger().info('%s role: %s!' % (id, role))
-        for rel in self.relationship:
-            if(rel.find(id) == 0):
-                for cf in dron:
-                    if(cf.scf.cf.link_uri[-2:]==rel[-2:] and cf.ready):
-                        self.get_logger().info('New goal pose to follower %s!' % rel[-6:])
-                        msg = Pose()
-                        msg.position.x = x + 0.25
-                        msg.position.y = y + 0.25
-                        msg.position.z = z + 0.1
-                        cf.goalpose_callback(msg)
-                        break
+    def task_manager(self):
+        for cf in dron:
+            if cf.ready:
+                print('ID: %s' % cf.id)
+                msg = Pose()
+                msg.position.x = cf.pose.position.x
+                msg.position.y = cf.pose.position.y
+                msg.position.z = cf.pose.position.z
+                for agent in cf.agent_list:
+                    print('Agent: %s' % agent.id)
+                    dx = agent.x - (cf.pose.position.x - agent.pose.position.x)
+                    dy = agent.y - (cf.pose.position.y - agent.pose.position.y)
+                    dz = agent.z - (cf.pose.position.z - agent.pose.position.z)
+                    msg.position.x += (dx/len(cf.agent_list)) 
+                    msg.position.y += (dy/len(cf.agent_list)) 
+                    msg.position.z += (dz/len(cf.agent_list)) 
+                    print('Z: %s' % str(msg.position.z))
+                    print('dz: %s' % str(dz/len(cf.agent_list)))
+                    print('zdebug: %s' % str(cf.pose.position.z - agent.pose.position.z))
+                cf.cmd_motion_.x = msg.position.x
+                cf.cmd_motion_.y = msg.position.y
+                cf.cmd_motion_.z = msg.position.z
+                cf.cmd_motion_.send_pose_data_(cf.scf.cf, relative_pose=True)
 
 
 def main(args=None):

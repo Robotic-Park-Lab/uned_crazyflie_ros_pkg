@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'leader_follower = uned_crazyflie_task.leader_follower:main'
+            'leader_follower = uned_crazyflie_task.leader_follower:main',
+            'shape_based_formation_control = uned_crazyflie_task.shape_based_formation_control:main'
         ],
     },
 )
