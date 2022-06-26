@@ -228,8 +228,6 @@ double PositionController::pid_controller(struct pid_s &controller, double dt){
 	controller.error[1] = controller.error[0];
 
 	return out;
-
-	return out;
 }
 
 void PositionController::positionreferenceCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
