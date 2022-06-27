@@ -580,7 +580,8 @@ class CFSwarmDriver(Node):
             cf.cmd_motion_.z = cf.cmd_motion_.z + msg.position.z
             cf.cmd_motion_.ckeck_pose()
             delta = [abs(msg.position.x), abs(msg.position.y), abs(msg.position.z)]
-            self.cmd_motion_.flight_time = max(delta)/self.max_vel
+            #self.cmd_motion_.flight_time = max(delta)/self.max_vel
+            self.cmd_motion_.flight_time = 0.5
             cf.cmd_motion_.send_pose_data_(cf.scf.cf)
 
         self.get_logger().info('SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' % (msg.position.x, msg.position.y, msg.position.z))

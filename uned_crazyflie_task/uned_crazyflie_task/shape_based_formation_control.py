@@ -122,6 +122,12 @@ class CFLogging:
         self.pose = Pose()
         self.last_pose = Pose()
         self.agent_list = list()
+        self.x_error = 0
+        self.y_error = 0
+        self.z_error = 0
+        self.integral_x = 0
+        self.integral_y = 0
+        self.integral_z = 0
         self.parent.get_logger().info('Connecting to %s' % link_uri)
         self.parent.get_logger().info('%s role: %s!' % (self.id, self.role))
         self.scf.cf.connected.add_callback(self._connected)
@@ -660,17 +666,25 @@ class CFSwarmDriver(Node):
                 msg.position.x = cf.pose.position.x
                 msg.position.y = cf.pose.position.y
                 msg.position.z = cf.pose.position.z
+                dx = dy = dz = 0
                 for agent in cf.agent_list:
                     print('Agent: %s' % agent.id)
-                    dx = agent.x - (cf.pose.position.x - agent.pose.position.x)
-                    dy = agent.y - (cf.pose.position.y - agent.pose.position.y)
-                    dz = agent.z - (cf.pose.position.z - agent.pose.position.z)
-                    msg.position.x += (dx/len(cf.agent_list)) 
-                    msg.position.y += (dy/len(cf.agent_list)) 
-                    msg.position.z += (dz/len(cf.agent_list)) 
-                    print('Z: %s' % str(msg.position.z))
-                    print('dz: %s' % str(dz/len(cf.agent_list)))
-                    print('zdebug: %s' % str(cf.pose.position.z - agent.pose.position.z))
+                    dx += agent.x - (cf.pose.position.x - agent.pose.position.x)
+                    dy += agent.y - (cf.pose.position.y - agent.pose.position.y)
+                    dz += agent.z - (cf.pose.position.z - agent.pose.position.z)
+                cf.integral_x += (1/(len(cf.agent_list)*1.0))*cf.x_error*0.02
+                cf.integral_y += (1/(len(cf.agent_list)*1.0))*cf.y_error*0.02
+                cf.integral_z += (1/(len(cf.agent_list)*5.0))*cf.z_error*0.02
+                msg.position.x += (dx/len(cf.agent_list)) + cf.integral_x
+                msg.position.y += (dy/len(cf.agent_list)) + cf.integral_y
+                msg.position.z += (dz/len(cf.agent_list)) + cf.integral_z
+                cf.x_error = dx
+                cf.y_error = dy
+                cf.z_error = dz
+
+                print('Z: %s' % str(msg.position.z))
+                print('dz: %s' % str(dz/len(cf.agent_list)))
+                print('zdebug: %s' % str(cf.pose.position.z - agent.pose.position.z))
                 cf.cmd_motion_.x = msg.position.x
                 cf.cmd_motion_.y = msg.position.y
                 cf.cmd_motion_.z = msg.position.z
