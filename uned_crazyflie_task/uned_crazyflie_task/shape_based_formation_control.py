@@ -85,7 +85,6 @@ class CMD_Motion():
             # cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
             cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.5)
     
-
     def send_offboard_setpoint_(self, cf):
         self.logger.info('Command: %s' % self.str_())
         cf.commander.send_setpoint(self.roll, self.pitch, self.yaw,
@@ -293,7 +292,9 @@ class CFLogging:
             msg.orientation.y = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
             msg.orientation.z = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
             msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+            
             self.pose = msg
+            self.last_pose = msg
             self.publisher_pose.publish(msg)
 
     def twist_callback(self, data):
@@ -497,8 +498,8 @@ class CFLogging:
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.parent.get_logger().info('CF%s::Init pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
-        x = np.array([msg.position.x,msg.position.y,msg.position.z])
-        if (np.linalg.norm(x)>0.01):
+        x = np.array([self.last_pose.position.x-msg.position.x,self.last_pose.position.y-msg.position.y,self.last_pose.position.z-msg.position.z])
+        if (np.linalg.norm(x)>0.01 and np.linalg.norm(x)>0.05):
             self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
         if ((abs(msg.position.x)>xy_lim) or (abs(msg.position.y)>xy_lim) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
             self.CONTROL_MODE = 'HighLevel'
@@ -573,10 +574,8 @@ class CFSwarmDriver(Node):
         for i in range(int(n),0,-1):
             cf_str = id_base + hex(id_address_int+i-1)[-10:].upper()
             uris.add(cf_str)
-            print(uris)
             self.get_logger().info('Crazyflie %d URI: %s!' % (i, cf_str))
 
-        print(uris)
         # logging.basicConfig(level=logging.DEBUG)
         cflib.crtp.init_drivers()
         factory = CachedCfFactory(rw_cache='./cache')
@@ -601,7 +600,6 @@ class CFSwarmDriver(Node):
                     cf.agent_list.append(robot)
 
             dron.append(cf)
-            print(uri)
             while not cf.scf.cf.param.is_updated:
                 time.sleep(1.0)
             print('Parameters downloaded for', cf.scf.cf.link_uri)
@@ -644,7 +642,6 @@ class CFSwarmDriver(Node):
         msg = String()
         msg.data = 'Ready'
         self.publisher_status.publish(msg)
-        print('Test')
 
     def goalpose_callback(self, msg):
         for cf in dron:

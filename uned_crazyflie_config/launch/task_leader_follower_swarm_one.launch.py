@@ -1,11 +1,14 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
+import datetime
+from launch.actions import ExecuteProcess
 
 
 def generate_launch_description():
     hostname = '10.196.92.136'
     buffer_size = 200
     topic_namespace = 'vicon'
+    e = datetime.datetime.now()
 
     dron01_node = Node(
         package='uned_crazyflie_task',
@@ -35,8 +38,9 @@ def generate_launch_description():
         name='interface'
     )
     return LaunchDescription([
+        ExecuteProcess(cmd=['ros2', 'bag', 'record', '-a', '-o', e.strftime("%Y-%m-%d-%H-%M"), ], output='screen'),
         dron01_node,
-        vicon_node
-        # rqt_node
+        vicon_node,
+        rqt_node
 
     ])

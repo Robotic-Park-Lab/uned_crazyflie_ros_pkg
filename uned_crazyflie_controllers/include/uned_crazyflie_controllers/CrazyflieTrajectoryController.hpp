@@ -37,13 +37,16 @@ class TrajectoryController : public rclcpp::Node
     rclcpp::Publisher<geometry_msgs::msg::Pose>::SharedPtr ref_pose_;
 
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr GT_pose_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr status_;
 
     std::string robotid;
     bool fail = false;
     bool debug_flag = false;
-    geometry_msgs::msg::Pose last_pose, GT_pose, ref_pose;
+    bool ready = false;
+    geometry_msgs::msg::Pose last_pose, GT_pose, ref_pose, last_send;
     bool first_pose_received = false;
     bool new_ref = true;
+    int count;
     size_t count_;
     double start = 0.0;
     double end = 0.0;
@@ -53,4 +56,5 @@ class TrajectoryController : public rclcpp::Node
 
     bool readFile(std::string name);
     void gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg);
+    void statusCallback(const std_msgs::msg::String::SharedPtr msg);
 };

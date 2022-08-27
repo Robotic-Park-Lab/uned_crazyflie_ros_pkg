@@ -9,7 +9,7 @@ bool TrajectoryController::initialize(){
   	this->get_parameter("ROBOT_ID", robotid);
     this->get_parameter("DEBUG", debug_flag);
 
-    readFile("example.txt");
+    readFile("Ident_pZ.txt");
     last_pose.position.x = 0;
     last_pose.position.y = 0;
     last_pose.position.z = 0;
@@ -18,32 +18,38 @@ bool TrajectoryController::initialize(){
     ref_pose_ = this->create_publisher<geometry_msgs::msg::Pose>("goal_pose", 10);
     // Crazyflie Pose
     GT_pose_ = this->create_subscription<geometry_msgs::msg::Pose>("cf_pose", 10, std::bind(&TrajectoryController::gtposeCallback, this, _1));
-
+    status_ = this->create_subscription<std_msgs::msg::String>("swarm/status", 10, std::bind(&TrajectoryController::statusCallback, this, _1));
+    count = 6;
     return true;
 }
 
 bool TrajectoryController::iterate(){
       if(first_pose_received){
-        auto first_pose = trayectory.begin();
-        auto aux_pose = first_pose[0];
+        if(count>5){
+          auto first_pose = trayectory.begin();
+          auto aux_pose = first_pose[0];
+          count = 1;
+          if(last_pose.position.x != aux_pose[1] || last_pose.position.y != aux_pose[2] || last_pose.position.z != aux_pose[3]){
+            auto msg = geometry_msgs::msg::Pose();
+            msg.position.x = aux_pose[1];
+            msg.position.y = aux_pose[2];
+            msg.position.z = 0.5*aux_pose[3];
 
-        if(last_pose.position.x != aux_pose[1] || last_pose.position.y != aux_pose[2] || last_pose.position.z != aux_pose[3]){
-          auto msg = geometry_msgs::msg::Pose();
-          msg.position.x = aux_pose[1];
-          msg.position.y = aux_pose[2];
-          msg.position.z = aux_pose[3];
+            last_pose = msg;
 
-          last_pose = msg;
-
-          msg.position.x = msg.position.x * 0.5 + ref_pose.position.x;
-          msg.position.y = msg.position.y * 0.5 + ref_pose.position.y;
-          ref_pose_->publish(msg);
+            msg.position.x += ref_pose.position.x;
+            msg.position.y += ref_pose.position.y;
+            msg.position.z += ref_pose.position.z;
+            ref_pose_->publish(msg);
+            last_send = msg;
+          }
+          trayectory.erase(first_pose);
         }
-
-
-        trayectory.erase(first_pose);
-    }
-
+        else{
+          count += 1;
+          ref_pose_->publish(last_send);
+        }
+      }
     return true;
 }
 
@@ -52,7 +58,7 @@ int main(int argc, char ** argv){
     try{
         rclcpp::init(argc, argv);
         auto trajectory_controller_node = std::make_shared<TrajectoryController>();
-        rclcpp::Rate loop_rate(10);
+        rclcpp::Rate loop_rate(1);
         trajectory_controller_node->initialize();
 
         while (rclcpp::ok()){
@@ -91,10 +97,16 @@ bool TrajectoryController::readFile(std::string name){
 }
 
 void TrajectoryController::gtposeCallback(const geometry_msgs::msg::Pose::SharedPtr msg){
-    if(!first_pose_received){
+    if(!first_pose_received && ready){
         ref_pose.position = msg->position;
         ref_pose.orientation = msg->orientation;
         first_pose_received = true;
         RCLCPP_INFO(this->get_logger(),"Initial Pose: x: %f \ty: %f \tz: %f", ref_pose.position.x, ref_pose.position.y, ref_pose.position.z);
+    }
+}
+
+void TrajectoryController::statusCallback(const std_msgs::msg::String::SharedPtr msg){
+    if(!ready){
+        ready = true;
     }
 }
