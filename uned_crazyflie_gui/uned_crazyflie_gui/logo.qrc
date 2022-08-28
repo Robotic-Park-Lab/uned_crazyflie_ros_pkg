@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="logo">
+    <file>figs/Multiranger.png</file>
     <file>figs/UNED.jpg</file>
     <file>figs/Crazyflie.png</file>
     <file>figs/LogoRoboticPark.png</file>
