@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="logo">
+    <file>figs/UNED.jpg</file>
+    <file>figs/Crazyflie.png</file>
+    <file>figs/LogoRoboticPark.png</file>
+  </qresource>
+</RCC>
