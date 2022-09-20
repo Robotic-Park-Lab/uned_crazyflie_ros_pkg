@@ -1,7 +1,9 @@
 <?xml version="1.0" ?>
 <robot name="dron01">
     <webots>
-        <plugin type="uned_crazyflie_webots.crazyflie_driver.CrazyflieWebotsDriver" />
+        <plugin type="uned_crazyflie_webots.crazyflie_driver.CrazyflieWebotsDriver" >
+            <properties>dron01</properties>
+        </plugin>
         <!--device reference="lidar" type="Lidar">
             <ros>
                 <enabled>true</enabled>
