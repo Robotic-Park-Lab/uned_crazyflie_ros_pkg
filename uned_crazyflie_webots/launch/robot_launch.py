@@ -30,16 +30,6 @@ def generate_launch_description():
         ]
     )
 
-    dron01_state_publisher = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        namespace='dron01',
-        output='screen',
-        parameters=[{
-            'robot_description': '<robot name=""><link name=""/></robot>'
-        }],
-    )
-
     dron02_driver = Node(
         package='webots_ros2_driver',
         executable='driver',
@@ -53,10 +43,9 @@ def generate_launch_description():
         ]
     )
 
-    dron02_state_publisher = Node(
+    robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        namespace='dron02',
         output='screen',
         parameters=[{
             'robot_description': '<robot name=""><link name=""/></robot>'
@@ -65,11 +54,9 @@ def generate_launch_description():
 
     return LaunchDescription([
         webots,
-        SetEnvironmentVariable(name='WEBOTS_ROBOT_NAME', value='test'),
         dron01_driver,
-        dron01_state_publisher,
         dron02_driver,
-        dron02_state_publisher,
+        robot_state_publisher,
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(
                 target_action=webots,

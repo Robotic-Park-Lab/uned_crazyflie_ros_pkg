@@ -99,7 +99,7 @@ bool PositionController::iterate(){
 				z_controller.error[0] = ref_pose.position.z - GT_pose.position.z;
 				w_ref = pid_controller(z_controller, z_threshold.dt);
 				auto msg_event = std_msgs::msg::Bool();
-        msg_event.data = true;
+        		msg_event.data = true;
 				pub_z_event_->publish(msg_event);
 			}
 
@@ -114,7 +114,7 @@ bool PositionController::iterate(){
 				thrust = pid_controller(w_controller, w_threshold.dt);
 				thrust = thrust * 1000 + 38000;
 				auto msg_event = std_msgs::msg::Bool();
-        msg_event.data = true;
+        		msg_event.data = true;
 				pub_w_event_->publish(msg_event);
 			}
 
@@ -160,7 +160,7 @@ bool PositionController::iterate(){
 
 			if(events){
 				// Debug
-        if(debug_flag){
+				if(debug_flag){
 					auto msg_cmd = std_msgs::msg::Float64MultiArray();
 					msg_cmd.data = { ref_pose.position.z, GT_pose.position.z, z_controller.error[0], w_ref, GT_twist.linear.z, w_controller.error[0], thrust};
 					pub_zcon_->publish(msg_cmd);
@@ -169,25 +169,25 @@ bool PositionController::iterate(){
 					msg_cmd.data = { ref_pose.position.y, GT_pose.position.y, y_controller.error[0], v_ref,v_signal, v_controller.error[0], roll, rpy_state.yaw};
 					pub_ycon_->publish(msg_cmd);
 					RCLCPP_INFO(this->get_logger(), "Z: Error: \t%.2f \tSignal:%.2f", z_controller.error[0], w_ref);
-          RCLCPP_INFO(this->get_logger(), "W: Error: \t%.2f \tSignal:%.2f", w_controller.error[0], thrust);
-          RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], u_ref);
-          RCLCPP_INFO(this->get_logger(), "U: Error: \t%.2f \tPitch:%.2f", u_controller.error[0], pitch);
-          RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], v_ref);
-          RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
-        }
+					RCLCPP_INFO(this->get_logger(), "W: Error: \t%.2f \tSignal:%.2f", w_controller.error[0], thrust);
+					RCLCPP_INFO(this->get_logger(), "X: Error: \t%.2f \tSignal:%.2f", x_controller.error[0], u_ref);
+					RCLCPP_INFO(this->get_logger(), "U: Error: \t%.2f \tPitch:%.2f", u_controller.error[0], pitch);
+					RCLCPP_INFO(this->get_logger(), "Y: Error: \t%.2f \tSignal:%.2f", y_controller.error[0], v_ref);
+					RCLCPP_INFO(this->get_logger(), "V: Error: \t%.2f \tRoll:%.2f", v_controller.error[0], roll);
+				}
 				// pitch = 0.0;
 				// roll = 0.0;
-        // Publish Control CMD
-        auto msg_cmd = std_msgs::msg::Float64MultiArray();
-        msg_cmd.data = { 0.0, 0.0, 0.0, rpy_ref.yaw };
-        if (abs(GT_pose.position.x) > 4.0 || abs(GT_pose.position.y) > 4.0)
-            fail = true;
-        if (!fail)
-            msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
+				// Publish Control CMD
+				auto msg_cmd = std_msgs::msg::Float64MultiArray();
+				msg_cmd.data = { 0.0, 0.0, 0.0, rpy_ref.yaw };
+				if (abs(GT_pose.position.x) > 4.0 || abs(GT_pose.position.y) > 4.0)
+					fail = true;
+				if (!fail)
+					msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
 
-				// msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
-        RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", msg_cmd.data[0], msg_cmd.data[1], msg_cmd.data[2], msg_cmd.data[3]);
-        pub_cmd_->publish(msg_cmd);
+					// msg_cmd.data = { thrust, roll, pitch, rpy_ref.yaw };
+				RCLCPP_INFO(this->get_logger(), "Thrust: \t%.2f \tRoll:%.2f \tPitch:%.2f \tYaw:%.2f", msg_cmd.data[0], msg_cmd.data[1], msg_cmd.data[2], msg_cmd.data[3]);
+				pub_cmd_->publish(msg_cmd);
 				events = false;
 			}
 	}

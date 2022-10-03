@@ -44,9 +44,7 @@ class PIDController():
                 out = self.LowerLimit
 
             # self.integral = self.integral - (out-out_i) * sqrt(self.Kp/self.Ki)
-        
-        self.error[1] = self.error[0]
-        
+
         return out
 
         
@@ -102,25 +100,25 @@ class CrazyflieWebotsDriver:
 
         ## Intialize Controllers
         # Position
-        self.z = PIDController(2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0)
-        self.x = PIDController(0.5, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
-        self.y = PIDController(0.5, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
+        self.z = PIDController(2.0, 0.5, 0.0, 0.0, 100, 0.0, 0.0)
+        self.x = PIDController(2.0, 0.0, 0.0, 0.0, 100, 0.0, 0.0)
+        self.y = PIDController(2.0, 0.0, 0.0, 0.0, 100, 0.0, 0.0)
         # Velocity
-        self.w = PIDController(25.0, 15.0, 0.0, 0.0, 100, 26.0, -16.0)
+        self.w = PIDController(25.0, 15.0, 0.0, 0.0, 100, 0.0, 0.0)
         self.u = PIDController(15.0, 0.5, 0.0, 0.0, 100, 0.0, 0.0)
         self.v = PIDController(-15.0, 0.5, 0.0, 0.0, 100, 0.0, 0.0)
 
 
         cffirmware.controllerPidInit()
 
-        self.name_value = os.environ['WEBOTS_ROBOT_NAME']
+        name_value = os.environ['WEBOTS_ROBOT_NAME']
         rclpy.init(args=None)
-        self.node = rclpy.create_node(self.name_value+'_driver')
-        self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.name_value)))
-        self.node.create_subscription(Twist, self.name_value+'/cmd_vel', self.cmd_vel_callback, 1)
-        self.node.create_subscription(Pose, self.name_value+'/goal_pose', self.goal_pose_callback, 1)
-        self.laser_publisher = self.node.create_publisher(LaserScan, self.name_value+'/scan', 10)
-        self.odom_publisher = self.node.create_publisher(Odometry, self.name_value+'/odom', 10)
+        self.node = rclpy.create_node(name_value+'_driver')
+        self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(name_value)))
+        self.node.create_subscription(Twist, name_value+'/cmd_vel', self.cmd_vel_callback, 1)
+        self.node.create_subscription(Pose, name_value+'/goal_pose', self.goal_pose_callback, 1)
+        self.laser_publisher = self.node.create_publisher(LaserScan, name_value+'/scan', 10)
+        self.odom_publisher = self.node.create_publisher(Odometry, name_value+'/odom', 10)
 
         self.tfbr = TransformBroadcaster(self.node)
 
@@ -171,7 +169,6 @@ class CrazyflieWebotsDriver:
             self.past_x_global = self.gps.getValues()[0]
             self.target_pose.position.x = self.gps.getValues()[0]
             self.past_y_global = self.gps.getValues()[1]
-            self.target_pose.position.y = self.gps.getValues()[1]
             self.first_pos = False
 
         ## Get measurements
@@ -188,18 +185,7 @@ class CrazyflieWebotsDriver:
         z_global = self.gps.getValues()[2]
         vz_global = (z_global - self.past_z_global)/dt
 
-        ## Position Controller
-        # Z Controller
-        self.z.error[0] = (self.target_pose.position.z - z_global)
-        w_ref = self.z.update(dt)
-        self.w.error[0] = (w_ref - vz_global)
-        cmd_thrust = self.w.update(dt)*1000+38000
-        # X Controller
-        self.x.error[0] = self.target_pose.position.x - x_global
-        self.target_twist.linear.x = self.x.update(dt)
-        # Y Controller 
-        self.y.error[0] = self.target_pose.position.y - y_global
-        self.target_twist.linear.y = self.y.update(dt)
+        # self.target_twist.linear.x = 1.0 * (self.target_pose.position.x-x_global)
 
         q_base = tf_transformations.quaternion_from_euler(0, 0, yaw)
         odom = Odometry()
@@ -209,6 +195,11 @@ class CrazyflieWebotsDriver:
         odom.pose.pose.position.x = x_global
         odom.pose.pose.position.y = y_global
         odom.pose.pose.position.z = 0.0
+
+        #odom.pose.pose.orientation.x = q_base[0]
+        #odom.pose.pose.orientation.y = q_base[1]
+        #odom.pose.pose.orientation.z = q_base[2]
+        #odom.pose.pose.orientation.w = q_base[3]
         odom.pose.pose.orientation.z = sin(yaw / 2)
         odom.pose.pose.orientation.w = cos(yaw / 2)
 
@@ -221,6 +212,10 @@ class CrazyflieWebotsDriver:
         t_base.transform.translation.x = x_global
         t_base.transform.translation.y = y_global
         t_base.transform.translation.z = 0.0
+        #t_base.transform.rotation.x = q_base[0]
+        #t_base.transform.rotation.y = q_base[1]
+        #t_base.transform.rotation.z = q_base[2]
+        #t_base.transform.rotation.w = q_base[3]
         t_base.transform.rotation.z = sin(yaw / 2)
         t_base.transform.rotation.w = cos(yaw / 2)
         self.tfbr.sendTransform(t_base)
@@ -271,15 +266,13 @@ class CrazyflieWebotsDriver:
         cmd_roll = radians(control.roll)
         cmd_pitch = radians(control.pitch)
         cmd_yaw = -radians(control.yaw)
-        # cmd_thrust = control.thrust
+        cmd_thrust = control.thrust
 
         ## Motor mixing
         motorPower_m1 =  cmd_thrust - cmd_roll + cmd_pitch + cmd_yaw
         motorPower_m2 =  cmd_thrust - cmd_roll - cmd_pitch - cmd_yaw
         motorPower_m3 =  cmd_thrust + cmd_roll - cmd_pitch + cmd_yaw
         motorPower_m4 =  cmd_thrust + cmd_roll + cmd_pitch - cmd_yaw
-
-        # self.node.get_logger().info('Z: %.2f vX: %.2f eX: %.2f vY: %f eY: %.3f Thrust: %.2f' % (z_global,self.target_twist.linear.x, self.x.error[0], self.target_twist.linear.y, self.y.error[0], cmd_thrust))
 
         scaling = 1000 ##Todo, remove necessity of this scaling (SI units in firmware)
         self.m1_motor.setVelocity(-motorPower_m1/scaling)
