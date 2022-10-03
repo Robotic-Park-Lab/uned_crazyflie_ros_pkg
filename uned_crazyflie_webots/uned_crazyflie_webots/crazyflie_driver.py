@@ -3,7 +3,9 @@ import rclpy
 import os
 from rclpy.node import Node
 from rclpy.time import Time
+from threading import Timer
 
+from std_msgs.msg import String
 from geometry_msgs.msg import Twist, Pose
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
@@ -72,7 +74,7 @@ class CrazyflieWebotsDriver:
 
         self.target_twist = Twist()
         self.target_pose = Pose()
-        self.target_pose.position.z = 1.0
+        self.target_pose.position.z = 0.0
 
         ## Initialize Sensors
         self.imu = self.robot.getDevice("inertial unit")
@@ -95,6 +97,7 @@ class CrazyflieWebotsDriver:
         self.past_y_global = 0
         self.past_z_global = 0
         self.past_time = self.robot.getTime()
+        self._is_flying = False
 
         self.first_pos = True
         self.first_x_global = 0.0
@@ -103,8 +106,8 @@ class CrazyflieWebotsDriver:
         ## Intialize Controllers
         # Position
         self.z = PIDController(2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0)
-        self.x = PIDController(0.5, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
-        self.y = PIDController(0.5, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
+        self.x = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
+        self.y = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
         # Velocity
         self.w = PIDController(25.0, 15.0, 0.0, 0.0, 100, 26.0, -16.0)
         self.u = PIDController(15.0, 0.5, 0.0, 0.0, 100, 0.0, 0.0)
@@ -119,6 +122,7 @@ class CrazyflieWebotsDriver:
         self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.name_value)))
         self.node.create_subscription(Twist, self.name_value+'/cmd_vel', self.cmd_vel_callback, 1)
         self.node.create_subscription(Pose, self.name_value+'/goal_pose', self.goal_pose_callback, 1)
+        self.node.create_subscription(String, self.name_value+'/order', self.order_callback, 1)
         self.laser_publisher = self.node.create_publisher(LaserScan, self.name_value+'/scan', 10)
         self.odom_publisher = self.node.create_publisher(Odometry, self.name_value+'/odom', 10)
 
@@ -161,7 +165,47 @@ class CrazyflieWebotsDriver:
     def goal_pose_callback(self, pose):
         self.target_pose = pose
 
+    def order_callback(self, msg):
+        self.node.get_logger().info('In progress ...')
+        self.node.get_logger().info('Order: "%s"' % msg.data)
+        if msg.data == 'take_off':
+            if self._is_flying:
+                self.node.get_logger().warning('Already flying')
+            else:
+                self.take_off()
+        elif msg.data == 'land':
+            if self._is_flying:
+                self.descent()
+            else:
+                self.node.get_logger().warning('In land')
+        else:
+            self.node.get_logger().error('"%s": Unknown order' % (msg.data))
     
+    def take_off(self):
+        self.node.get_logger().info('Take Off...')
+        self.target_pose.position.z = 1.0
+        self._is_flying = True
+        self.t_ready = Timer(2, self._ready)
+        self.t_ready.start()
+
+    def _ready(self):
+        self.node.get_logger().info('Ready!!.')
+        self.ready = True
+
+    def descent(self):
+        msg = Pose()
+        self.target_pose.position.z = 0.1
+        self.node.get_logger().info('Descent...')
+        self.t_desc = Timer(2, self.take_land)
+        self._is_flying = False
+        self.ready = False
+        self.t_desc.start()
+
+    def take_land(self):
+        self.node.get_logger().info('Take Land.')
+        self.target_pose.position.z = 0.0
+        self.first_pos = False
+
     def step(self):
         rclpy.spin_once(self.node, timeout_sec=0)
 
@@ -173,6 +217,7 @@ class CrazyflieWebotsDriver:
             self.past_y_global = self.gps.getValues()[1]
             self.target_pose.position.y = self.gps.getValues()[1]
             self.first_pos = False
+            self.take_off()
 
         ## Get measurements
         roll = self.imu.getRollPitchYaw()[0]

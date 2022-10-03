@@ -21,7 +21,9 @@ setup(
     entry_points={
         'console_scripts': [
             'leader_follower = uned_crazyflie_task.leader_follower:main',
-            'shape_based_formation_control = uned_crazyflie_task.shape_based_formation_control:main'
+            'shape_based_formation_control = uned_crazyflie_task.shape_based_formation_control:main',
+            'formation_control_webots = uned_crazyflie_task.formation_control_webots:main'
+            
         ],
     },
 )
