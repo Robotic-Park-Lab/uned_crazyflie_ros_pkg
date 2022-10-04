@@ -16,7 +16,7 @@ def generate_launch_description():
     robot_description = pathlib.Path(os.path.join(robot_package_dir, 'resource', 'kheperaiv.urdf')).read_text()
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
     webots = WebotsLauncher(
-        world=os.path.join(dron_package_dir, 'worlds', 'apartment_4cf_3kh.wbt')
+        world=os.path.join(dron_package_dir, 'worlds', 'apartment_4cf.wbt')
     )
 
     dron01_driver = Node(
@@ -71,62 +71,6 @@ def generate_launch_description():
         ]
     )
 
-    swarm_node = Node(
-        package='uned_crazyflie_task',
-        executable='formation_control_webots',
-        name='CFFormationControl',
-        output='screen',
-        shell=True,
-        emulate_tty=True,
-        parameters=[
-            {'use_sim_time': use_sim_time},
-            {'cf_first_uri': 'radio://0/80/2M/E7E7E7E701'},
-            {'cf_num_uri': 4},
-            {'cf_control_mode': 'HighLevel, HighLevel, HighLevel, HighLevel'},
-            {'cf_controller_type': 'Continuous, Continuous, Continuous, Continuous'},
-            {'cf_role': 'consensus, consensus, consensus, consensus'},
-            {'cf_relationship':'dron01_dron02_-0.3/-0.3/0.2, dron01_dron03_-0.4/0.0/0.1, dron02_dron01_0.3/0.3/-0.2, dron02_dron03_-0.1/0.3/-0.1, dron03_dron01_0.4/0.0/-0.1, dron03_dron02_0.1/-0.3/0.1, dron04_dron03_0.4/-0.2/0.2, dron01_khepera01_0.0/0.0/0.9'},
-        ])
-
-    robot01_driver = Node(
-        package='webots_ros2_driver',
-        executable='driver',
-        output='screen',
-        name='khepera01',
-        additional_env={'WEBOTS_ROBOT_NAME': 'khepera01'},
-        parameters=[
-            {'robot_description': robot_description,
-             'use_sim_time': use_sim_time,
-             'set_robot_state_publisher': True},
-        ],
-    )
-
-    robot02_driver = Node(
-        package='webots_ros2_driver',
-        executable='driver',
-        output='screen',
-        name='khepera02',
-        additional_env={'WEBOTS_ROBOT_NAME': 'khepera02'},
-        parameters=[
-            {'robot_description': robot_description,
-             'use_sim_time': use_sim_time,
-             'set_robot_state_publisher': True},
-        ],
-    )
-
-    robot03_driver = Node(
-        package='webots_ros2_driver',
-        executable='driver',
-        output='screen',
-        name='khepera03',
-        additional_env={'WEBOTS_ROBOT_NAME': 'khepera03'},
-        parameters=[
-            {'robot_description': robot_description,
-             'use_sim_time': use_sim_time,
-             'set_robot_state_publisher': True},
-        ],
-    )
-
     robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -145,17 +89,12 @@ def generate_launch_description():
         ],
     )
 
-
     return LaunchDescription([
         webots,
         dron01_driver,
         dron02_driver,
         dron03_driver,
         dron04_driver,
-        swarm_node,
-        robot01_driver,
-        robot02_driver,
-        robot03_driver,
         robot_state_publisher,
         rqt_node,
         launch.actions.RegisterEventHandler(

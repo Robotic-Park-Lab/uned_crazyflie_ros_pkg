@@ -243,7 +243,7 @@ Robot {
       }
     }
   ]
-  name "Crazyflie"
+  name "dron01"
   boundingObject Cylinder {
     height 0.03
     radius 0.05

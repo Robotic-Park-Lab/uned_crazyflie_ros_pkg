@@ -14,7 +14,7 @@ def generate_launch_description():
     robot_description = pathlib.Path(os.path.join(package_dir, 'resource', 'crazyflie.urdf')).read_text()
     
     webots = WebotsLauncher(
-        world=os.path.join(package_dir, 'worlds', 'test.wbt')
+        world=os.path.join(package_dir, 'worlds', 'crazyflie.wbt')
     )
 
     dron01_driver = Node(
@@ -23,19 +23,6 @@ def generate_launch_description():
         output='screen',
         name='dron01',
         additional_env={'WEBOTS_ROBOT_NAME': 'dron01'},
-        parameters=[
-            {'robot_description': robot_description,
-             'use_sim_time': True,
-             'set_robot_state_publisher': True},
-        ]
-    )
-
-    dron02_driver = Node(
-        package='webots_ros2_driver',
-        executable='driver',
-        output='screen',
-        name='dron02',
-        additional_env={'WEBOTS_ROBOT_NAME': 'dron02'},
         parameters=[
             {'robot_description': robot_description,
              'use_sim_time': True,
@@ -55,7 +42,6 @@ def generate_launch_description():
     return LaunchDescription([
         webots,
         dron01_driver,
-        dron02_driver,
         robot_state_publisher,
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(

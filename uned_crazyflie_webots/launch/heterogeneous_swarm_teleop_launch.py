@@ -16,7 +16,7 @@ def generate_launch_description():
     robot_description = pathlib.Path(os.path.join(robot_package_dir, 'resource', 'kheperaiv.urdf')).read_text()
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
     webots = WebotsLauncher(
-        world=os.path.join(dron_package_dir, 'worlds', 'test.wbt')
+        world=os.path.join(dron_package_dir, 'worlds', 'apartment_4cf_3kh.wbt')
     )
 
     dron01_driver = Node(
@@ -119,6 +119,15 @@ def generate_launch_description():
         }],
     )
 
+    rqt_node = Node(
+        package='rqt_gui',
+        executable='rqt_gui',
+        name='interface',
+        parameters=[
+            {'use_sim_time': use_sim_time},
+        ],
+    )
+
     return LaunchDescription([
         webots,
         dron01_driver,
@@ -129,6 +138,7 @@ def generate_launch_description():
         robot02_driver,
         robot03_driver,
         robot_state_publisher,
+        rqt_node,
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(
                 target_action=webots,

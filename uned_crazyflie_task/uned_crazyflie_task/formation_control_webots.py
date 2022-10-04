@@ -100,7 +100,7 @@ class WebotsAgent:
 
     def goalpose_callback(self, msg):
         self.publisher_pose.publish(msg)
-        self.parent.get_logger().info('CF%s::New Goal pose: X: %.2f, Y: %.2f, Z: %.2f' % (self.id[-2:], msg.position.x, msg.position.y, msg.position.z))
+        self.parent.get_logger().debug('CF%s::New Goal pose: X: %.2f, Y: %.2f, Z: %.2f' % (self.id[-2:], msg.position.x, msg.position.y, msg.position.z))
 
 #####################
 ## CF Swarm Class  ##
@@ -217,9 +217,9 @@ class CFSwarmWebotsDriver(Node):
                 cf.integral_x += (1/(len(cf.agent_list)*1.0))*cf.x_error*0.02
                 cf.integral_y += (1/(len(cf.agent_list)*1.0))*cf.y_error*0.02
                 cf.integral_z += (1/(len(cf.agent_list)*5.0))*cf.z_error*0.02
-                msg.position.x += (dx/len(cf.agent_list)) + cf.integral_x
-                msg.position.y += (dy/len(cf.agent_list)) + cf.integral_y
-                msg.position.z += (dz/len(cf.agent_list)) + cf.integral_z
+                msg.position.x += (dx/len(cf.agent_list))# + cf.integral_x
+                msg.position.y += (dy/len(cf.agent_list))# + cf.integral_y
+                msg.position.z += (dz/len(cf.agent_list))# + cf.integral_z
                 cf.x_error = dx
                 cf.y_error = dy
                 cf.z_error = dz
