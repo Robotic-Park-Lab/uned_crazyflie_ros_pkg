@@ -31,7 +31,7 @@ class PIDController():
         self.LowerLimit = LowerLimit
         self.integral = 0
         self.derivative = 0
-        self.error = [0.0, 0.0, 0.0]
+        self.error = [0.0, 0.0]
 
     def update(self, dt):
         P = self.Kp * self.error[0]
@@ -40,6 +40,7 @@ class PIDController():
         out = P + self.integral + self.derivative
         
         if not self.UpperLimit==0.0:
+            # out_i = out
             if out>self.UpperLimit:
                 out = self.UpperLimit
             if out<self.LowerLimit:
@@ -105,14 +106,21 @@ class CrazyflieWebotsDriver:
 
         ## Intialize Controllers
         # Position
-        self.z = PIDController(2.0, 0.5, 0.0, 0.0, 100, 1.0, -1.0)
-        self.x = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
-        self.y = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
+        self.z_controller = PIDController(2.0, 0.50, 0.0, 0.0, 100, 1.0, -1.0)
+        self.x_controller = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
+        self.y_controller = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
         # Velocity
-        self.w = PIDController(25.0, 15.0, 0.0, 0.0, 100, 26.0, -16.0)
-        self.u = PIDController(15.0, 0.5, 0.0, 0.0, 100, 0.0, 0.0)
-        self.v = PIDController(-15.0, 0.5, 0.0, 0.0, 100, 0.0, 0.0)
-
+        self.w_controller = PIDController( 25.0, 15.0, 0.0, 0.0, 100, 26.0, -16.0)
+        self.u_controller = PIDController( 15.0,  0.5, 0.0, 0.0, 100, 30.0, -30.0)
+        self.v_controller = PIDController(-15.0,  0.5, 0.0, 0.0, 100, 30.0, -30.0)
+        # Attitude
+        self.pitch_controller = PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0)
+        self.roll_controller  = PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0)
+        self.yaw_controller   = PIDController(6.0, 1.0, 0.349, 0.0581, 100, 400.0, -400.0)
+        # Rate
+        self.dpitch_controller = PIDController(250.0, 500.0,   2.5, 0.01, 100, 0.0, -0.0)
+        self.droll_controller  = PIDController(250.0, 500.0,   2.5, 0.01, 100, 0.0, -0.0)
+        self.dyaw_controller   = PIDController(120.0,  16.698, 0.0, 0.00, 100, 0.0, -0.0)
 
         cffirmware.controllerPidInit()
 
@@ -235,16 +243,42 @@ class CrazyflieWebotsDriver:
 
         ## Position Controller
         # Z Controller
-        self.z.error[0] = (self.target_pose.position.z - z_global)
-        w_ref = self.z.update(dt)
-        self.w.error[0] = (w_ref - vz_global)
-        cmd_thrust = self.w.update(dt)*1000+38000
-        # X Controller
-        self.x.error[0] = self.target_pose.position.x - x_global
-        self.target_twist.linear.x = self.x.update(dt)
-        # Y Controller 
-        self.y.error[0] = self.target_pose.position.y - y_global
-        self.target_twist.linear.y = self.y.update(dt)
+        self.z_controller.error[0] = (self.target_pose.position.z - z_global)
+        w_ref = self.z_controller.update(dt)
+        self.w_controller.error[0] = (w_ref - vz_global)
+        cmd_thrust = self.w_controller.update(dt)*1000+38000
+        # X-Y Controller
+        self.x_controller.error[0] = self.target_pose.position.x - x_global
+        u_ref = self.x_controller.update(dt)
+        self.target_twist.linear.x = u_ref
+        self.y_controller.error[0] = self.target_pose.position.y - y_global
+        v_ref = self.y_controller.update(dt)
+        self.target_twist.linear.y = v_ref
+        # dX-dY Controller
+        self.u_controller.error[0] =  (u_ref - vx_global)*cos(yaw) + (v_ref - vy_global)*sin(yaw)
+        self.v_controller.error[0] = -(u_ref - vx_global)*sin(yaw) + (v_ref - vy_global)*cos(yaw)
+        pitch_ref = self.u_controller.update(dt)
+        roll_ref = self.v_controller.update(dt)
+        
+        ## Attitude Controller
+        # Pitch Controller
+        self.pitch_controller.error[0] = pitch_ref - degrees(pitch)
+        dpitch_ref = self.pitch_controller.update(dt)
+        # Roll Controller
+        self.roll_controller.error[0] = roll_ref - degrees(roll)
+        droll_ref = self.roll_controller.update(dt)
+        # Yaw Controller
+        self.yaw_controller.error[0] = 0.0 - degrees(yaw)
+        dyaw_ref = self.yaw_controller.update(dt)
+
+        ## Rate Controller
+        self.dpitch_controller.error[0] = dpitch_ref - degrees(pitch_rate)
+        delta_pitch = self.dpitch_controller.update(dt)
+        self.droll_controller.error[0] = droll_ref - degrees(roll_rate)
+        delta_roll = self.droll_controller.update(dt)
+        self.dyaw_controller.error[0] = dyaw_ref - degrees(yaw_rate)
+        delta_yaw = self.dyaw_controller.update(dt)
+        
 
         q_base = tf_transformations.quaternion_from_euler(0, 0, yaw)
         odom = Odometry()
@@ -283,8 +317,6 @@ class CrazyflieWebotsDriver:
         state.velocity.y = vy_global
         state.velocity.z = vz_global
 
-
-        
         # Put gyro in sensor data
         sensors = cffirmware.sensorData_t()
         sensors.gyro.x = degrees(roll_rate)
@@ -316,15 +348,26 @@ class CrazyflieWebotsDriver:
         cmd_roll = radians(control.roll)
         cmd_pitch = radians(control.pitch)
         cmd_yaw = -radians(control.yaw)
-        # cmd_thrust = control.thrust
+        thrust = control.thrust
+        # self.node.get_logger().debug('Thrust(F): %.2f CRoll(F): %.2f CPitch(F): %.2f CYaw(F): %.2f' % (thrust, cmd_roll, cmd_pitch, cmd_yaw))
 
         ## Motor mixing
-        motorPower_m1 =  cmd_thrust - cmd_roll + cmd_pitch + cmd_yaw
-        motorPower_m2 =  cmd_thrust - cmd_roll - cmd_pitch - cmd_yaw
-        motorPower_m3 =  cmd_thrust + cmd_roll - cmd_pitch + cmd_yaw
-        motorPower_m4 =  cmd_thrust + cmd_roll + cmd_pitch - cmd_yaw
+        motorPower_m1 =  thrust - cmd_roll + cmd_pitch + cmd_yaw
+        motorPower_m2 =  thrust - cmd_roll - cmd_pitch - cmd_yaw
+        motorPower_m3 =  thrust + cmd_roll - cmd_pitch + cmd_yaw
+        motorPower_m4 =  thrust + cmd_roll + cmd_pitch - cmd_yaw
 
-        # self.node.get_logger().info('Z: %.2f vX: %.2f eX: %.2f vY: %f eY: %.3f Thrust: %.2f' % (z_global,self.target_twist.linear.x, self.x.error[0], self.target_twist.linear.y, self.y.error[0], cmd_thrust))
+        ## Motor mixing Controller
+        motorPower_m1 =  (cmd_thrust - 0.5 * delta_roll - 0.5 * delta_pitch + cmd_yaw)
+        motorPower_m2 =  (cmd_thrust - 0.5 * delta_roll + 0.5 * delta_pitch - cmd_yaw)
+        motorPower_m3 =  (cmd_thrust + 0.5 * delta_roll + 0.5 * delta_pitch + cmd_yaw)
+        motorPower_m4 =  (cmd_thrust + 0.5 * delta_roll - 0.5 * delta_pitch - cmd_yaw)
+
+        self.node.get_logger().debug('Thrust(C): %.2f CRoll(C): %.2f CPitch(C): %.2f CYaw(C): %.2f' % (cmd_thrust, delta_roll, delta_pitch, delta_yaw))
+            
+        
+
+        # self.node.get_logger().info('Z: %.2f vX: %.2f eX: %.2f vY: %f eY: %.3f Thrust: %.2f' % (z_global,self.target_twist.linear.x, self.x_controller.error[0], self.target_twist.linear.y, self.y_controller.error[0], cmd_thrust))
 
         scaling = 1000 ##Todo, remove necessity of this scaling (SI units in firmware)
         self.m1_motor.setVelocity(-motorPower_m1/scaling)

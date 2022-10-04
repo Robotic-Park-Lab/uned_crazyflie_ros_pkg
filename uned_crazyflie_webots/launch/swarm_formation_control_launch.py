@@ -79,6 +79,7 @@ def generate_launch_description():
         shell=True,
         emulate_tty=True,
         parameters=[
+            {'use_sim_time': use_sim_time},
             {'cf_first_uri': 'radio://0/80/2M/E7E7E7E701'},
             {'cf_num_uri': 4},
             {'cf_control_mode': 'HighLevel, HighLevel, HighLevel, HighLevel'},

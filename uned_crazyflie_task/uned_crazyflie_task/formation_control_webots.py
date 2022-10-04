@@ -227,8 +227,7 @@ class CFSwarmWebotsDriver(Node):
                 # self.get_logger().info('dx: %f dy: %f dz: %f' % (dx, dy, dz))
                 # self.get_logger().error('DX: %f DY: %f DZ: %f' % (msg.position.x, msg.position.y, msg.position.z))
 
-                if (cf.id == 'dron01') or (cf.id == 'dron04'):
-                    cf.goalpose_callback(msg)
+                cf.goalpose_callback(msg)
                 '''
                 print('Z: %s' % str(msg.position.z))
                 print('dz: %s' % str(dz/len(cf.agent_list)))
