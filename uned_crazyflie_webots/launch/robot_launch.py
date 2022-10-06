@@ -4,7 +4,7 @@ import launch
 from launch_ros.actions import Node
 from launch import LaunchDescription
 from ament_index_python.packages import get_package_share_directory
-from launch.substitutions import EnvironmentVariable
+from launch.substitutions import LaunchConfiguration
 from launch.actions import SetEnvironmentVariable
 from webots_ros2_driver.webots_launcher import WebotsLauncher
 
@@ -12,7 +12,7 @@ from webots_ros2_driver.webots_launcher import WebotsLauncher
 def generate_launch_description():
     package_dir = get_package_share_directory('uned_crazyflie_webots')
     robot_description = pathlib.Path(os.path.join(package_dir, 'resource', 'crazyflie.urdf')).read_text()
-    
+    use_sim_time = LaunchConfiguration('use_sim_time', default=True)
     webots = WebotsLauncher(
         world=os.path.join(package_dir, 'worlds', 'crazyflie.wbt')
     )
@@ -39,10 +39,33 @@ def generate_launch_description():
         }],
     )
 
+    vicon_node = Node(
+        package='uned_vicon_sim', 
+        executable='vicon_webots',
+        name='vicon_webots',
+        output='screen',
+        #arguments=['--ros-args', '--log-level', 'info'],
+        parameters=[
+            {'use_sim_time': use_sim_time},
+            {"agents": 'dron01'},
+        ]
+    )
+
+    rqt_node = Node(
+        package='rqt_gui',
+        executable='rqt_gui',
+        name='interface',
+        parameters=[
+            {'use_sim_time': use_sim_time},
+        ],
+    )
+
     return LaunchDescription([
         webots,
         dron01_driver,
+        vicon_node,
         robot_state_publisher,
+        rqt_node,
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(
                 target_action=webots,

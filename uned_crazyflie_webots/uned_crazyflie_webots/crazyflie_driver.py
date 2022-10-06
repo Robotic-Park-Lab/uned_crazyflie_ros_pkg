@@ -5,7 +5,7 @@ from rclpy.node import Node
 from rclpy.time import Time
 from threading import Timer
 
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from geometry_msgs.msg import Twist, Pose
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
@@ -21,7 +21,7 @@ sys.path.append('/home/kiko/Code/crazyflie-firmware')
 import cffirmware
 
 class PIDController():
-    def __init__(self, Kp, Ki, Kd, Td, Nd, UpperLimit, LowerLimit):
+    def __init__(self, Kp, Ki, Kd, Td, Nd, UpperLimit, LowerLimit, ai, co):
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
@@ -32,6 +32,13 @@ class PIDController():
         self.integral = 0
         self.derivative = 0
         self.error = [0.0, 0.0]
+        self.trigger_ai = ai
+        self.trigger_co = co
+        self.trigger_last_signal = 0.0
+        self.noise = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.past_time = 0.0
+        self.last_value = 0.0
+        self.th = 0.0
 
     def update(self, dt):
         P = self.Kp * self.error[0]
@@ -49,8 +56,39 @@ class PIDController():
             # self.integral = self.integral - (out-out_i) * sqrt(self.Kp/self.Ki)
         
         self.error[1] = self.error[0]
+
+        self.last_value = out
         
         return out
+
+    def eval_threshold(self, signal, ref):
+        # Noise (Cn)
+        mean = signal/len(self.noise)
+        for i in range(0,len(self.noise)-2):
+            self.noise[i] = self.noise[i+1]
+            mean += self.noise[i]/len(self.noise)
+        
+        self.noise[len(self.noise)-1] = signal
+
+        trigger_cn = 0.0
+        for i in range(0,len(self.noise)-1):
+            if abs(self.noise[i]-mean) > trigger_cn:
+                trigger_cn = self.noise[i]-mean
+        trigger_cn = 0.0
+        # a
+        a = self.trigger_ai * abs(signal - ref)
+        if a > self.trigger_ai:
+            a = self.trigger_ai
+
+        # Threshold
+        self.th = self.trigger_co + a + trigger_cn
+        self.inc = abs(abs(ref-signal) - self.trigger_last_signal) 
+        # Delta Error
+        if (self.inc >= abs(self.th)):
+            self.trigger_last_signal = abs(ref-signal)
+            return True
+
+        return False
 
         
 class CrazyflieWebotsDriver:
@@ -105,22 +143,23 @@ class CrazyflieWebotsDriver:
         self.first_y_global = 0.0
 
         ## Intialize Controllers
+        self.continuous = False
         # Position
-        self.z_controller = PIDController(2.0, 0.50, 0.0, 0.0, 100, 1.0, -1.0)
-        self.x_controller = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
-        self.y_controller = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0)
+        self.z_controller = PIDController(2.0, 0.50, 0.0, 0.0, 100, 1.0, -1.0, 0.2, 0.01)
+        self.x_controller = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0, 0.2, 0.01)
+        self.y_controller = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0, 0.2, 0.01)
         # Velocity
-        self.w_controller = PIDController( 25.0, 15.0, 0.0, 0.0, 100, 26.0, -16.0)
-        self.u_controller = PIDController( 15.0,  0.5, 0.0, 0.0, 100, 30.0, -30.0)
-        self.v_controller = PIDController(-15.0,  0.5, 0.0, 0.0, 100, 30.0, -30.0)
+        self.w_controller = PIDController( 25.0, 15.0, 0.0, 0.0, 100, 26.0, -16.0, 0.2, 0.01)
+        self.u_controller = PIDController( 15.0,  0.5, 0.0, 0.0, 100, 30.0, -30.0, 0.2, 0.01)
+        self.v_controller = PIDController(-15.0,  0.5, 0.0, 0.0, 100, 30.0, -30.0, 0.2, 0.01)
         # Attitude
-        self.pitch_controller = PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0)
-        self.roll_controller  = PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0)
-        self.yaw_controller   = PIDController(6.0, 1.0, 0.349, 0.0581, 100, 400.0, -400.0)
+        self.pitch_controller = PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0, 0.2, 0.01)
+        self.roll_controller  = PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0, 0.2, 0.01)
+        self.yaw_controller   = PIDController(6.0, 1.0, 0.349, 0.0581, 100, 400.0, -400.0, 0.2, 0.01)
         # Rate
-        self.dpitch_controller = PIDController(250.0, 500.0,   2.5, 0.01, 100, 0.0, -0.0)
-        self.droll_controller  = PIDController(250.0, 500.0,   2.5, 0.01, 100, 0.0, -0.0)
-        self.dyaw_controller   = PIDController(120.0,  16.698, 0.0, 0.00, 100, 0.0, -0.0)
+        self.dpitch_controller = PIDController(250.0, 500.0,   2.5, 0.01, 100, 0.0, -0.0, 0.2, 0.01)
+        self.droll_controller  = PIDController(250.0, 500.0,   2.5, 0.01, 100, 0.0, -0.0, 0.2, 0.01)
+        self.dyaw_controller   = PIDController(120.0,  16.698, 0.0, 0.00, 100, 0.0, -0.0, 0.2, 0.01)
 
         cffirmware.controllerPidInit()
 
@@ -132,6 +171,9 @@ class CrazyflieWebotsDriver:
         self.node.create_subscription(Pose, self.name_value+'/goal_pose', self.goal_pose_callback, 1)
         self.node.create_subscription(String, self.name_value+'/order', self.order_callback, 1)
         self.laser_publisher = self.node.create_publisher(LaserScan, self.name_value+'/scan', 10)
+        self.event_x_ = self.node.create_publisher(Bool, self.name_value+'/event_x', 10)
+        self.event_y_ = self.node.create_publisher(Bool, self.name_value+'/event_y', 10)
+        self.event_z_ = self.node.create_publisher(Bool, self.name_value+'/event_z', 10)
         self.odom_publisher = self.node.create_publisher(Odometry, self.name_value+'/odom', 10)
 
         self.tfbr = TransformBroadcaster(self.node)
@@ -142,7 +184,6 @@ class CrazyflieWebotsDriver:
     def publish_laserscan_data(self):
 
         front_range = self.range_front.getValue()/1000.0
-
         back_range = self.range_back.getValue()/1000.0
         left_range = self.range_left.getValue()/1000.0
         right_range = self.range_right.getValue()/1000.0
@@ -225,6 +266,8 @@ class CrazyflieWebotsDriver:
             self.past_y_global = self.gps.getValues()[1]
             self.target_pose.position.y = self.gps.getValues()[1]
             self.first_pos = False
+            self.z_controller.past_time = self.past_time
+            self.w_controller.past_time = self.past_time
             self.take_off()
 
         ## Get measurements
@@ -243,17 +286,53 @@ class CrazyflieWebotsDriver:
 
         ## Position Controller
         # Z Controller
-        self.z_controller.error[0] = (self.target_pose.position.z - z_global)
-        w_ref = self.z_controller.update(dt)
-        self.w_controller.error[0] = (w_ref - vz_global)
-        cmd_thrust = self.w_controller.update(dt)*1000+38000
+        if self.z_controller.eval_threshold(z_global, self.target_pose.position.z) or self.continuous:
+            self.z_controller.error[0] = (self.target_pose.position.z - z_global)
+            dtz = self.robot.getTime() - self.z_controller.past_time
+            w_ref = self.z_controller.update(dtz)
+            self.z_controller.past_time = self.robot.getTime()
+            msg = Bool()
+            msg.data = True
+            self.event_z_.publish(msg)
+            # self.node.get_logger().warn('Z Controller Event. Th: %.4f; Inc: %.4f; dT: %.4f' % (self.z_controller.th, self.z_controller.inc, dtz))
+        else:
+            w_ref = self.z_controller.last_value
+        if self.w_controller.eval_threshold(vz_global, w_ref) or self.continuous:
+            self.w_controller.error[0] = (w_ref - vz_global)
+            dtw = self.robot.getTime() - self.w_controller.past_time
+            cmd_thrust = self.w_controller.update(dtw)*1000+38000
+            self.w_controller.past_time = self.robot.getTime()
+            # self.node.get_logger().info('W Controller Event.V: %.2f; dT: %.3f' % (cmd_thrust, dtw))
+        else:
+            cmd_thrust = self.w_controller.last_value*1000+38000
+        
         # X-Y Controller
-        self.x_controller.error[0] = self.target_pose.position.x - x_global
-        u_ref = self.x_controller.update(dt)
-        self.target_twist.linear.x = u_ref
+        if self.x_controller.eval_threshold(x_global, self.target_pose.position.x) or self.continuous:
+            self.x_controller.error[0] = self.target_pose.position.x - x_global
+            dtx = self.robot.getTime() - self.x_controller.past_time
+            u_ref = self.x_controller.update(dtx)
+            self.x_controller.past_time = self.robot.getTime()
+            msg = Bool()
+            msg.data = True
+            self.event_x_.publish(msg)
+            self.node.get_logger().warn('X Controller Event. Th: %.4f; Inc: %.4f; dT: %.4f' % (self.x_controller.th, self.x_controller.inc, dtx))
+            # self.target_twist.linear.x = u_ref
+        else:
+            u_ref = self.x_controller.last_value
+        '''
+        if self.y_controller.eval_threshold(y_global, self.target_pose.position.y) or self.continuous:
+            self.y_controller.error[0] = self.target_pose.position.y - y_global
+            dty = self.robot.getTime() - self.y_controller.past_time
+            v_ref = self.y_controller.update(dty)
+            self.y_controller.past_time = self.robot.getTime()
+            msg = Bool()
+            msg.data = True
+            self.event_y_.publish(msg)
+        else:
+            v_ref = self.y_controller.last_value
+        '''
         self.y_controller.error[0] = self.target_pose.position.y - y_global
         v_ref = self.y_controller.update(dt)
-        self.target_twist.linear.y = v_ref
         # dX-dY Controller
         self.u_controller.error[0] =  (u_ref - vx_global)*cos(yaw) + (v_ref - vy_global)*sin(yaw)
         self.v_controller.error[0] = -(u_ref - vx_global)*sin(yaw) + (v_ref - vy_global)*cos(yaw)

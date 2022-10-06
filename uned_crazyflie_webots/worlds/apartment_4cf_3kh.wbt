@@ -6,8 +6,8 @@ WorldInfo {
   basicTimeStep 16
 }
 Viewpoint {
-  orientation -0.42771745788929055 0.3247600314935339 0.8435571694681054 2.197882768297313
-  position -1.4604592451351859 -6.641647109807285 6.065198632540694
+  orientation -0.245925 0.261751 0.933278 1.78068
+  position -1.29197 -5.62548 2.62253
   exposure 0.5
 }
 TexturedBackground {
@@ -1115,6 +1115,7 @@ Robot {
   }
   controller "<extern>"
 }
+
 Robot {
   translation -1.2 -2.5 0.015
   selfCollision FALSE
@@ -1366,9 +1367,8 @@ Robot {
   controller "<extern>"
 }
 
-
 Khepera4 {
-  translation -1.91 -2.11 0.0
+  translation -1.61 -2.0 0.0
   rotation 1.78221999971205e-05 -2.346349999620905e-06 0.9999999998384319 0.261803
   name "khepera01"
   controller "<extern>"
@@ -1382,7 +1382,7 @@ Khepera4 {
 }
 
 Khepera4 {
-  translation -1.91 -1.8 0.0
+  translation -2.31 -1.9 0.0
   rotation 1.78221999971205e-05 -2.346349999620905e-06 0.9999999998384319 0.261803
   name "khepera03"
   controller "<extern>"

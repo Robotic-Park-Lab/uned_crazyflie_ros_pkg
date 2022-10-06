@@ -101,6 +101,25 @@ def generate_launch_description():
         ],
     )
 
+    robot01_task = Node(
+        package='uned_kheperaiv_task',
+        executable='shape_based_formation_control',
+        output='screen',
+        name='formation_control',
+        namespace='khepera01',
+        remappings=[
+            ('/khepera01/khepera02/pose', '/khepera02/pose'),
+            ('/khepera01/khepera03/pose', '/khepera03/pose'),
+            ('/khepera01/swarm/status', '/swarm/status')],
+        parameters=[
+            {'use_sim_time': use_sim_time},
+            {"config_file": 'path'},
+            {"agents": 'khepera02, khepera03'},
+            {"agent_x": '0.4, 0.5'},
+            {"agent_y": '0.0, 0.5'},
+        ]
+    )
+
     robot02_driver = Node(
         package='webots_ros2_driver',
         executable='driver',
@@ -114,6 +133,25 @@ def generate_launch_description():
         ],
     )
 
+    robot02_task = Node(
+        package='uned_kheperaiv_task',
+        executable='shape_based_formation_control',
+        output='screen',
+        name='formation_control',
+        namespace='khepera02',
+        remappings=[
+            ('/khepera02/khepera01/pose', '/khepera01/pose'),
+            ('/khepera02/khepera03/pose', '/khepera03/pose'),
+            ('/khepera02/swarm/status', '/swarm/status')],
+        parameters=[
+            {'use_sim_time': use_sim_time},
+            {"config_file": 'path'},
+            {"agents": 'khepera01, khepera03'},
+            {"agent_x": '-0.4, 0.1'},
+            {"agent_y": ' 0.0, 0.5'},
+        ]
+    )
+
     robot03_driver = Node(
         package='webots_ros2_driver',
         executable='driver',
@@ -125,6 +163,25 @@ def generate_launch_description():
              'use_sim_time': use_sim_time,
              'set_robot_state_publisher': True},
         ],
+    )
+
+    robot03_task = Node(
+        package='uned_kheperaiv_task',
+        executable='shape_based_formation_control',
+        output='screen',
+        name='formation_control',
+        namespace='khepera03',
+        remappings=[
+            ('/khepera03/khepera02/pose', '/khepera02/pose'),
+            ('/khepera03/khepera01/pose', '/khepera01/pose'),
+            ('/khepera03/swarm/status', '/swarm/status')],
+        parameters=[
+            {'use_sim_time': use_sim_time},
+            {"config_file": 'path'},
+            {"agents": 'khepera01, khepera02'},
+            {"agent_x": '-0.5, -0.1'},
+            {"agent_y": '-0.5, -0.5'},
+        ]
     )
 
     robot_state_publisher = Node(
@@ -145,6 +202,18 @@ def generate_launch_description():
         ],
     )
 
+    vicon_node = Node(
+        package='uned_vicon_sim', 
+        executable='vicon_webots',
+        name='vicon_webots',
+        output='screen',
+        #arguments=['--ros-args', '--log-level', 'info'],
+        parameters=[
+            {'use_sim_time': use_sim_time},
+            {"agents": 'dron01, dron02, dron03, dron04, khepera01, khepera02, khepera03'},
+        ]
+    )
+
 
     return LaunchDescription([
         webots,
@@ -154,10 +223,14 @@ def generate_launch_description():
         dron04_driver,
         swarm_node,
         robot01_driver,
+        robot01_task,
         robot02_driver,
+        robot02_task,
         robot03_driver,
+        robot03_task,
         robot_state_publisher,
         rqt_node,
+        vicon_node,
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(
                 target_action=webots,
