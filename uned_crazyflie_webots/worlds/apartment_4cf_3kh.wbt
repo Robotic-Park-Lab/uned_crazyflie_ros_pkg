@@ -1368,7 +1368,7 @@ Robot {
 }
 
 Khepera4 {
-  translation -1.61 -2.0 0.0
+  translation -1.61 -1.8 0.0
   rotation 1.78221999971205e-05 -2.346349999620905e-06 0.9999999998384319 0.261803
   name "khepera01"
   controller "<extern>"

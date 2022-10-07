@@ -315,11 +315,11 @@ class CrazyflieWebotsDriver:
             msg = Bool()
             msg.data = True
             self.event_x_.publish(msg)
-            self.node.get_logger().warn('X Controller Event. Th: %.4f; Inc: %.4f; dT: %.4f' % (self.x_controller.th, self.x_controller.inc, dtx))
+            # self.node.get_logger().warn('X Controller Event. Th: %.4f; Inc: %.4f; dT: %.4f' % (self.x_controller.th, self.x_controller.inc, dtx))
             # self.target_twist.linear.x = u_ref
         else:
             u_ref = self.x_controller.last_value
-        '''
+
         if self.y_controller.eval_threshold(y_global, self.target_pose.position.y) or self.continuous:
             self.y_controller.error[0] = self.target_pose.position.y - y_global
             dty = self.robot.getTime() - self.y_controller.past_time
@@ -330,13 +330,17 @@ class CrazyflieWebotsDriver:
             self.event_y_.publish(msg)
         else:
             v_ref = self.y_controller.last_value
-        '''
-        self.y_controller.error[0] = self.target_pose.position.y - y_global
-        v_ref = self.y_controller.update(dt)
+
         # dX-dY Controller
-        self.u_controller.error[0] =  (u_ref - vx_global)*cos(yaw) + (v_ref - vy_global)*sin(yaw)
+        if self.u_controller.eval_threshold(vx_global, u_ref) or self.continuous:
+            self.u_controller.error[0] =  (u_ref - vx_global)*cos(yaw) + (v_ref - vy_global)*sin(yaw)
+            dtu = self.robot.getTime() - self.u_controller.past_time
+            pitch_ref = self.u_controller.update(dtu)
+            self.u_controller.past_time = self.robot.getTime()
+        else:
+            pitch_ref = self.u_controller.last_value
+
         self.v_controller.error[0] = -(u_ref - vx_global)*sin(yaw) + (v_ref - vy_global)*cos(yaw)
-        pitch_ref = self.u_controller.update(dt)
         roll_ref = self.v_controller.update(dt)
         
         ## Attitude Controller
