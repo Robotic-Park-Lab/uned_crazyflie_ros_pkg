@@ -143,7 +143,7 @@ class CrazyflieWebotsDriver:
         self.first_y_global = 0.0
 
         ## Intialize Controllers
-        self.continuous = False
+        self.continuous = True
         # Position
         self.z_controller = PIDController(2.0, 0.50, 0.0, 0.0, 100, 1.0, -1.0, 0.2, 0.01)
         self.x_controller = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0, 0.2, 0.01)
@@ -176,7 +176,7 @@ class CrazyflieWebotsDriver:
         self.event_z_ = self.node.create_publisher(Bool, self.name_value+'/event_z', 10)
         self.odom_publisher = self.node.create_publisher(Odometry, self.name_value+'/odom', 10)
 
-        self.tfbr = TransformBroadcaster(self.node)
+        # self.tfbr = TransformBroadcaster(self.node)
 
         self.msg_laser = LaserScan()
         self.node.create_timer(1.0/30.0, self.publish_laserscan_data)
@@ -385,7 +385,7 @@ class CrazyflieWebotsDriver:
         t_base.transform.translation.z = 0.0
         t_base.transform.rotation.z = sin(yaw / 2)
         t_base.transform.rotation.w = cos(yaw / 2)
-        self.tfbr.sendTransform(t_base)
+        # self.tfbr.sendTransform(t_base)
 
         ## Put measurement in state estimate
         # TODO replace these with a EKF python binding

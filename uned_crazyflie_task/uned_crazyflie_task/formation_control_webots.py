@@ -3,7 +3,7 @@ import time
 import rclpy
 from threading import Timer
 import numpy as np
-import math
+from math import atan2, cos, sin, sqrt
 
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -24,24 +24,25 @@ dron = list()
 publisher = set()
 
 class Agent():
-    def __init__(self, parent, x, y, z, id):
+    def __init__(self, parent, id, x = None, y = None, z = None, d = None):
         self.id = id
-        self.x = x
-        self.y = y
-        self.z = z
+        if d == None:
+            self.x = x
+            self.y = y
+            self.z = z
+        else:
+            self.d = d
         self.pose = Pose()
         self.parent = parent
         # self.parent.get_logger().info('Agent: %s' % self.str_())
-        self.sub_pose = self.parent.create_subscription(PointStamped, self.id + '/gps', self.gtpose_callback, 10)
+        self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.gtpose_callback, 10)
 
     def str_(self):
         return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
                 ' Y: ' + str(self.y)+' Z: ' + str(self.z))
 
     def gtpose_callback(self, msg):
-        self.pose.position.x = msg.point.x
-        self.pose.position.y = msg.point.y
-        self.pose.position.z = msg.point.z
+        self.pose = msg
 
 
 ############################
@@ -76,7 +77,7 @@ class WebotsAgent:
         self.publisher_pose = self.parent.create_publisher(Pose, self.id + '/goal_pose', 10)
         self.publisher_order = self.parent.create_publisher(String, self.id + '/order', 10)
         # Subscription
-        self.sub_pose = self.parent.create_subscription(PointStamped, self.id + '/gps', self.newpose_callback, 10)
+        self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
         
         self._is_flying = False
         self.init_pose = False
@@ -94,9 +95,7 @@ class WebotsAgent:
         self.publisher_order.publish(msg)
 
     def newpose_callback(self, msg):
-        self.pose.position.x = msg.point.x
-        self.pose.position.y = msg.point.y
-        self.pose.position.z = msg.point.z
+        self.pose = msg
 
     def goalpose_callback(self, msg):
         self.publisher_pose.publish(msg)
@@ -114,6 +113,7 @@ class CFSwarmWebotsDriver(Node):
         self.declare_parameter('cf_num_uri', 1)
         self.declare_parameter('cf_controller_type', 'EventBased')
         self.declare_parameter('cf_control_mode', 'HighLevel')
+        self.declare_parameter('cf_constrains_mode', 'vector_distance')
         self.declare_parameter('cf_role', 'leader, follower')
 
         self.publisher_status = self.create_publisher(String,'swarm/status', 10)
@@ -122,12 +122,8 @@ class CFSwarmWebotsDriver(Node):
         self.sub_goal_pose = self.create_subscription(Pose, 'swarm/goal_pose', self.goalpose_callback, 10)
 
         self.timer_task = self.create_timer(0.02, self.task_manager)
-        # self.timer_iterate = self.create_timer(1, self.iterate)
         self.initialize()
 
-    def iterate(self):
-        self.get_logger().info('Formation Control::iterate() ok.')
-    
     def initialize(self):
         self.get_logger().info('Formation Control::inicialize() ok.')
         # Read Params
@@ -139,6 +135,7 @@ class CFSwarmWebotsDriver(Node):
         controller_type = aux.split(', ')
         aux = self.get_parameter('cf_role').get_parameter_value().string_value
         roles = aux.split(', ')
+        self.constrains = self.get_parameter('cf_constrains_mode').get_parameter_value().string_value
         aux = self.get_parameter('cf_relationship').get_parameter_value().string_value
         self.relationship = aux.split(', ')
 
@@ -156,10 +153,15 @@ class CFSwarmWebotsDriver(Node):
             for rel in self.relationship:
                 if(rel.find(cf.id) == 0):
                     aux = rel.split('_')
-                    aux_str = aux[1]
-                    rel_pose = aux[2].split('/')
-                    robot = Agent(self, float(rel_pose[0]), float(rel_pose[1]), float(rel_pose[2]), aux[1])
-                    self.get_logger().info('CF: %s: Agent: %s \tx: %s \ty: %s \tz: %s' % (aux[0], aux[1], rel_pose[0], rel_pose[1], rel_pose[2]))
+                    print(self.constrains)
+                    if self.constrains == 'distance_hover':
+                        rel_pose = aux[2]
+                        robot = Agent(self, aux[1], d = float(rel_pose))
+                        self.get_logger().info('CF: %s: Agent: %s \td: %s' % (aux[0], aux[1], rel_pose))
+                    else:
+                        rel_pose = aux[2].split('/')
+                        robot = Agent(self, aux[1], x = float(rel_pose[0]), y = float(rel_pose[1]), z = float(rel_pose[2]))
+                        self.get_logger().info('CF: %s: Agent: %s \tx: %s \ty: %s \tz: %s' % (aux[0], aux[1], rel_pose[0], rel_pose[1], rel_pose[2]))
                     cf.agent_list.append(robot)
 
             dron.append(cf)
@@ -202,7 +204,7 @@ class CFSwarmWebotsDriver(Node):
 
     def task_manager(self):
         for cf in dron:
-            if cf.ready:
+            if cf.ready and len(cf.agent_list)>0:
                 # self.get_logger().warn('ID: %s, X:%f' % (cf.id, cf.pose.position.x))
                 msg = Pose()
                 msg.position.x = cf.pose.position.x
@@ -210,33 +212,41 @@ class CFSwarmWebotsDriver(Node):
                 msg.position.z = cf.pose.position.z
                 dx = dy = dz = 0
                 for agent in cf.agent_list:
-                    # self.get_logger().info('Agent: %s. X: %f' % (agent.id,agent.pose.position.x))
-                    dx += agent.x - (cf.pose.position.x - agent.pose.position.x)
-                    dy += agent.y - (cf.pose.position.y - agent.pose.position.y)
-                    dz += agent.z - (cf.pose.position.z - agent.pose.position.z)
-                cf.integral_x += (1/(len(cf.agent_list)*1.0))*cf.x_error*0.02
-                cf.integral_y += (1/(len(cf.agent_list)*1.0))*cf.y_error*0.02
-                cf.integral_z += (1/(len(cf.agent_list)*5.0))*cf.z_error*0.02
-                msg.position.x += (dx/len(cf.agent_list))# + cf.integral_x
-                msg.position.y += (dy/len(cf.agent_list))# + cf.integral_y
-                msg.position.z += (dz/len(cf.agent_list))# + cf.integral_z
-                cf.x_error = dx
-                cf.y_error = dy
-                cf.z_error = dz
+                    error_x = cf.pose.position.x - agent.pose.position.x
+                    error_y = cf.pose.position.y - agent.pose.position.y
+                    error_z = cf.pose.position.z - agent.pose.position.z
+                    if self.constrains == 'distance_hover':
+                        alfa = atan2(error_y, error_x)
+                        beta = atan2(error_z, error_x)
+                        distance = sqrt(pow(error_x,2)+pow(error_y,2)+pow(error_z,2))
+                        dx += (agent.d - distance) * cos(alfa)
+                        dy += (agent.d - distance) * sin(alfa)
+                        dz += (agent.d - distance) * sin(beta)
+                        distance = sqrt(pow(error_x,2)+pow(error_y,2)+pow(error_z,2))
+                        self.get_logger().debug('Agent ID: %s D: %.3f dx: %.2f dy: %.2f dz: %.2f' % (agent.id, distance, dx, dy, dz))
+                    else:
+                        dx += agent.x - error_x
+                        dy += agent.y - error_y
+                        dz += agent.z - error_z
+                msg.position.x += (dx/len(cf.agent_list))
+                msg.position.y += (dy/len(cf.agent_list))
+                msg.position.z += (dz/len(cf.agent_list))
                 
                 # self.get_logger().info('dx: %f dy: %f dz: %f' % (dx, dy, dz))
                 # self.get_logger().error('DX: %f DY: %f DZ: %f' % (msg.position.x, msg.position.y, msg.position.z))
 
+                # TO-DO: Integral Term
+                # cf.integral_x += (1/(len(cf.agent_list)*1.0))*cf.x_error*0.02
+                # cf.integral_y += (1/(len(cf.agent_list)*1.0))*cf.y_error*0.02
+                # cf.integral_z += (1/(len(cf.agent_list)*5.0))*cf.z_error*0.02
+                # msg.position.x += (dx/len(cf.agent_list)) + cf.integral_x
+                # msg.position.y += (dy/len(cf.agent_list)) + cf.integral_y
+                # msg.position.z += (dz/len(cf.agent_list)) + cf.integral_z
+                # cf.x_error = dx
+                # cf.y_error = dy
+                # cf.z_error = dz
+
                 cf.goalpose_callback(msg)
-                '''
-                print('Z: %s' % str(msg.position.z))
-                print('dz: %s' % str(dz/len(cf.agent_list)))
-                print('zdebug: %s' % str(cf.pose.position.z - agent.pose.position.z))
-                cf.cmd_motion_.x = msg.position.x
-                cf.cmd_motion_.y = msg.position.y
-                cf.cmd_motion_.z = msg.position.z
-                cf.cmd_motion_.send_pose_data_(cf.scf.cf, relative_pose=True)
-                '''
 
 
 def main(args=None):
