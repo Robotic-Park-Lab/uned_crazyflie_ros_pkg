@@ -143,7 +143,7 @@ class CrazyflieWebotsDriver:
         self.first_y_global = 0.0
 
         ## Intialize Controllers
-        self.continuous = True
+        self.continuous = False
         # Position
         self.z_controller = PIDController(2.0, 0.50, 0.0, 0.0, 100, 1.0, -1.0, 0.2, 0.01)
         self.x_controller = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0, 0.2, 0.01)

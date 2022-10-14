@@ -1,3 +1,4 @@
+from dis import dis
 import logging
 import time
 import rclpy
@@ -6,11 +7,7 @@ import numpy as np
 from math import atan2, cos, sin, sqrt
 
 from rclpy.node import Node
-from std_msgs.msg import String
-from std_msgs.msg import UInt16
-from std_msgs.msg import UInt16MultiArray
-from std_msgs.msg import Float64
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import String, Float64MultiArray, UInt16, UInt16MultiArray, Float64
 from geometry_msgs.msg import Pose, Twist, PointStamped
 from uned_crazyflie_config.msg import StateEstimate
 from uned_crazyflie_config.msg import Pidcontroller
@@ -24,7 +21,7 @@ dron = list()
 publisher = set()
 
 class Agent():
-    def __init__(self, parent, id, x = None, y = None, z = None, d = None):
+    def __init__(self, parent, cf, id, x = None, y = None, z = None, d = None):
         self.id = id
         if d == None:
             self.x = x
@@ -36,6 +33,7 @@ class Agent():
         self.parent = parent
         # self.parent.get_logger().info('Agent: %s' % self.str_())
         self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.gtpose_callback, 10)
+        self.publisher_data = self.parent.create_publisher(Float64, cf.id + '/' + self.id + '/data', 10)
 
     def str_(self):
         return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
@@ -156,11 +154,11 @@ class CFSwarmWebotsDriver(Node):
                     print(self.constrains)
                     if self.constrains == 'distance_hover':
                         rel_pose = aux[2]
-                        robot = Agent(self, aux[1], d = float(rel_pose))
+                        robot = Agent(self, cf, aux[1], d = float(rel_pose))
                         self.get_logger().info('CF: %s: Agent: %s \td: %s' % (aux[0], aux[1], rel_pose))
                     else:
                         rel_pose = aux[2].split('/')
-                        robot = Agent(self, aux[1], x = float(rel_pose[0]), y = float(rel_pose[1]), z = float(rel_pose[2]))
+                        robot = Agent(self, cf, aux[1], x = float(rel_pose[0]), y = float(rel_pose[1]), z = float(rel_pose[2]))
                         self.get_logger().info('CF: %s: Agent: %s \tx: %s \ty: %s \tz: %s' % (aux[0], aux[1], rel_pose[0], rel_pose[1], rel_pose[2]))
                     cf.agent_list.append(robot)
 
@@ -204,8 +202,8 @@ class CFSwarmWebotsDriver(Node):
 
     def task_manager(self):
         for cf in dron:
+            distance_list = []
             if cf.ready and len(cf.agent_list)>0:
-                # self.get_logger().warn('ID: %s, X:%f' % (cf.id, cf.pose.position.x))
                 msg = Pose()
                 msg.position.x = cf.pose.position.x
                 msg.position.y = cf.pose.position.y
@@ -222,8 +220,10 @@ class CFSwarmWebotsDriver(Node):
                         dx += (agent.d - distance) * cos(alfa)
                         dy += (agent.d - distance) * sin(alfa)
                         dz += (agent.d - distance) * sin(beta)
-                        distance = sqrt(pow(error_x,2)+pow(error_y,2)+pow(error_z,2))
-                        self.get_logger().debug('Agent ID: %s D: %.3f dx: %.2f dy: %.2f dz: %.2f' % (agent.id, distance, dx, dy, dz))
+                        msg_data = Float64()
+                        msg_data.data = agent.d - distance
+                        agent.publisher_data.publish(msg_data)
+                        # self.get_logger().warn('Main: %s ID: %s D: %.3f dx: %.2f dy: %.2f dz: %.2f' % (cf.id, agent.id, distance, dx, dy, dz))
                     else:
                         dx += agent.x - error_x
                         dy += agent.y - error_y
@@ -231,6 +231,7 @@ class CFSwarmWebotsDriver(Node):
                 msg.position.x += (dx/len(cf.agent_list))
                 msg.position.y += (dy/len(cf.agent_list))
                 msg.position.z += (dz/len(cf.agent_list))
+
                 
                 # self.get_logger().info('dx: %f dy: %f dz: %f' % (dx, dy, dz))
                 # self.get_logger().error('DX: %f DY: %f DZ: %f' % (msg.position.x, msg.position.y, msg.position.z))
@@ -247,6 +248,8 @@ class CFSwarmWebotsDriver(Node):
                 # cf.z_error = dz
 
                 cf.goalpose_callback(msg)
+
+                
 
 
 def main(args=None):
