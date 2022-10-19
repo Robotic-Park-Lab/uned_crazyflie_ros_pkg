@@ -6,7 +6,7 @@ from rclpy.time import Time
 from threading import Timer
 
 from std_msgs.msg import String, Bool
-from geometry_msgs.msg import Twist, Pose
+from geometry_msgs.msg import Twist, Pose, PoseStamped
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 
@@ -176,7 +176,7 @@ class CrazyflieWebotsDriver:
         self.event_z_ = self.node.create_publisher(Bool, self.name_value+'/event_z', 10)
         self.odom_publisher = self.node.create_publisher(Odometry, self.name_value+'/odom', 10)
 
-        # self.tfbr = TransformBroadcaster(self.node)
+        self.tfbr = TransformBroadcaster(self.node)
 
         self.msg_laser = LaserScan()
         self.node.create_timer(1.0/30.0, self.publish_laserscan_data)
@@ -367,10 +367,10 @@ class CrazyflieWebotsDriver:
         odom = Odometry()
         odom.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
         odom.header.frame_id = 'odom'
-        odom.child_frame_id = 'base_link'
+        odom.child_frame_id = 'world'
         odom.pose.pose.position.x = x_global
         odom.pose.pose.position.y = y_global
-        odom.pose.pose.position.z = 0.0
+        odom.pose.pose.position.z = z_global
         odom.pose.pose.orientation.z = sin(yaw / 2)
         odom.pose.pose.orientation.w = cos(yaw / 2)
 
@@ -382,10 +382,10 @@ class CrazyflieWebotsDriver:
         t_base.child_frame_id = 'base_link'
         t_base.transform.translation.x = x_global
         t_base.transform.translation.y = y_global
-        t_base.transform.translation.z = 0.0
+        t_base.transform.translation.z = z_global
         t_base.transform.rotation.z = sin(yaw / 2)
         t_base.transform.rotation.w = cos(yaw / 2)
-        # self.tfbr.sendTransform(t_base)
+        self.tfbr.sendTransform(t_base)
 
         ## Put measurement in state estimate
         # TODO replace these with a EKF python binding

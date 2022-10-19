@@ -8,7 +8,8 @@ from math import atan2, cos, sin, sqrt
 
 from rclpy.node import Node
 from std_msgs.msg import String, Float64MultiArray, UInt16, UInt16MultiArray, Float64
-from geometry_msgs.msg import Pose, Twist, PointStamped
+from geometry_msgs.msg import Pose, Twist, PointStamped, Point
+from visualization_msgs.msg import Marker
 from uned_crazyflie_config.msg import StateEstimate
 from uned_crazyflie_config.msg import Pidcontroller
 from uned_crazyflie_config.srv import AddTwoInts
@@ -31,9 +32,11 @@ class Agent():
             self.d = d
         self.pose = Pose()
         self.parent = parent
+        self.cf = cf
         # self.parent.get_logger().info('Agent: %s' % self.str_())
         self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.gtpose_callback, 10)
         self.publisher_data = self.parent.create_publisher(Float64, cf.id + '/' + self.id + '/data', 10)
+        self.publisher_marker = self.parent.create_publisher(Marker, cf.id + '/' + self.id + '/marker', 10)
 
     def str_(self):
         return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
@@ -41,6 +44,42 @@ class Agent():
 
     def gtpose_callback(self, msg):
         self.pose = msg
+
+        line = Marker()
+        p0 = Point()
+        p0.x = self.cf.pose.position.x
+        p0.y = self.cf.pose.position.y
+        p0.z = self.cf.pose.position.z
+
+        p1 = Point()
+        p1.x = self.pose.position.x
+        p1.y = self.pose.position.y
+        p1.z = self.pose.position.z
+
+        line.header.frame_id = 'world'
+        line.header.stamp = self.parent.get_clock().now().to_msg()
+        line.id = 1
+        line.type = 5
+        line.action = 0
+        line.scale.x = 0.05
+        line.scale.y = 0.05
+        line.scale.z = 0.05
+        if self.cf.id == 'dron01':
+            line.color.r = 1.0
+        if self.cf.id == 'dron02':
+            line.color.g = 1.0
+        if self.cf.id == 'dron03':
+            line.color.b = 1.0
+        if self.cf.id == 'dron04':
+            line.color.r = 0.8
+            line.color.g = 0.8
+        line.color.a = 1.0
+        line.points.append(p1)
+        line.points.append(p0)
+
+        self.publisher_marker.publish(line)
+
+
 
 
 ############################
