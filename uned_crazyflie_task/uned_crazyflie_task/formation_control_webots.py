@@ -10,77 +10,12 @@ from rclpy.node import Node
 from std_msgs.msg import String, Float64MultiArray, UInt16, UInt16MultiArray, Float64
 from geometry_msgs.msg import Pose, Twist, PointStamped, Point
 from visualization_msgs.msg import Marker
-from uned_crazyflie_config.msg import StateEstimate
-from uned_crazyflie_config.msg import Pidcontroller
-from uned_crazyflie_config.srv import AddTwoInts
-from vicon_receiver.msg import Position
 
 
 # List of URIs, comment the one you do not want to fly
 uris = set()
 dron = list()
 publisher = set()
-
-class Agent():
-    def __init__(self, parent, cf, id, x = None, y = None, z = None, d = None):
-        self.id = id
-        if d == None:
-            self.x = x
-            self.y = y
-            self.z = z
-        else:
-            self.d = d
-        self.pose = Pose()
-        self.parent = parent
-        self.cf = cf
-        # self.parent.get_logger().info('Agent: %s' % self.str_())
-        self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.gtpose_callback, 10)
-        self.publisher_data = self.parent.create_publisher(Float64, cf.id + '/' + self.id + '/data', 10)
-        self.publisher_marker = self.parent.create_publisher(Marker, cf.id + '/' + self.id + '/marker', 10)
-
-    def str_(self):
-        return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
-                ' Y: ' + str(self.y)+' Z: ' + str(self.z))
-
-    def gtpose_callback(self, msg):
-        self.pose = msg
-
-        line = Marker()
-        p0 = Point()
-        p0.x = self.cf.pose.position.x
-        p0.y = self.cf.pose.position.y
-        p0.z = self.cf.pose.position.z
-
-        p1 = Point()
-        p1.x = self.pose.position.x
-        p1.y = self.pose.position.y
-        p1.z = self.pose.position.z
-
-        line.header.frame_id = 'world'
-        line.header.stamp = self.parent.get_clock().now().to_msg()
-        line.id = 1
-        line.type = 5
-        line.action = 0
-        line.scale.x = 0.05
-        line.scale.y = 0.05
-        line.scale.z = 0.05
-        if self.cf.id == 'dron01':
-            line.color.r = 1.0
-        if self.cf.id == 'dron02':
-            line.color.g = 1.0
-        if self.cf.id == 'dron03':
-            line.color.b = 1.0
-        if self.cf.id == 'dron04':
-            line.color.r = 0.8
-            line.color.g = 0.8
-        line.color.a = 1.0
-        line.points.append(p1)
-        line.points.append(p0)
-
-        self.publisher_marker.publish(line)
-
-
-
 
 ############################
 ## CF Swarm Logging Class ##
@@ -146,7 +81,6 @@ class CFSwarmWebotsDriver(Node):
         super().__init__('swarm_driver')
         # Params
         self.declare_parameter('cf_first_uri', 'radio://0/80/2M/E7E7E7E701')
-        self.declare_parameter('cf_relationship', 'dron01_dron02_-0.3/-0.3/0.2')
         self.declare_parameter('cf_num_uri', 1)
         self.declare_parameter('cf_controller_type', 'EventBased')
         self.declare_parameter('cf_control_mode', 'HighLevel')
@@ -173,8 +107,6 @@ class CFSwarmWebotsDriver(Node):
         aux = self.get_parameter('cf_role').get_parameter_value().string_value
         roles = aux.split(', ')
         self.constrains = self.get_parameter('cf_constrains_mode').get_parameter_value().string_value
-        aux = self.get_parameter('cf_relationship').get_parameter_value().string_value
-        self.relationship = aux.split(', ')
 
         # Define crazyflie URIs
         id_address = dron_id[-10:]
@@ -187,21 +119,8 @@ class CFSwarmWebotsDriver(Node):
             
             cf = WebotsAgent(self, cf_str, control_mode[i-1], controller_type[i-1], roles[i-1])
 
-            for rel in self.relationship:
-                if(rel.find(cf.id) == 0):
-                    aux = rel.split('_')
-                    print(self.constrains)
-                    if self.constrains == 'distance_hover':
-                        rel_pose = aux[2]
-                        robot = Agent(self, cf, aux[1], d = float(rel_pose))
-                        self.get_logger().info('CF: %s: Agent: %s \td: %s' % (aux[0], aux[1], rel_pose))
-                    else:
-                        rel_pose = aux[2].split('/')
-                        robot = Agent(self, cf, aux[1], x = float(rel_pose[0]), y = float(rel_pose[1]), z = float(rel_pose[2]))
-                        self.get_logger().info('CF: %s: Agent: %s \tx: %s \ty: %s \tz: %s' % (aux[0], aux[1], rel_pose[0], rel_pose[1], rel_pose[2]))
-                    cf.agent_list.append(robot)
-
             dron.append(cf)
+        self.get_logger().info('Formation Control::inicialized.')
 
     def order_callback(self, msg):
         self.get_logger().info('SWARM::Order: "%s"' % msg.data)
@@ -209,14 +128,13 @@ class CFSwarmWebotsDriver(Node):
             for cf in dron:
                 cf.order_callback(msg)
                 cf.take_off()
-            self.swarm_ready = Timer(2, self._ready)
-            self.swarm_ready.start()
-        elif msg.data == 'land':
+        elif msg.data == 'distance_formation_run':
             for cf in dron:
                 cf.order_callback(msg)
-                cf.descent()
+            self._ready()
         else:
-            self.get_logger().error('SWARM::"%s": Unknown order' % msg.data)
+            for cf in dron:
+                cf.order_callback(msg)
 
     def _ready(self):
         self.get_logger().info('SWARM::Ready!!')
@@ -241,8 +159,7 @@ class CFSwarmWebotsDriver(Node):
 
     def task_manager(self):
         for cf in dron:
-            distance_list = []
-            if cf.ready and len(cf.agent_list)>0:
+            if cf.ready and len(cf.agent_list)>0 and False:
                 msg = Pose()
                 msg.position.x = cf.pose.position.x
                 msg.position.y = cf.pose.position.y
@@ -253,23 +170,29 @@ class CFSwarmWebotsDriver(Node):
                     error_y = cf.pose.position.y - agent.pose.position.y
                     error_z = cf.pose.position.z - agent.pose.position.z
                     if self.constrains == 'distance_hover':
-                        alfa = atan2(error_y, error_x)
-                        beta = atan2(error_z, error_x)
-                        distance = sqrt(pow(error_x,2)+pow(error_y,2)+pow(error_z,2))
-                        dx += (agent.d - distance) * cos(alfa)
-                        dy += (agent.d - distance) * sin(alfa)
-                        dz += (agent.d - distance) * sin(beta)
+                        # alfa = atan2(error_y, error_x)
+                        # beta = atan2(error_z, error_x)
+                        distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
+                        dx += (pow(agent.d,2) - distance) * error_x
+                        dy += (pow(agent.d,2) - distance) * error_y
+                        dz += (pow(agent.d,2) - distance) * error_z
                         msg_data = Float64()
-                        msg_data.data = agent.d - distance
+                        msg_data.data = agent.d - sqrt(distance)
                         agent.publisher_data.publish(msg_data)
                         # self.get_logger().warn('Main: %s ID: %s D: %.3f dx: %.2f dy: %.2f dz: %.2f' % (cf.id, agent.id, distance, dx, dy, dz))
                     else:
                         dx += agent.x - error_x
                         dy += agent.y - error_y
                         dz += agent.z - error_z
-                msg.position.x += (dx/len(cf.agent_list))
-                msg.position.y += (dy/len(cf.agent_list))
-                msg.position.z += (dz/len(cf.agent_list))
+                msg.position.x += (dx/4)
+                msg.position.y += (dy/4)
+                msg.position.z += (dz/4)
+                
+                if msg.position.z < 0.5:
+                    msg.position.z = 0.5
+
+                if msg.position.z > 1.2:
+                    msg.position.z = 1.2
 
                 
                 # self.get_logger().info('dx: %f dy: %f dz: %f' % (dx, dy, dz))

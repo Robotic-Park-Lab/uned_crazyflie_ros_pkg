@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
-<robot name="crazyflie">
+<robot name="dron01">
     <webots>
         <plugin type="uned_crazyflie_webots.crazyflie_driver.CrazyflieWebotsDriver">
-            <relationship>relationship_def</relationship>
+            <relationship>khepera01_1.2,khepera02_1.2,dron02_0.6,dron03_0.6,dron04_0.8485</relationship>
         </plugin>
     </webots>
 </robot>
