@@ -15,6 +15,7 @@ from math import cos, sin, degrees, radians, pi
 import sys
 import tf_transformations
 from tf2_ros import TransformBroadcaster
+import tf_transformations
 from geometry_msgs.msg import TransformStamped
 
 # Change this path to your crazyflie-firmware folder
@@ -56,7 +57,7 @@ class Agent():
 
         distance = sqrt(pow(p0.x-p1.x,2)+pow(p0.y-p1.y,2)+pow(p0.z-p1.z,2))
     
-        line.header.frame_id = 'world'
+        line.header.frame_id = 'map'
         line.header.stamp = self.parent.node.get_clock().now().to_msg()
         line.id = 1
         line.type = 5
@@ -238,6 +239,7 @@ class CrazyflieWebotsDriver:
         self.event_y_ = self.node.create_publisher(Bool, self.name_value+'/event_y', 10)
         self.event_z_ = self.node.create_publisher(Bool, self.name_value+'/event_z', 10)
         self.odom_publisher = self.node.create_publisher(Odometry, self.name_value+'/odom', 10)
+        self.pose_publisher = self.node.create_publisher(Pose, self.name_value+'/local_pose', 10)
 
         self.tfbr = TransformBroadcaster(self.node)
 
@@ -384,29 +386,33 @@ class CrazyflieWebotsDriver:
         z_global = self.gps.getValues()[2]
         vz_global = (z_global - self.past_z_global)/dt
 
-        q_base = tf_transformations.quaternion_from_euler(0, 0, yaw)
+        q = tf_transformations.quaternion_from_euler(roll, pitch, yaw)
         odom = Odometry()
         odom.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
-        odom.header.frame_id = 'odom'
-        odom.child_frame_id = 'world'
+        odom.header.frame_id = self.name_value+'/odom'
+        odom.child_frame_id = 'map'
         odom.pose.pose.position.x = x_global
         odom.pose.pose.position.y = y_global
         odom.pose.pose.position.z = z_global
-        odom.pose.pose.orientation.z = sin(yaw / 2)
-        odom.pose.pose.orientation.w = cos(yaw / 2)
-
+        odom.pose.pose.orientation.x = q[0]
+        odom.pose.pose.orientation.y = q[1]
+        odom.pose.pose.orientation.z = q[2]
+        odom.pose.pose.orientation.w = q[3]
         self.gt_pose = odom.pose.pose
-        self.odom_publisher.publish(odom)
+        self.pose_publisher.publish(self.gt_pose)
+        # self.odom_publisher.publish(odom)
 
         t_base = TransformStamped()
         t_base.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
-        t_base.header.frame_id = 'odom'
-        t_base.child_frame_id = 'base_link'
+        t_base.header.frame_id = 'map'
+        t_base.child_frame_id = self.name_value
         t_base.transform.translation.x = x_global
         t_base.transform.translation.y = y_global
         t_base.transform.translation.z = z_global
-        t_base.transform.rotation.z = sin(yaw / 2)
-        t_base.transform.rotation.w = cos(yaw / 2)
+        t_base.transform.rotation.x = q[0]
+        t_base.transform.rotation.y = q[1]
+        t_base.transform.rotation.z = q[2]
+        t_base.transform.rotation.w = q[3]
         self.tfbr.sendTransform(t_base)
 
         ## Formation Control
@@ -477,7 +483,7 @@ class CrazyflieWebotsDriver:
         self.roll_controller.error[0] = roll_ref - degrees(roll)
         droll_ref = self.roll_controller.update(dt)
         # Yaw Controller
-        self.yaw_controller.error[0] = 0.0 - degrees(yaw)
+        self.yaw_controller.error[0] = 0.0 # - degrees(yaw)
         dyaw_ref = self.yaw_controller.update(dt)
 
         ## Rate Controller

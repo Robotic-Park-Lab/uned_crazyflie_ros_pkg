@@ -631,7 +631,6 @@ class CFSwarmDriver(Node):
         print('All Connected')
         self.cf_swarm.parallel_safe(self.update_params)
 
-
     def update_params(self, scf):
         # Disable Flow deck to EKF
         # scf.cf.param.set_value('motion.disable', '1')

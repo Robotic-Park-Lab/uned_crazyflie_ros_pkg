@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<robot name="dron01">
+<robot name="dron04">
     <webots>
         <plugin type="uned_crazyflie_webots.crazyflie_driver.CrazyflieWebotsDriver">
             <relationship>dron01_0.8485,dron02_0.6,dron03_0.6,turtlebot01_1.1,khepera03_1.2</relationship>
