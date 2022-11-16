@@ -1,4 +1,3 @@
-from cv2 import sqrt
 import rclpy
 import os
 from rclpy.node import Node
@@ -11,7 +10,7 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from visualization_msgs.msg import Marker
 
-from math import cos, sin, degrees, radians, pi
+from math import cos, sin, degrees, radians, pi, sqrt
 import sys
 import tf_transformations
 from tf2_ros import TransformBroadcaster
@@ -34,7 +33,7 @@ class Agent():
         self.pose = Pose()
         self.parent = parent
         self.sub_pose = self.parent.node.create_subscription(Pose, self.id + '/pose', self.gtpose_callback, 10)
-        self.publisher_data = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/data', 10)
+        self.publisher_data_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/data', 10)
         self.publisher_marker = self.parent.node.create_publisher(Marker, self.parent.name_value + '/' + self.id + '/marker', 10)
 
     def str_(self):
@@ -66,10 +65,10 @@ class Agent():
         line.scale.y = 0.01
         line.scale.z = 0.01
 
-        if abs(distance[0] - self.d) > 0.05:
+        if abs(distance - self.d) > 0.05:
             line.color.r = 1.0
         else:
-            if abs(distance[0] - self.d) > 0.025:
+            if abs(distance - self.d) > 0.025:
                 line.color.r = 1.0
                 line.color.g = 0.5
             else:
@@ -204,6 +203,9 @@ class CrazyflieWebotsDriver:
         self.first_x_global = 0.0
         self.first_y_global = 0.0
 
+        self.centroid_leader = False
+        self.leader_cmd = Pose()
+
         ## Intialize Controllers
         self.continuous = True
         # Position
@@ -230,10 +232,13 @@ class CrazyflieWebotsDriver:
         rclpy.init(args=None)
         self.node = rclpy.create_node(self.name_value+'_driver')
         self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.name_value)))
+        # Subscription
         self.node.create_subscription(Twist, self.name_value+'/cmd_vel', self.cmd_vel_callback, 1)
         self.node.create_subscription(Pose, self.name_value+'/goal_pose', self.goal_pose_callback, 1)
         self.node.create_subscription(String, self.name_value+'/order', self.order_callback, 1)
         self.node.create_subscription(String, 'swarm/order', self.order_callback, 1)
+        self.node.create_subscription(Pose, 'swarm/goal_pose', self.swarm_goalpose_callback, 1)
+        # Publisher
         self.laser_publisher = self.node.create_publisher(LaserScan, self.name_value+'/scan', 10)
         self.event_x_ = self.node.create_publisher(Bool, self.name_value+'/event_x', 10)
         self.event_y_ = self.node.create_publisher(Bool, self.name_value+'/event_y', 10)
@@ -244,7 +249,7 @@ class CrazyflieWebotsDriver:
         self.tfbr = TransformBroadcaster(self.node)
 
         self.msg_laser = LaserScan()
-        self.node.create_timer(1.0/30.0, self.publish_laserscan_data)
+        self.node.create_timer(0.2, self.publish_laserscan_data)
 
         # Init relationship
         relationship = properties.get("relationship").split(',')
@@ -261,6 +266,8 @@ class CrazyflieWebotsDriver:
         back_range = self.range_back.getValue()/1000.0
         left_range = self.range_left.getValue()/1000.0
         right_range = self.range_right.getValue()/1000.0
+        # self.node.get_logger().warn('1: %.3f 2: %.3f 3: %.3f 4: %.3f' % (front_range , back_range, left_range, right_range))
+
         max_range = 3.49
         if front_range > max_range:
             front_range = float("inf")
@@ -273,7 +280,7 @@ class CrazyflieWebotsDriver:
 
         self.msg_laser = LaserScan()
         self.msg_laser.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
-        self.msg_laser.header.frame_id = 'base_link'
+        self.msg_laser.header.frame_id = self.name_value
         self.msg_laser.range_min = 0.1
         self.msg_laser.range_max = max_range
         self.msg_laser.ranges = [back_range, left_range, front_range, right_range, back_range]
@@ -307,6 +314,13 @@ class CrazyflieWebotsDriver:
         else:
             self.node.get_logger().error('"%s": Unknown order' % (msg.data))
     
+    def swarm_goalpose_callback(self, msg):
+        if not self.centroid_leader:
+            self.node.get_logger().info('Formation Control::Leader-> Centroid.')
+        self.centroid_leader = True
+        self.leader_cmd = msg
+        
+
     def take_off(self):
         self.node.get_logger().info('Take Off...')
         self.target_pose.position.z = 1.0
@@ -336,7 +350,6 @@ class CrazyflieWebotsDriver:
         self.target_pose.position.z = 0.0
 
     def distance_formation_control(self):
-        self.node.get_logger().debug('In progress ...')
         dx = dy = dz = 0
         for agent in self.agent_list:
             error_x = self.gt_pose.position.x - agent.pose.position.x
@@ -347,9 +360,18 @@ class CrazyflieWebotsDriver:
             dy += (pow(agent.d,2) - distance) * error_y
             dz += (pow(agent.d,2) - distance) * error_z
 
+            msg_data = Float64()
+            msg_data.data = agent.d - sqrt(distance)
+            agent.publisher_data_.publish(msg_data)
+
         self.target_pose.position.x = self.gt_pose.position.x + dx/4
         self.target_pose.position.y = self.gt_pose.position.y + dy/4
         self.target_pose.position.z = self.gt_pose.position.z + dz/4
+
+        if self.centroid_leader:
+            self.target_pose.position.x += self.leader_cmd.position.x
+            self.target_pose.position.y += self.leader_cmd.position.y
+            self.target_pose.position.z += self.leader_cmd.position.z
 
         if self.target_pose.position.z < 0.5:
             self.target_pose.position.z = 0.5
@@ -387,20 +409,15 @@ class CrazyflieWebotsDriver:
         vz_global = (z_global - self.past_z_global)/dt
 
         q = tf_transformations.quaternion_from_euler(roll, pitch, yaw)
-        odom = Odometry()
-        odom.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
-        odom.header.frame_id = self.name_value+'/odom'
-        odom.child_frame_id = 'map'
-        odom.pose.pose.position.x = x_global
-        odom.pose.pose.position.y = y_global
-        odom.pose.pose.position.z = z_global
-        odom.pose.pose.orientation.x = q[0]
-        odom.pose.pose.orientation.y = q[1]
-        odom.pose.pose.orientation.z = q[2]
-        odom.pose.pose.orientation.w = q[3]
-        self.gt_pose = odom.pose.pose
+        self.gt_pose = Pose()
+        self.gt_pose.position.x = x_global
+        self.gt_pose.position.y = y_global
+        self.gt_pose.position.z = z_global
+        self.gt_pose.orientation.x = q[0]
+        self.gt_pose.orientation.y = q[1]
+        self.gt_pose.orientation.z = q[2]
+        self.gt_pose.orientation.w = q[3]
         self.pose_publisher.publish(self.gt_pose)
-        # self.odom_publisher.publish(odom)
 
         t_base = TransformStamped()
         t_base.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
