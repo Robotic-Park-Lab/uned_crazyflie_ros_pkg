@@ -6,7 +6,8 @@ from launch import LaunchDescription
 from ament_index_python.packages import get_package_share_directory
 from launch.substitutions import LaunchConfiguration
 from launch.actions import SetEnvironmentVariable
-from webots_ros2_driver.webots_launcher import WebotsLauncher
+from webots_ros2_driver.webots_launcher import WebotsLauncher, Ros2SupervisorLauncher
+from webots_ros2_driver.utils import controller_url_prefix
 
 
 def generate_launch_description():
@@ -14,15 +15,18 @@ def generate_launch_description():
     robot_description = pathlib.Path(os.path.join(package_dir, 'resource', 'crazyflie.urdf')).read_text()
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
     webots = WebotsLauncher(
-        world=os.path.join(package_dir, 'worlds', 'crazyflie.wbt')
+        world=os.path.join(package_dir, 'worlds', 'crazyflie_test.wbt')
     )
+
+    ros2_supervisor = Ros2SupervisorLauncher()
 
     dron01_driver = Node(
         package='webots_ros2_driver',
         executable='driver',
         output='screen',
         name='dron01',
-        additional_env={'WEBOTS_ROBOT_NAME': 'dron01'},
+        additional_env={'WEBOTS_CONTROLLER_URL': controller_url_prefix() + 'dron01',
+                        'WEBOTS_ROBOT_NAME': 'dron01'},
         parameters=[
             {'robot_description': robot_description,
              'use_sim_time': True,
@@ -63,6 +67,7 @@ def generate_launch_description():
     return LaunchDescription([
         webots,
         dron01_driver,
+        ros2_supervisor,
         vicon_node,
         robot_state_publisher,
         rqt_node,

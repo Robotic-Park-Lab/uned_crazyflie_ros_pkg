@@ -18,8 +18,8 @@ import tf_transformations
 from geometry_msgs.msg import TransformStamped
 
 # Change this path to your crazyflie-firmware folder
-sys.path.append('/home/kiko/Code/crazyflie-firmware')
-import cffirmware
+# sys.path.append('/home/kiko/Code/crazyflie-firmware')
+# import cffirmware
 
 class Agent():
     def __init__(self, parent, id, x = None, y = None, z = None, d = None):
@@ -154,6 +154,7 @@ class PIDController():
 class CrazyflieWebotsDriver:
     def init(self, webots_node, properties):
         
+        print('Test')
         self.robot = webots_node.robot
         timestep = int(self.robot.getBasicTimeStep())
 
@@ -225,7 +226,7 @@ class CrazyflieWebotsDriver:
         self.droll_controller  = PIDController(250.0, 500.0,   2.5, 0.01, 100, 0.0, -0.0, 0.1, 0.01)
         self.dyaw_controller   = PIDController(120.0,  16.698, 0.0, 0.00, 100, 0.0, -0.0, 0.1, 0.01)
 
-        cffirmware.controllerPidInit()
+        # cffirmware.controllerPidInit()
 
         # Init ROS2 Node
         self.name_value = os.environ['WEBOTS_ROBOT_NAME']
@@ -255,10 +256,11 @@ class CrazyflieWebotsDriver:
         relationship = properties.get("relationship").split(',')
         self.agent_list = list()
         for rel in relationship:
-            aux = rel.split('_')
-            robot = Agent(self, aux[0], d = float(aux[1]))
-            self.node.get_logger().info('CF: %s: Agent: %s \td: %s' % (self.name_value, aux[0], aux[1]))
-            self.agent_list.append(robot)
+            if rel != 'Null':
+                aux = rel.split('_')
+                robot = Agent(self, aux[0], d = float(aux[1]))
+                self.node.get_logger().info('CF: %s: Agent: %s \td: %s' % (self.name_value, aux[0], aux[1]))
+                self.agent_list.append(robot)
 
     def publish_laserscan_data(self):
 
@@ -320,7 +322,6 @@ class CrazyflieWebotsDriver:
         self.centroid_leader = True
         self.leader_cmd = msg
         
-
     def take_off(self):
         self.node.get_logger().info('Take Off...')
         self.target_pose.position.z = 1.0
@@ -448,6 +449,8 @@ class CrazyflieWebotsDriver:
             # self.node.get_logger().warn('Z Controller Event. Th: %.4f; Inc: %.4f; dT: %.4f' % (self.z_controller.th, self.z_controller.inc, dtz))
         else:
             w_ref = self.z_controller.last_value
+        # self.node.get_logger().debug('Z: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.z, z_global, w_ref))
+
         if self.w_controller.eval_threshold(vz_global, w_ref) or True: # self.continuous:
             self.w_controller.error[0] = (w_ref - vz_global)
             dtw = self.robot.getTime() - self.w_controller.past_time
@@ -456,7 +459,8 @@ class CrazyflieWebotsDriver:
             # self.node.get_logger().info('W Controller Event.V: %.2f; dT: %.3f' % (cmd_thrust, dtw))
         else:
             cmd_thrust = self.w_controller.last_value*1000+38000
-        
+        # self.node.get_logger().debug('dZ: R: %.2f P: %.2f C: %.2f' % (w_ref, vz_global, cmd_thrust))
+
         # X-Y Controller
         if self.x_controller.eval_threshold(x_global, self.target_pose.position.x) or self.continuous:
             self.x_controller.error[0] = self.target_pose.position.x - x_global
@@ -468,6 +472,7 @@ class CrazyflieWebotsDriver:
             self.event_x_.publish(msg)
         else:
             u_ref = self.x_controller.last_value
+        # self.node.get_logger().debug('X: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.x, x_global, u_ref))
 
         if self.y_controller.eval_threshold(y_global, self.target_pose.position.y) or self.continuous:
             self.y_controller.error[0] = self.target_pose.position.y - y_global
@@ -479,6 +484,7 @@ class CrazyflieWebotsDriver:
             self.event_y_.publish(msg)
         else:
             v_ref = self.y_controller.last_value
+        # self.node.get_logger().debug('Y: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.y, y_global, v_ref))
 
         # dX-dY Controller
         if self.u_controller.eval_threshold(vx_global, u_ref) or True: # self.continuous:

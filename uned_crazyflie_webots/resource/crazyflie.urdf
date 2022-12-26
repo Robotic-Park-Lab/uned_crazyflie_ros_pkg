@@ -2,7 +2,7 @@
 <robot name="crazyflie">
     <webots>
         <plugin type="uned_crazyflie_webots.crazyflie_driver.CrazyflieWebotsDriver">
-            <relationship>relationship_def</relationship>
+            <relationship>Null</relationship>
         </plugin>
     </webots>
 </robot>
