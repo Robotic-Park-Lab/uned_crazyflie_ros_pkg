@@ -32,7 +32,7 @@ class Agent():
             self.d = d
         self.pose = Pose()
         self.parent = parent
-        self.sub_pose = self.parent.node.create_subscription(Pose, self.id + '/pose', self.gtpose_callback, 10)
+        self.sub_pose = self.parent.node.create_subscription(Pose, self.id + '/local_pose', self.gtpose_callback, 10)
         self.publisher_data_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/data', 10)
         self.publisher_marker = self.parent.node.create_publisher(Marker, self.parent.name_value + '/' + self.id + '/marker', 10)
 
@@ -53,6 +53,7 @@ class Agent():
         p1.x = self.pose.position.x
         p1.y = self.pose.position.y
         p1.z = self.pose.position.z
+        self.parent.distance_formation_bool = True
 
         distance = sqrt(pow(p0.x-p1.x,2)+pow(p0.y-p1.y,2)+pow(p0.z-p1.z,2))
     
@@ -154,7 +155,6 @@ class PIDController():
 class CrazyflieWebotsDriver:
     def init(self, webots_node, properties):
         
-        print('Test')
         self.robot = webots_node.robot
         timestep = int(self.robot.getBasicTimeStep())
 
@@ -418,6 +418,7 @@ class CrazyflieWebotsDriver:
         self.gt_pose.orientation.y = q[1]
         self.gt_pose.orientation.z = q[2]
         self.gt_pose.orientation.w = q[3]
+        # TO-DO: Add here trigger
         self.pose_publisher.publish(self.gt_pose)
 
         t_base = TransformStamped()
@@ -436,6 +437,7 @@ class CrazyflieWebotsDriver:
         ## Formation Control
         if self.distance_formation_bool:
             self.distance_formation_control()
+            self.distance_formation_bool = False
         ## Position Controller
         # Z Controller
         if self.z_controller.eval_threshold(z_global, self.target_pose.position.z) or self.continuous:
@@ -446,20 +448,20 @@ class CrazyflieWebotsDriver:
             msg = Bool()
             msg.data = True
             self.event_z_.publish(msg)
-            # self.node.get_logger().warn('Z Controller Event. Th: %.4f; Inc: %.4f; dT: %.4f' % (self.z_controller.th, self.z_controller.inc, dtz))
+            self.node.get_logger().debug('Z Controller Event. Th: %.4f; Inc: %.4f; dT: %.4f' % (self.z_controller.th, self.z_controller.inc, dtz))
         else:
             w_ref = self.z_controller.last_value
-        # self.node.get_logger().debug('Z: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.z, z_global, w_ref))
+        self.node.get_logger().debug('Z: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.z, z_global, w_ref))
 
-        if self.w_controller.eval_threshold(vz_global, w_ref) or True: # self.continuous:
+        if self.w_controller.eval_threshold(vz_global, w_ref) or self.continuous:
             self.w_controller.error[0] = (w_ref - vz_global)
             dtw = self.robot.getTime() - self.w_controller.past_time
             cmd_thrust = self.w_controller.update(dtw)*1000+38000
             self.w_controller.past_time = self.robot.getTime()
-            # self.node.get_logger().info('W Controller Event.V: %.2f; dT: %.3f' % (cmd_thrust, dtw))
+            self.node.get_logger().debug('W Controller Event.V: %.2f; dT: %.3f' % (cmd_thrust, dtw))
         else:
             cmd_thrust = self.w_controller.last_value*1000+38000
-        # self.node.get_logger().debug('dZ: R: %.2f P: %.2f C: %.2f' % (w_ref, vz_global, cmd_thrust))
+        self.node.get_logger().debug('dZ: R: %.2f P: %.2f C: %.2f' % (w_ref, vz_global, cmd_thrust))
 
         # X-Y Controller
         if self.x_controller.eval_threshold(x_global, self.target_pose.position.x) or self.continuous:
@@ -472,7 +474,7 @@ class CrazyflieWebotsDriver:
             self.event_x_.publish(msg)
         else:
             u_ref = self.x_controller.last_value
-        # self.node.get_logger().debug('X: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.x, x_global, u_ref))
+        self.node.get_logger().debug('X: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.x, x_global, u_ref))
 
         if self.y_controller.eval_threshold(y_global, self.target_pose.position.y) or self.continuous:
             self.y_controller.error[0] = self.target_pose.position.y - y_global
@@ -484,10 +486,10 @@ class CrazyflieWebotsDriver:
             self.event_y_.publish(msg)
         else:
             v_ref = self.y_controller.last_value
-        # self.node.get_logger().debug('Y: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.y, y_global, v_ref))
+        self.node.get_logger().debug('Y: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.y, y_global, v_ref))
 
         # dX-dY Controller
-        if self.u_controller.eval_threshold(vx_global, u_ref) or True: # self.continuous:
+        if self.u_controller.eval_threshold(vx_global, u_ref) or self.continuous:
             self.u_controller.error[0] =  (u_ref - vx_global)*cos(yaw) + (v_ref - vy_global)*sin(yaw)
             dtu = self.robot.getTime() - self.u_controller.past_time
             pitch_ref = self.u_controller.update(dtu)
@@ -527,7 +529,7 @@ class CrazyflieWebotsDriver:
 
         self.node.get_logger().debug('Thrust(C): %.2f CRoll(C): %.2f CPitch(C): %.2f CYaw(C): %.2f' % (cmd_thrust, delta_roll, delta_pitch, delta_yaw))
 
-        scaling = 1000 ##Todo, remove necessity of this scaling (SI units in firmware)
+        scaling = 1000 ## TO-DO, remove necessity of this scaling (SI units in firmware)
         self.m1_motor.setVelocity(-motorPower_m1/scaling)
         self.m2_motor.setVelocity(motorPower_m2/scaling)
         self.m3_motor.setVelocity(-motorPower_m3/scaling)

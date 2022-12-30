@@ -15,7 +15,7 @@ def generate_launch_description():
     robot_description = pathlib.Path(os.path.join(package_dir, 'resource', 'crazyflie.urdf')).read_text()
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
     webots = WebotsLauncher(
-        world=os.path.join(package_dir, 'worlds', 'crazyflie_test.wbt')
+        world=os.path.join(package_dir, 'worlds', 'RoboticPark_1cf.wbt')
     )
 
     ros2_supervisor = Ros2SupervisorLauncher()
@@ -66,8 +66,8 @@ def generate_launch_description():
 
     return LaunchDescription([
         webots,
-        dron01_driver,
         ros2_supervisor,
+        dron01_driver,
         vicon_node,
         robot_state_publisher,
         rqt_node,

@@ -8,14 +8,16 @@ Repositorio con los paquetes de ROS2 y ficheros de configuración para la teleop
 - **uned_crazyflie_controllers**. Paquete de ROS2. Contiene los nodos de control en función de las diferentes arquitecturas de control: _PID Periódico_ y _PID Basado en Eventos_.
 - **uned_crazyflie_driver**. Paquete de ROS2. Contiene los nodos para la comunicación con los crazyflies a través de la librería cflib: _crazyflie_driver_ y _swarm_driver_.
 - **uned_crazyflie_gui**. Paquete de ROS2. Contiene la interfaz de gráfica para el manejo del robot individual. _En desarrollo_
+- **uned_crazyflie_task**.
 - **uned_crazyflie_test_ros2**. Paquete de ROS2. Paquete en el que se incluyen todos los elementos destinados a realizar comprobaciones en el sistema de forma rápida. Por ejemplo los nodos _talker_ y _listener_ que se desarrollan al empezar a usar ROS, que en este caso se usan para comprobar la correcta comunicación entre máquinas en el sistema distribuido.
+- **uned_crazyflie_webots**.
 
 ## Instalación :book:
-El objetivo es implementar una versión del sistema en [ROS2 Galactic Geochelone](https://docs.ros.org/en/galactic/index.html) y [Windows 10](https://www.microsoft.com/es-es/windows/features?activetab=NewPopular) para poder ejecutar todo el sistema sobre el PC (Windows) en el que está instalado el sistema de posicionamiento de [Vicon](TO-DO:enlace).
+El objetivo es implementar una versión del sistema en [ROS2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html) y [Windows 10](https://www.microsoft.com/es-es/windows/features?activetab=NewPopular) para poder ejecutar todo el sistema sobre el PC (Windows) en el que está instalado el sistema de posicionamiento de [Vicon](TO-DO:enlace).
 
 ### Pre-requisitos 📋
 ##### ROS2
-Lo primero debe ser tener instalada la correspondiente versión de ROS2 para el sistema operativo del dispositivo. Se recomienda seguir las instrucciones disponibles en la documentación oficial ([Galactic](https://docs.ros.org/en/galactic/Installation/Windows-Install-Binary.html)). 
+Lo primero debe ser tener instalada la correspondiente versión de ROS2 para el sistema operativo del dispositivo. Se recomienda seguir las instrucciones disponibles en la documentación oficial ([Humble](https://docs.ros.org/en/humble/Installation/Windows-Install-Binary.html)). 
 
 ##### Matlab
 TO-DO.
@@ -29,16 +31,16 @@ La configuración del entorno de trabajo para el paquete desarrollado se muestra
 ```
 md \dev_ws\src
 cd \dev_ws\src
-git clone -b ros2-galactic https://github.com/Robotic-Park-Lab/uned_crazyflie_ros_pkg.git
+git clone -b humble-dev https://github.com/Robotic-Park-Lab/uned_crazyflie_ros_pkg.git
 cd ..
 colcon build --merge-install
 ```
 
-### - Ubuntu 20.04
+### - Ubuntu 22.04
 La configuración del entorno de trabajo para el paquete desarrollado se muestra a continuación.
 ```
 cd \path_ws\src
-git clone -b ros2-galactic https://github.com/Robotic-Park-Lab/uned_crazyflie_ros_pkg.git
+git clone -b humble-dev https://github.com/Robotic-Park-Lab/uned_crazyflie_ros_pkg.git
 cd ..
 colcon build --symlink-install
 ```

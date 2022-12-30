@@ -6,7 +6,8 @@ from launch import LaunchDescription
 from ament_index_python.packages import get_package_share_directory
 from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch.actions import SetEnvironmentVariable
-from webots_ros2_driver.webots_launcher import WebotsLauncher
+from webots_ros2_driver.webots_launcher import WebotsLauncher, Ros2SupervisorLauncher
+from webots_ros2_driver.utils import controller_url_prefix
 
 
 def generate_launch_description():
@@ -14,15 +15,18 @@ def generate_launch_description():
     dron_description = pathlib.Path(os.path.join(dron_package_dir, 'resource', 'crazyflie.urdf')).read_text()
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
     webots = WebotsLauncher(
-        world=os.path.join(dron_package_dir, 'worlds', 'apartment_4cf.wbt')
+        world=os.path.join(dron_package_dir, 'worlds', 'RoboticPark_4cf.wbt')
     )
+
+    ros2_supervisor = Ros2SupervisorLauncher()
 
     dron01_driver = Node(
         package='webots_ros2_driver',
         executable='driver',
         output='screen',
         name='dron01',
-        additional_env={'WEBOTS_ROBOT_NAME': 'dron01'},
+        additional_env={'WEBOTS_CONTROLLER_URL': controller_url_prefix() + 'dron01',
+                        'WEBOTS_ROBOT_NAME': 'dron01'},
         parameters=[
             {'robot_description': dron_description,
              'use_sim_time': use_sim_time,
@@ -35,7 +39,8 @@ def generate_launch_description():
         executable='driver',
         output='screen',
         name='dron02',
-        additional_env={'WEBOTS_ROBOT_NAME': 'dron02'},
+        additional_env={'WEBOTS_CONTROLLER_URL': controller_url_prefix() + 'dron02',
+                        'WEBOTS_ROBOT_NAME': 'dron02'},
         parameters=[
             {'robot_description': dron_description,
              'use_sim_time': use_sim_time,
@@ -48,7 +53,8 @@ def generate_launch_description():
         executable='driver',
         output='screen',
         name='dron03',
-        additional_env={'WEBOTS_ROBOT_NAME': 'dron03'},
+        additional_env={'WEBOTS_CONTROLLER_URL': controller_url_prefix() + 'dron03',
+                        'WEBOTS_ROBOT_NAME': 'dron03'},
         parameters=[
             {'robot_description': dron_description,
              'use_sim_time': use_sim_time,
@@ -61,7 +67,8 @@ def generate_launch_description():
         executable='driver',
         output='screen',
         name='dron04',
-        additional_env={'WEBOTS_ROBOT_NAME': 'dron04'},
+        additional_env={'WEBOTS_CONTROLLER_URL': controller_url_prefix() + 'dron04',
+                        'WEBOTS_ROBOT_NAME': 'dron04'},
         parameters=[
             {'robot_description': dron_description,
              'use_sim_time': use_sim_time,
@@ -119,6 +126,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         webots,
+        ros2_supervisor,
         dron01_driver,
         dron02_driver,
         dron03_driver,
