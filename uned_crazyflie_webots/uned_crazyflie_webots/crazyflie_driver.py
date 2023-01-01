@@ -53,7 +53,7 @@ class Agent():
         p1.x = self.pose.position.x
         p1.y = self.pose.position.y
         p1.z = self.pose.position.z
-        self.parent.distance_formation_bool = True
+        # self.parent.distance_formation_bool = True
 
         distance = sqrt(pow(p0.x-p1.x,2)+pow(p0.y-p1.y,2)+pow(p0.z-p1.z,2))
     
@@ -199,6 +199,7 @@ class CrazyflieWebotsDriver:
         self.past_time = self.robot.getTime()
         self._is_flying = False
         self.distance_formation_bool = False
+        self.gt_pose = Pose()
 
         self.first_pos = True
         self.first_x_global = 0.0
@@ -351,6 +352,8 @@ class CrazyflieWebotsDriver:
         self.target_pose.position.z = 0.0
 
     def distance_formation_control(self):
+        self.node.get_logger().info('TEST')
+
         dx = dy = dz = 0
         for agent in self.agent_list:
             error_x = self.gt_pose.position.x - agent.pose.position.x
@@ -410,7 +413,6 @@ class CrazyflieWebotsDriver:
         vz_global = (z_global - self.past_z_global)/dt
 
         q = tf_transformations.quaternion_from_euler(roll, pitch, yaw)
-        self.gt_pose = Pose()
         self.gt_pose.position.x = x_global
         self.gt_pose.position.y = y_global
         self.gt_pose.position.z = z_global
@@ -437,7 +439,7 @@ class CrazyflieWebotsDriver:
         ## Formation Control
         if self.distance_formation_bool:
             self.distance_formation_control()
-            self.distance_formation_bool = False
+            # self.distance_formation_bool = False
         ## Position Controller
         # Z Controller
         if self.z_controller.eval_threshold(z_global, self.target_pose.position.z) or self.continuous:
