@@ -14,7 +14,6 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Twist
 from uned_crazyflie_config.msg import StateEstimate
 from uned_crazyflie_config.msg import Pidcontroller
-from vicon_receiver.msg import Position
 
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
