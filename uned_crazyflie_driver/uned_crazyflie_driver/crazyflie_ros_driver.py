@@ -1,15 +1,17 @@
 from threading import Timer
 import numpy as np
 import rclpy
+from math import sqrt
 
-from std_msgs.msg import String, UInt16MultiArray, Float64MultiArray
-from geometry_msgs.msg import Pose
-from geometry_msgs.msg import Twist
+from std_msgs.msg import String, UInt16MultiArray, Float64MultiArray, Float64
+from geometry_msgs.msg import Pose, TransformStamped, Twist
 from uned_crazyflie_config.msg import Pidcontroller
+from tf2_ros import TransformBroadcaster
 
 from rclpy.node import Node
 from cflib.crazyflie.log import LogConfig
 from uned_crazyflie_driver.agent_class import Agent
+
 
 class CMD_Motion():
     def __init__(self, logger, xy_lim = 10):
@@ -57,7 +59,7 @@ class CMD_Motion():
                 ' Z: ' + str(self.z)+' Yaw: ' + str(self.yaw))
 
     def send_pose_data_(self, cf, relative_pose=False):
-        self.logger.info('Goal Pose: %s' % (self.pose_str_()))
+        self.logger.info('Goal Pose: X: %.4f Y: %.4f Z: %.4f' % (self.x, self.y, self.z))
         # cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
         cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.5)
 
@@ -69,14 +71,31 @@ class CMD_Motion():
 ## CF Logging Class ##
 ######################
 class Crazyflie_ROS2():
-    def __init__(self, scf, link_uri, ctrl_mode, ctrl_type):
+    def __init__(self, scf, link_uri, ctrl_mode, ctrl_type, config):
         self.scf = scf
         self.id = 'dron' + link_uri[-2:]
-        self.node = rclpy.create_node(self.id+'_driver', namespace='/my_ns', use_global_arguments=False)
+        self.config = config
+        # self.node = rclpy.create_node(self.id+'_driver', namespace='/my_ns', use_global_arguments=False)
+        self.node = rclpy.create_node(self.id+'_driver', use_global_arguments=False)
+        self.node.name = self.id
         self.ready = False
+        self.swarm_ready = False
+        self.distance_formation_bool = False
         self.pose = Pose()
-        self.last_pose = Pose()
+        self.home = Pose()
+        if self.config['task']['enable']:
+            self.node.get_logger().info('Task %s' % self.config['task']['type'])
+            self.agent_list = list()
+            aux = self.config['task']['relationship']
+            self.relationship = aux.split(', ')
+            if self.config['task']['type'] == 'distance':
+                self.timer_task = self.node.create_timer(1, self.task_formation_distance)
+                for rel in self.relationship:
+                    aux = rel.split('_')
+                    robot = Agent(self, aux[0], d = float(aux[1]))
+                    self.agent_list.append(robot)
         self.init_pose = False
+        self.tfbr = TransformBroadcaster(self.node)
         self.node.get_logger().info('Connecting to %s' % link_uri)
         self.scf.cf.connected.add_callback(self._connected)
         self.scf.cf.disconnected.add_callback(self._disconnected)
@@ -92,67 +111,145 @@ class Crazyflie_ROS2():
         self.node.get_logger().info('Connected to %s -> Crazyflie %s' % (link_uri, self.scf.cf.link_uri[-2:]))
         # ROS
         # Publisher
-        self.publisher_pose = self.node.create_publisher(Pose, self.id + '/cf_pose', 10)
-        self.publisher_twist = self.node.create_publisher(Twist, self.id + '/cf_twist', 10)
-        self.publisher_data = self.node.create_publisher(UInt16MultiArray, self.id + '/cf_data', 10)
-        self.publisher_data_attitude = self.node.create_publisher(Float64MultiArray, self.id + '/cf_data_attitude', 10)
-        self.publisher_data_rate = self.node.create_publisher(Float64MultiArray, self.id + '/cf_data_rate', 10)
-        self.publisher_data_motor = self.node.create_publisher(Float64MultiArray, self.id + '/cf_data_motor', 10)
-        # Subscription
-        self.sub_order = self.node.create_subscription(String, self.id + '/cf_order', self.order_callback, 10)
-        self.sub_pose = self.node.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
-        self.sub_goal_pose = self.node.create_subscription(Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
-        self.sub_cmd = self.node.create_subscription(Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
-        self.sub_controller = self.node.create_subscription(Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
         # POSE3D
-        self._lg_stab_pose = LogConfig(name='Pose', period_in_ms=50)
-        self._lg_stab_pose.add_variable('stateEstimate.x', 'float')
-        self._lg_stab_pose.add_variable('stateEstimate.y', 'float')
-        self._lg_stab_pose.add_variable('stateEstimate.z', 'float')
-        self._lg_stab_pose.add_variable('stabilizer.roll', 'float')
-        self._lg_stab_pose.add_variable('stabilizer.pitch', 'float')
-        self._lg_stab_pose.add_variable('stabilizer.yaw', 'float')
+        if self.config['local_pose']['enable']:
+            self.publisher_pose = self.node.create_publisher(Pose, self.id + '/local_pose', 10)
+            self._lg_stab_pose = LogConfig(name='Pose', period_in_ms=self.config['local_pose']['T'])
+            self._lg_stab_pose.add_variable('stateEstimate.x', 'float')
+            self._lg_stab_pose.add_variable('stateEstimate.y', 'float')
+            self._lg_stab_pose.add_variable('stateEstimate.z', 'float')
+            self._lg_stab_pose.add_variable('stabilizer.roll', 'float')
+            self._lg_stab_pose.add_variable('stabilizer.pitch', 'float')
+            self._lg_stab_pose.add_variable('stabilizer.yaw', 'float')
+            try:
+                self.scf.cf.log.add_config(self._lg_stab_pose)
+                self._lg_stab_pose.data_received_cb.add_callback(self._stab_log_data)
+                self._lg_stab_pose.error_cb.add_callback(self._stab_log_error)
+
+                self._lg_stab_pose.start()
+            except KeyError as e:
+                self.node.get_logger().info('Could not start log configuration,'
+                    '{} not found in TOC'.format(str(e)))
+            except AttributeError:
+                self.node.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
+
         # TWIST
-        '''
-        self._lg_stab_twist = LogConfig(name='Twist', period_in_ms=10)
-        self._lg_stab_twist.add_variable('gyro.x', 'float')
-        self._lg_stab_twist.add_variable('gyro.y', 'float')
-        self._lg_stab_twist.add_variable('gyro.z', 'float')
-        self._lg_stab_twist.add_variable('stateEstimate.vx', 'float')
-        self._lg_stab_twist.add_variable('stateEstimate.vy', 'float')
-        self._lg_stab_twist.add_variable('stateEstimate.vz', 'float')
-        '''
+        if self.config['local_twist']['enable']:
+            self.publisher_twist = self.node.create_publisher(Twist, self.id + '/local_twist', 10)
+            self._lg_stab_twist = LogConfig(name='Twist', period_in_ms=self.config['local_twist']['T'])
+            self._lg_stab_twist.add_variable('gyro.x', 'float')
+            self._lg_stab_twist.add_variable('gyro.y', 'float')
+            self._lg_stab_twist.add_variable('gyro.z', 'float')
+            self._lg_stab_twist.add_variable('stateEstimate.vx', 'float')
+            self._lg_stab_twist.add_variable('stateEstimate.vy', 'float')
+            self._lg_stab_twist.add_variable('stateEstimate.vz', 'float')
+            try:
+                self.scf.cf.log.add_config(self._lg_stab_twist)
+                self._lg_stab_twist.data_received_cb.add_callback(self._stab_log_data)
+                self._lg_stab_twist.error_cb.add_callback(self._stab_log_error)
+
+                self._lg_stab_twist.start()
+            except KeyError as e:
+                self.node.get_logger().info('Could not start log configuration,'
+                    '{} not found in TOC'.format(str(e)))
+            except AttributeError:
+                self.node.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
+
         # DATA ATTITUDE.
-        self._lg_stab_data_a = LogConfig(name='Data_attitude', period_in_ms=10)
-        self._lg_stab_data_a.add_variable('posCtl.targetVX', 'float')
-        self._lg_stab_data_a.add_variable('posCtl.targetVY', 'float')
-        self._lg_stab_data_a.add_variable('controller.roll', 'float')
-        self._lg_stab_data_a.add_variable('controller.pitch', 'float')
-        self._lg_stab_data_a.add_variable('controller.yaw', 'float')
+        if self.config['data_attitude']['enable']:
+            self.publisher_data_attitude = self.node.create_publisher(Float64MultiArray, self.id + '/data_attitude', 10)
+            self._lg_stab_data_a = LogConfig(name='Data_attitude', period_in_ms=self.config['data_attitude']['T'])
+            self._lg_stab_data_a.add_variable('posCtl.targetVX', 'float')
+            self._lg_stab_data_a.add_variable('posCtl.targetVY', 'float')
+            self._lg_stab_data_a.add_variable('controller.roll', 'float')
+            self._lg_stab_data_a.add_variable('controller.pitch', 'float')
+            self._lg_stab_data_a.add_variable('controller.yaw', 'float')
+            try:
+                self.scf.cf.log.add_config(self._lg_stab_data_a)
+                self._lg_stab_data_a.data_received_cb.add_callback(self._stab_log_data)
+                self._lg_stab_data_a.error_cb.add_callback(self._stab_log_error)
+
+                self._lg_stab_data_a.start()
+            except KeyError as e:
+                self.node.get_logger().info('Could not start log configuration,'
+                    '{} not found in TOC'.format(str(e)))
+            except AttributeError:
+                self.node.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
+
         # DATA RATE.
-        self._lg_stab_data_r = LogConfig(name='Data_rate', period_in_ms=10)
-        self._lg_stab_data_r.add_variable('controller.rollRate', 'float')
-        self._lg_stab_data_r.add_variable('controller.pitchRate', 'float')
-        self._lg_stab_data_r.add_variable('controller.yawRate', 'float')
-        self._lg_stab_data_r.add_variable('controller.cmd_roll', 'float')
-        self._lg_stab_data_r.add_variable('controller.cmd_pitch', 'float')
-        self._lg_stab_data_r.add_variable('controller.cmd_yaw', 'float')
+        if self.config['data_rate']['enable']:
+            self.publisher_data_rate = self.node.create_publisher(Float64MultiArray, self.id + '/data_rate', 10)
+            self._lg_stab_data_r = LogConfig(name='Data_rate', period_in_ms=self.config['data_rate']['T'])
+            self._lg_stab_data_r.add_variable('controller.rollRate', 'float')
+            self._lg_stab_data_r.add_variable('controller.pitchRate', 'float')
+            self._lg_stab_data_r.add_variable('controller.yawRate', 'float')
+            self._lg_stab_data_r.add_variable('controller.cmd_roll', 'float')
+            self._lg_stab_data_r.add_variable('controller.cmd_pitch', 'float')
+            self._lg_stab_data_r.add_variable('controller.cmd_yaw', 'float')
+            try:
+                self.scf.cf.log.add_config(self._lg_stab_data_r)
+                self._lg_stab_data_r.data_received_cb.add_callback(self._stab_log_data)
+                self._lg_stab_data_r.error_cb.add_callback(self._stab_log_error)
+
+                self._lg_stab_data_r.start()
+            except KeyError as e:
+                self.node.get_logger().info('Could not start log configuration,'
+                    '{} not found in TOC'.format(str(e)))
+            except AttributeError:
+                self.node.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
+
         # DATA MOTOR.
-        self._lg_stab_data_m = LogConfig(name='Data_motor', period_in_ms=10)
-        self._lg_stab_data_m.add_variable('posCtl.targetVZ', 'float')
-        self._lg_stab_data_m.add_variable('controller.cmd_thrust', 'float')
-        self._lg_stab_data_m.add_variable('motor.m1', 'float')
-        self._lg_stab_data_m.add_variable('motor.m2', 'float')
-        self._lg_stab_data_m.add_variable('motor.m3', 'float')
-        self._lg_stab_data_m.add_variable('motor.m4', 'float')
-        # Other data.
-        '''
-        self._lg_stab_data = LogConfig(name='Data', period_in_ms=50)
-        self._lg_stab_data.add_variable('posEbCtl.Zcount', 'uint16_t')
-        self._lg_stab_data.add_variable('posEbCtl.Ycount', 'uint16_t')
-        self._lg_stab_data.add_variable('posEbCtl.Xcount', 'uint16_t')
-        self._lg_stab_data.add_variable('pm.vbat', 'FP16')
-        '''
+        if self.config['data_rate']['enable']:
+            self.publisher_data_motor = self.node.create_publisher(Float64MultiArray, self.id + '/data_motor', 10)
+            self._lg_stab_data_m = LogConfig(name='Data_motor', period_in_ms=self.config['data_rate']['T'])
+            self._lg_stab_data_m.add_variable('posCtl.targetVZ', 'float')
+            self._lg_stab_data_m.add_variable('controller.cmd_thrust', 'float')
+            self._lg_stab_data_m.add_variable('motor.m1', 'float')
+            self._lg_stab_data_m.add_variable('motor.m2', 'float')
+            self._lg_stab_data_m.add_variable('motor.m3', 'float')
+            self._lg_stab_data_m.add_variable('motor.m4', 'float')
+            try:
+                self.scf.cf.log.add_config(self._lg_stab_data_m)
+                self._lg_stab_data_m.data_received_cb.add_callback(self._stab_log_data)
+                self._lg_stab_data_m.error_cb.add_callback(self._stab_log_error)
+
+                self._lg_stab_data_m.start()
+            except KeyError as e:
+                self.node.get_logger().info('Could not start log configuration,'
+                    '{} not found in TOC'.format(str(e)))
+            except AttributeError:
+                self.node.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
+
+        # DATA.
+        if self.config['data']['enable']:
+            self.publisher_data = self.node.create_publisher(UInt16MultiArray, self.id + '/data', 10)
+            self._lg_stab_data = LogConfig(name='Data', period_in_ms=self.config['data']['T'])
+            self._lg_stab_data.add_variable('posEbCtl.Zcount', 'uint16_t')
+            self._lg_stab_data.add_variable('posEbCtl.Ycount', 'uint16_t')
+            self._lg_stab_data.add_variable('posEbCtl.Xcount', 'uint16_t')
+            self._lg_stab_data.add_variable('pm.vbat', 'FP16')
+            try:
+                self.scf.cf.log.add_config(self._lg_stab_data)
+                self._lg_stab_data.data_received_cb.add_callback(self._stab_log_data)
+                self._lg_stab_data.error_cb.add_callback(self._stab_log_error)
+
+                self._lg_stab_data.start()
+            except KeyError as e:
+                self.node.get_logger().info('Could not start log configuration,'
+                    '{} not found in TOC'.format(str(e)))
+            except AttributeError:
+                self.node.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
+
+        # Subscription
+        self.sub_order = self.node.create_subscription(String, self.id + '/order', self.order_callback, 10)
+        self.sub_swarm_status = self.node.create_subscription(String, '/swarm/status', self.swarm_status_callback, 10)
+        self.sub_pose = self.node.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
+        if self.CONTROL_MODE == 'HighLevel':
+            self.sub_goal_pose = self.node.create_subscription(Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
+        else:
+            self.sub_cmd = self.node.create_subscription(Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
+        self.sub_controller = self.node.create_subscription(Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
+        
         # Params
         '''
         self.scf.cf.param.add_update_callback(group='posCtlPid', cb=self.param_stab_est_callback)
@@ -165,38 +262,6 @@ class Crazyflie_ROS2():
         self.scf.cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='controller', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='commander', cb=self.param_stab_est_callback)
-
-        try:
-            self.scf.cf.log.add_config(self._lg_stab_pose)
-            self._lg_stab_pose.data_received_cb.add_callback(self._stab_log_data)
-            self._lg_stab_pose.error_cb.add_callback(self._stab_log_error)
-            # self.scf.cf.log.add_config(self._lg_stab_twist)
-            # self._lg_stab_twist.data_received_cb.add_callback(self._stab_log_data)
-            # self._lg_stab_twist.error_cb.add_callback(self._stab_log_error)
-            self.scf.cf.log.add_config(self._lg_stab_data_a)
-            self._lg_stab_data_a.data_received_cb.add_callback(self._stab_log_data)
-            self._lg_stab_data_a.error_cb.add_callback(self._stab_log_error)
-            # self.scf.cf.log.add_config(self._lg_stab_data)
-            # self._lg_stab_data.data_received_cb.add_callback(self._stab_log_data)
-            # self._lg_stab_data.error_cb.add_callback(self._stab_log_error)
-            self.scf.cf.log.add_config(self._lg_stab_data_r)
-            self._lg_stab_data_r.data_received_cb.add_callback(self._stab_log_data)
-            self._lg_stab_data_r.error_cb.add_callback(self._stab_log_error)
-            self.scf.cf.log.add_config(self._lg_stab_data_m)
-            self._lg_stab_data_m.data_received_cb.add_callback(self._stab_log_data)
-            self._lg_stab_data_m.error_cb.add_callback(self._stab_log_error)
-            # Start the logging
-            self._lg_stab_pose.start()
-            # self._lg_stab_twist.start()
-            self._lg_stab_data_a.start()
-            self._lg_stab_data_r.start()
-            self._lg_stab_data_m.start()
-            # self._lg_stab_data.start()
-        except KeyError as e:
-            self.node.get_logger().info('Could not start log configuration,'
-                  '{} not found in TOC'.format(str(e)))
-        except AttributeError:
-            self.node.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
 
         self._is_flying = False
         self.xy_lim = 1.5
@@ -240,7 +305,7 @@ class Crazyflie_ROS2():
 
     def take_off(self):
         self.node.get_logger().info('CF%s::Take Off.' % self.scf.cf.link_uri[-2:])
-        self.cmd_motion_.z = 1.0
+        self.cmd_motion_.z = 0.75
         self.cmd_motion_.send_pose_data_(self.scf.cf)
         self._is_flying = True
         self.t_ready = Timer(2, self._ready)
@@ -252,8 +317,8 @@ class Crazyflie_ROS2():
 
     def gohome(self):
         self.node.get_logger().info('CF%s::Go Home.' % self.scf.cf.link_uri[-2:])
-        self.cmd_motion_.x = 0.0
-        self.cmd_motion_.y = 0.0
+        self.cmd_motion_.x = self.home.position.x
+        self.cmd_motion_.y = self.home.position.y
         self.cmd_motion_.send_pose_data_(self.scf.cf)
 
     def descent(self):
@@ -285,8 +350,21 @@ class Crazyflie_ROS2():
             msg.orientation.z = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
             msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
 
-            self.last_pose = msg
+            self.pose = msg
             self.publisher_pose.publish(msg)
+
+            t_base = TransformStamped()
+            t_base.header.stamp = self.node.get_clock().now().to_msg()
+            t_base.header.frame_id = 'map'
+            t_base.child_frame_id = self.id
+            t_base.transform.translation.x = msg.position.x
+            t_base.transform.translation.y = msg.position.y
+            t_base.transform.translation.z = msg.position.z
+            t_base.transform.rotation.x = msg.orientation.x
+            t_base.transform.rotation.y = msg.orientation.y
+            t_base.transform.rotation.z = msg.orientation.z
+            t_base.transform.rotation.w = msg.orientation.w
+            self.tfbr.sendTransform(t_base)
         else:
             try:
                 if self.scf.cf.param.get_value('deck.bcLighthouse4') == '1':
@@ -295,12 +373,13 @@ class Crazyflie_ROS2():
                     msg.position.y = data['stateEstimate.y']
                     msg.position.z = data['stateEstimate.z']
                     self.init_pose = True
-                    self.last_pose = msg
+                    self.pose = msg
+                    self.home = msg
                     self.publisher_pose.publish(msg)
                     self.cmd_motion_.x = msg.position.x
                     self.cmd_motion_.y = msg.position.y
                     self.cmd_motion_.z = msg.position.z
-                    self.node.get_logger().info('CF%s::Init pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
+                    self.node.get_logger().info('CF%s::Home pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
             except:
                 pass
 
@@ -510,9 +589,13 @@ class Crazyflie_ROS2():
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
             self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
 
+    def swarm_status_callback(self, msg):
+        self.swarm_ready = True
+
     def newpose_callback(self, msg):
         if not self.init_pose:
-            self.last_pose = msg
+            self.pose = msg
+            self.home = msg
             self.publisher_pose.publish(msg)
             self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
             self.init_pose = True
@@ -520,7 +603,7 @@ class Crazyflie_ROS2():
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.node.get_logger().info('CF%s::Init pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
-        x = np.array([self.last_pose.position.x-msg.position.x,self.last_pose.position.y-msg.position.y,self.last_pose.position.z-msg.position.z])
+        x = np.array([self.pose.position.x-msg.position.x,self.pose.position.y-msg.position.y,self.pose.position.z-msg.position.z])
         if (np.linalg.norm(x)>0.005 and np.linalg.norm(x)>0.05):
             self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
         if ((abs(msg.position.x)>self.xy_lim) or (abs(msg.position.y)>self.xy_lim) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
@@ -538,9 +621,40 @@ class Crazyflie_ROS2():
             self.cmd_motion_.z = msg.position.z
             self.cmd_motion_.ckeck_pose()
             self.cmd_motion_.send_pose_data_(self.scf.cf)
-            self.node.get_logger().info('CF%s::New Goal pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
+            # self.node.get_logger().info('CF%s::New Goal pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
 
-    def step(self):
-        # rclpy.spin_once(self.node, timeout_sec=0)
-        self.node.get_logger().info('Agent node::inicialize() ok.')
+    ###############
+    #    Tasks    #
+    ###############
+    def task_formation_distance(self):
+        if self.ready and self.swarm_ready and self.distance_formation_bool:
+            self.distance_formation_bool = False
+            dx = dy = dz = 0
+            target_pose = Pose()
+            for agent in self.agent_list:
+                # self.node.get_logger().info('Agent: %s' % agent.id)
+                error_x = self.pose.position.x - agent.pose.position.x
+                error_y = self.pose.position.y - agent.pose.position.y
+                error_z = self.pose.position.z - agent.pose.position.z
+                distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
+                dx += (pow(agent.d,2) - distance) * error_x
+                dy += (pow(agent.d,2) - distance) * error_y
+                dz += (pow(agent.d,2) - distance) * error_z
+
+                msg_data = Float64()
+                msg_data.data = agent.d - sqrt(distance)
+                agent.publisher_data_.publish(msg_data)
+
+            delta = sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
+
+            target_pose.position.x = self.pose.position.x + dx/4
+            target_pose.position.y = self.pose.position.y + dy/4
+            target_pose.position.z = self.pose.position.z # + dz/4
+            
+            self.goalpose_callback(target_pose)
+
+            self.node.get_logger().debug('Distance: %.4f eX: %.2f eY: %.2f eZ: %.2f' % (sqrt(distance), error_x, error_y, error_z))
+            self.node.get_logger().debug('Delta: %.4f X: %.2f Y: %.2f Z: %.2f' % (delta, dx, dy, dz))
+            self.node.get_logger().debug('Target: X: %.2f Y: %.2f Z: %.2f' % (target_pose.position.x, target_pose.position.y, target_pose.position.z))
+
 #####################

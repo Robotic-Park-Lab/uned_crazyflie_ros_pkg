@@ -1,0 +1,25 @@
+# Default crazyflie parameters to ros2 node
+dron01:
+  local_pose:
+    enable: True
+    T: 20
+  local_twist:
+    enable: False
+    T: 20
+  data_attitude:
+    enable: False
+    T: 20
+  data_rate: 
+    enable: False
+    T: 20
+  data_motor: 
+    enable: False
+    T: 20
+  data:
+    enable: False
+    T: 20
+  task: 
+    enable: False
+    role: Null
+    type: Null
+    relationship: Null

@@ -18,14 +18,14 @@ class Agent():
             self.x = x
             self.y = y
             self.z = z
-            self.parent.get_logger().info('Agent: %s' % self.str_())
+            self.parent.node.get_logger().info('Agent: %s' % self.str_())
         else:
             self.d = d
-            self.parent.get_logger().info('Agent: %s' % self.str_distance_())
+            self.parent.node.get_logger().info('Agent: %s' % self.str_distance_())
         self.pose = Pose()
-        self.sub_pose_ = self.parent.create_subscription(Pose, self.id + '/local_pose', self.gtpose_callback, 10)
-        self.publisher_data_ = self.parent.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/data', 10)
-        self.publisher_marker_ = self.parent.create_publisher(Marker, self.parent.name_value + '/' + self.id + '/marker', 10)
+        self.sub_pose_ = self.parent.node.create_subscription(Pose, self.id + '/local_pose', self.gtpose_callback, 10)
+        self.publisher_data_ = self.parent.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/data', 10)
+        self.publisher_marker_ = self.parent.node.create_publisher(Marker, self.parent.id + '/' + self.id + '/marker', 10)
 
     def str_(self):
         return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
@@ -36,18 +36,19 @@ class Agent():
 
     def gtpose_callback(self, msg):
         self.pose = msg
+        self.parent.node.get_logger().info('Agent: X: %.2f Y: %.2f Z: %.2f' % (msg.position.x, msg.position.y, msg.position.z))
 
         line = Marker()
         p0 = Point()
-        p0.x = self.parent.gt_pose.position.x
-        p0.y = self.parent.gt_pose.position.y
-        p0.z = self.parent.gt_pose.position.z
+        p0.x = self.parent.pose.position.x
+        p0.y = self.parent.pose.position.y
+        p0.z = self.parent.pose.position.z
 
         p1 = Point()
         p1.x = self.pose.position.x
         p1.y = self.pose.position.y
         p1.z = self.pose.position.z
-        # self.parent.distance_formation_bool = True
+        self.parent.distance_formation_bool = True
 
         distance = sqrt(pow(p0.x-p1.x,2)+pow(p0.y-p1.y,2)+pow(p0.z-p1.z,2))
     

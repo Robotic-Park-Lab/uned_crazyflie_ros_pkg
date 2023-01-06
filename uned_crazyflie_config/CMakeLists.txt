@@ -42,6 +42,8 @@ install(
   DIRECTORY
     launch
     model
+    resource
+    rviz
   DESTINATION share/${PROJECT_NAME}
 )
 

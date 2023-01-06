@@ -3,7 +3,7 @@ import time
 import rclpy
 from threading import Timer
 import numpy as np
-import math
+import yaml
 
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -35,23 +35,25 @@ class CFSwarmDriver(Node):
     def __init__(self):
         super().__init__('swarm_driver')
         # Params
-        self.declare_parameter('cf_first_uri', 'radio://0/80/2M/E7E7E7E701')
-        self.declare_parameter('cf_num_uri', 1)
-        self.declare_parameter('cf_control_mode', 'HighLevel')
+        self.declare_parameter('first_uri', 'radio://0/80/2M/E7E7E7E701')
+        self.declare_parameter('n', 1)
+        self.declare_parameter('control_mode', 'HighLevel')
         """
         Test:
         HighLevel: HighLevel
         OffBoard: Trajectory + Position
         LowLevel: Trajectory + Position + Attitude
         """
-        self.declare_parameter('cf_controller_type', 'EventBased')
+        self.declare_parameter('controller_type', 'EventBased')
         """
         Test:
         Continuous: Continuous PID
         EventBased: Event Based PID
         """
-        self.publisher_status_ = self.create_publisher(String,'swarm/status', 10)
+        self.declare_parameter('config', 'file_path.yaml')
 
+        # Publisher
+        self.publisher_status_ = self.create_publisher(String,'swarm/status', 10)
         # Subscription
         self.sub_order = self.create_subscription(String, 'swarm/order', self.order_callback, 10)
         self.sub_pose_ = self.create_subscription(Pose, 'swarm/pose', self.newpose_callback, 10)
@@ -63,13 +65,17 @@ class CFSwarmDriver(Node):
         self.get_logger().info('SwarmDriver::inicialize() ok.')
         self.pose = Pose()
         # Read Params
-        dron_id = self.get_parameter('cf_first_uri').get_parameter_value().string_value
-        n = self.get_parameter('cf_num_uri').get_parameter_value().integer_value
-        aux = self.get_parameter('cf_control_mode').get_parameter_value().string_value
+        dron_id = self.get_parameter('first_uri').get_parameter_value().string_value
+        n = self.get_parameter('n').get_parameter_value().integer_value
+        aux = self.get_parameter('control_mode').get_parameter_value().string_value
         control_mode = aux.split(', ')
-        aux = self.get_parameter('cf_controller_type').get_parameter_value().string_value
+        aux = self.get_parameter('controller_type').get_parameter_value().string_value
         controller_type = aux.split(', ')
+        config_file = self.get_parameter('config').get_parameter_value().string_value
 
+        with open(config_file, 'r') as file:
+            documents = yaml.safe_load(file)
+            
         # Define crazyflie URIs
         id_address = dron_id[-10:]
         id_base = dron_id[:16]
@@ -85,7 +91,9 @@ class CFSwarmDriver(Node):
         self.cf_swarm = Swarm(uris, factory=factory)
         i = 0
         for uri in uris:
-            cf = Crazyflie_ROS2(self.cf_swarm._cfs[uri], uri, control_mode[i], controller_type[i])
+            id = 'dron' + uri[-2:]
+            config = documents[id]
+            cf = Crazyflie_ROS2(self.cf_swarm._cfs[uri], uri, control_mode[i], controller_type[i], config)
             dron.append(cf)
             while not cf.scf.cf.param.is_updated:
                 time.sleep(1.0)
@@ -123,6 +131,8 @@ class CFSwarmDriver(Node):
         elif msg.data == 'land':
             for cf in dron:
                 cf.descent()
+        elif msg.data == 'ready':
+            self._ready()
         else:
             self.get_logger().error('SWARM::"%s": Unknown order' % msg.data)
 
@@ -139,8 +149,8 @@ class CFSwarmDriver(Node):
             cf.cmd_motion_.z = cf.cmd_motion_.z + msg.position.z
             cf.cmd_motion_.ckeck_pose()
             delta = [abs(msg.position.x), abs(msg.position.y), abs(msg.position.z)]
-            #self.cmd_motion_.flight_time = max(delta)/self.max_vel
-            self.cmd_motion_.flight_time = 0.5
+            self.cmd_motion_.flight_time = max(delta)/self.max_vel
+            # self.cmd_motion_.flight_time = 0.5
             cf.cmd_motion_.send_pose_data_(cf.scf.cf)
 
         self.get_logger().info('SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' % (msg.position.x, msg.position.y, msg.position.z))

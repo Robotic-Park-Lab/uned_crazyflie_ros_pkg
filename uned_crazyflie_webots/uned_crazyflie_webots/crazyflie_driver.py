@@ -14,7 +14,6 @@ from math import cos, sin, degrees, radians, pi, sqrt
 import sys
 import tf_transformations
 from tf2_ros import TransformBroadcaster
-import tf_transformations
 from geometry_msgs.msg import TransformStamped
 
 # Change this path to your crazyflie-firmware folder
@@ -352,8 +351,6 @@ class CrazyflieWebotsDriver:
         self.target_pose.position.z = 0.0
 
     def distance_formation_control(self):
-        self.node.get_logger().info('TEST')
-
         dx = dy = dz = 0
         for agent in self.agent_list:
             error_x = self.gt_pose.position.x - agent.pose.position.x
