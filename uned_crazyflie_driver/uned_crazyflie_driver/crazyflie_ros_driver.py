@@ -1,12 +1,13 @@
 from threading import Timer
 import numpy as np
+import rclpy
 
 from std_msgs.msg import String, UInt16MultiArray, Float64MultiArray
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Twist
 from uned_crazyflie_config.msg import Pidcontroller
 
-
+from rclpy.node import Node
 from cflib.crazyflie.log import LogConfig
 from uned_crazyflie_driver.agent_class import Agent
 
@@ -64,45 +65,45 @@ class CMD_Motion():
         self.logger.info('Command: %s' % self.str_())
         cf.commander.send_setpoint(self.roll, self.pitch, self.yaw, self.thrust)
 
-############################
+######################
 ## CF Logging Class ##
-############################
+######################
 class Crazyflie_ROS2():
-    def __init__(self, scf, parent, link_uri, ctrl_mode, ctrl_type):
-        self.parent = parent
+    def __init__(self, scf, link_uri, ctrl_mode, ctrl_type):
         self.scf = scf
         self.id = 'dron' + link_uri[-2:]
+        self.node = rclpy.create_node(self.id+'_driver', namespace='/my_ns', use_global_arguments=False)
         self.ready = False
         self.pose = Pose()
         self.last_pose = Pose()
         self.init_pose = False
-        self.parent.get_logger().info('Connecting to %s' % link_uri)
+        self.node.get_logger().info('Connecting to %s' % link_uri)
         self.scf.cf.connected.add_callback(self._connected)
         self.scf.cf.disconnected.add_callback(self._disconnected)
         self.scf.cf.connection_failed.add_callback(self._connection_failed)
         self.scf.cf.connection_lost.add_callback(self._connection_lost)
         self.scf.cf.open_link(link_uri)
         self.CONTROL_MODE = ctrl_mode
-        self.parent.get_logger().info('CF%s::Control Mode: %s!' % (self.scf.cf.link_uri[-2:], self.CONTROL_MODE))
+        self.node.get_logger().info('CF%s::Control Mode: %s!' % (self.scf.cf.link_uri[-2:], self.CONTROL_MODE))
         self.scf.CONTROLLER_TYPE = ctrl_type
-        self.parent.get_logger().info('CF%s::Controller Type: %s!' % (self.scf.cf.link_uri[-2:], self.scf.CONTROLLER_TYPE))
+        self.node.get_logger().info('CF%s::Controller Type: %s!' % (self.scf.cf.link_uri[-2:], self.scf.CONTROLLER_TYPE))
 
     def _connected(self, link_uri):
-        self.parent.get_logger().info('Connected to %s -> Crazyflie %s' % (link_uri, self.scf.cf.link_uri[-2:]))
+        self.node.get_logger().info('Connected to %s -> Crazyflie %s' % (link_uri, self.scf.cf.link_uri[-2:]))
         # ROS
         # Publisher
-        self.publisher_pose = self.parent.create_publisher(Pose, self.id + '/cf_pose', 10)
-        self.publisher_twist = self.parent.create_publisher(Twist, self.id + '/cf_twist', 10)
-        self.publisher_data = self.parent.create_publisher(UInt16MultiArray, self.id + '/cf_data', 10)
-        self.publisher_data_attitude = self.parent.create_publisher(Float64MultiArray, self.id + '/cf_data_attitude', 10)
-        self.publisher_data_rate = self.parent.create_publisher(Float64MultiArray, self.id + '/cf_data_rate', 10)
-        self.publisher_data_motor = self.parent.create_publisher(Float64MultiArray, self.id + '/cf_data_motor', 10)
+        self.publisher_pose = self.node.create_publisher(Pose, self.id + '/cf_pose', 10)
+        self.publisher_twist = self.node.create_publisher(Twist, self.id + '/cf_twist', 10)
+        self.publisher_data = self.node.create_publisher(UInt16MultiArray, self.id + '/cf_data', 10)
+        self.publisher_data_attitude = self.node.create_publisher(Float64MultiArray, self.id + '/cf_data_attitude', 10)
+        self.publisher_data_rate = self.node.create_publisher(Float64MultiArray, self.id + '/cf_data_rate', 10)
+        self.publisher_data_motor = self.node.create_publisher(Float64MultiArray, self.id + '/cf_data_motor', 10)
         # Subscription
-        self.sub_order = self.parent.create_subscription(String, self.id + '/cf_order', self.order_callback, 10)
-        self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
-        self.sub_goal_pose = self.parent.create_subscription(Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
-        self.sub_cmd = self.parent.create_subscription(Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
-        self.sub_controller = self.parent.create_subscription(Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
+        self.sub_order = self.node.create_subscription(String, self.id + '/cf_order', self.order_callback, 10)
+        self.sub_pose = self.node.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
+        self.sub_goal_pose = self.node.create_subscription(Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
+        self.sub_cmd = self.node.create_subscription(Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
+        self.sub_controller = self.node.create_subscription(Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
         # POSE3D
         self._lg_stab_pose = LogConfig(name='Pose', period_in_ms=50)
         self._lg_stab_pose.add_variable('stateEstimate.x', 'float')
@@ -192,18 +193,18 @@ class Crazyflie_ROS2():
             self._lg_stab_data_m.start()
             # self._lg_stab_data.start()
         except KeyError as e:
-            self.parent.get_logger().info('Could not start log configuration,'
+            self.node.get_logger().info('Could not start log configuration,'
                   '{} not found in TOC'.format(str(e)))
         except AttributeError:
-            self.parent.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
+            self.node.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
 
         self._is_flying = False
         self.xy_lim = 1.5
-        self.cmd_motion_ = CMD_Motion(self.parent.get_logger(), xy_lim = self.xy_lim)
+        self.cmd_motion_ = CMD_Motion(self.node.get_logger(), xy_lim = self.xy_lim)
         self.scf.cf.commander.set_client_xmode(True)
 
     def _stab_log_error(self, logconf, msg):
-        self.parent.get_logger().error('Crazyflie %s. Error when logging %s: %s' % (self.scf.cf.link_uri[-2:], logconf.name, msg))
+        self.node.get_logger().error('Crazyflie %s. Error when logging %s: %s' % (self.scf.cf.link_uri[-2:], logconf.name, msg))
 
     def _stab_log_data(self, timestamp, data, logconf):
         if(logconf.name == "Pose"):
@@ -220,24 +221,25 @@ class Crazyflie_ROS2():
         elif(logconf.name == "Data"):
             self.data_callback(data)
         else:
-            self.parent.get_logger().error('CF%s. Error: %s: not valid logconf' % (self.scf.cf.link_uri[-2:], logconf.name))
+            self.node.get_logger().error('CF%s. Error: %s: not valid logconf' % (self.scf.cf.link_uri[-2:], logconf.name))
 
     def param_stab_est_callback(self, name, value):
-        self.parent.get_logger().info('CF%s. Parameter %s: %s' %(self.scf.cf.link_uri[-2:], name, value))
+        self.node.get_logger().info('CF%s. Parameter %s: %s' %(self.scf.cf.link_uri[-2:], name, value))
 
     def _connection_failed(self, link_uri, msg):
-        self.parent.get_logger().error('Crazyflie %s. Connection to %s failed: %s' % (self.scf.cf.link_uri[-2:], link_uri, msg))
+        self.node.get_logger().error('Crazyflie %s. Connection to %s failed: %s' % (self.scf.cf.link_uri[-2:], link_uri, msg))
         self.is_connected = False
 
     def _connection_lost(self, link_uri, msg):
-        self.parent.get_logger().error('Crazyflie %s. Connection to %s lost: %s' % (self.scf.cf.link_uri[-2:], link_uri, msg))
+        self.node.get_logger().error('Crazyflie %s. Connection to %s lost: %s' % (self.scf.cf.link_uri[-2:], link_uri, msg))
 
     def _disconnected(self, link_uri):
-        self.parent.get_logger().warning('Crazyflie %s. Disconnected from %s' % (self.scf.cf.link_uri[-2:], link_uri))
+        self.node.get_logger().warning('Crazyflie %s. Disconnected from %s' % (self.scf.cf.link_uri[-2:], link_uri))
         self.is_connected = False
+        self.node.destroy_node()
 
     def take_off(self):
-        self.parent.get_logger().info('CF%s::Take Off.' % self.scf.cf.link_uri[-2:])
+        self.node.get_logger().info('CF%s::Take Off.' % self.scf.cf.link_uri[-2:])
         self.cmd_motion_.z = 1.0
         self.cmd_motion_.send_pose_data_(self.scf.cf)
         self._is_flying = True
@@ -245,11 +247,11 @@ class Crazyflie_ROS2():
         self.t_ready.start()
 
     def _ready(self):
-        self.parent.get_logger().info('CF%s::Ready!!.' % self.scf.cf.link_uri[-2:])
+        self.node.get_logger().info('CF%s::Ready!!.' % self.scf.cf.link_uri[-2:])
         self.ready = True
 
     def gohome(self):
-        self.parent.get_logger().info('CF%s::Go Home.' % self.scf.cf.link_uri[-2:])
+        self.node.get_logger().info('CF%s::Go Home.' % self.scf.cf.link_uri[-2:])
         self.cmd_motion_.x = 0.0
         self.cmd_motion_.y = 0.0
         self.cmd_motion_.send_pose_data_(self.scf.cf)
@@ -257,14 +259,14 @@ class Crazyflie_ROS2():
     def descent(self):
         self.cmd_motion_.z = 0.1
         self.cmd_motion_.send_pose_data_(self.scf.cf)
-        self.parent.get_logger().info('CF%s::Descent.' % self.scf.cf.link_uri[-2:])
+        self.node.get_logger().info('CF%s::Descent.' % self.scf.cf.link_uri[-2:])
         self.t_desc = Timer(2, self.take_land)
         self._is_flying = False
         self.ready = False
         self.t_desc.start()
 
     def take_land(self):
-        self.parent.get_logger().info('CF%s::Take Land.' % self.scf.cf.link_uri[-2:])
+        self.node.get_logger().info('CF%s::Take Land.' % self.scf.cf.link_uri[-2:])
         self.scf.cf.commander.send_setpoint(0.0, 0.0, 0, 0)
         self.scf.cf.commander.send_stop_setpoint()
         self.init_pose = False
@@ -288,10 +290,19 @@ class Crazyflie_ROS2():
         else:
             try:
                 if self.scf.cf.param.get_value('deck.bcLighthouse4') == '1':
+                    msg = Pose()
+                    msg.position.x = data['stateEstimate.x']
+                    msg.position.y = data['stateEstimate.y']
+                    msg.position.z = data['stateEstimate.z']
                     self.init_pose = True
+                    self.last_pose = msg
+                    self.publisher_pose.publish(msg)
+                    self.cmd_motion_.x = msg.position.x
+                    self.cmd_motion_.y = msg.position.y
+                    self.cmd_motion_.z = msg.position.z
+                    self.node.get_logger().info('CF%s::Init pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
             except:
                 pass
-
 
     def twist_callback(self, data):
         msg = Twist()
@@ -325,24 +336,24 @@ class Crazyflie_ROS2():
         self.publisher_data.publish(msg)
 
     def order_callback(self, msg):
-        self.parent.get_logger().info('CF%s::Order: "%s"' % (self.scf.cf.link_uri[-2:], msg.data))
+        self.node.get_logger().info('CF%s::Order: "%s"' % (self.scf.cf.link_uri[-2:], msg.data))
         if msg.data == 'take_off':
             if self._is_flying:
-                self.parent.get_logger().warning('CF%s::Already flying' % self.scf.cf.link_uri[-2:])
+                self.node.get_logger().warning('CF%s::Already flying' % self.scf.cf.link_uri[-2:])
             else:
                 self.take_off()
         elif msg.data == 'land':
             if self._is_flying:
                 self.descent()
             else:
-                self.parent.get_logger().warning('CF%s::In land' % self.scf.cf.link_uri[-2:])
+                self.node.get_logger().warning('CF%s::In land' % self.scf.cf.link_uri[-2:])
         elif msg.data == 'gohome':
             if self._is_flying:
                 self.gohome()
             else:
-                self.parent.get_logger().warning('CF%s::In land' % self.scf.cf.link_uri[-2:])
+                self.node.get_logger().warning('CF%s::In land' % self.scf.cf.link_uri[-2:])
         else:
-            self.parent.get_logger().error('CF%s::"%s": Unknown order' % (self.scf.cf.link_uri[-2:], msg.data))
+            self.node.get_logger().error('CF%s::"%s": Unknown order' % (self.scf.cf.link_uri[-2:], msg.data))
 
     def cmd_control_callback(self, msg):
         if self.CONTROL_MODE == 'OffBoard':
@@ -350,12 +361,12 @@ class Crazyflie_ROS2():
             self.cmd_motion_.pitch = msg.data[2]
             self.cmd_motion_.yaw = msg.data[3]
             self.cmd_motion_.thrust = int(msg.data[0])
-            self.parent.get_logger().debug('CF%s::Command: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.str_()))
+            self.node.get_logger().debug('CF%s::Command: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.str_()))
         else:
-            self.parent.get_logger().warning('CF%s::New command control order. Offboard control disabled' % self.scf.cf.link_uri[-2:])
+            self.node.get_logger().warning('CF%s::New command control order. Offboard control disabled' % self.scf.cf.link_uri[-2:])
 
     def controllers_params_callback(self, msg):
-        self.parent.get_logger().info('CF%s: New %s controller parameters' % (self.scf.cf.link_uri[-2:], msg.id))
+        self.node.get_logger().info('CF%s: New %s controller parameters' % (self.scf.cf.link_uri[-2:], msg.id))
         if (self.scf.CONTROLLER_TYPE == 'Continuous'):
             if msg.id == 'x':
                 groupstr = 'posCtlPid'
@@ -508,14 +519,14 @@ class Crazyflie_ROS2():
             self.cmd_motion_.x = msg.position.x
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
-            self.parent.get_logger().info('CF%s::Init pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
+            self.node.get_logger().info('CF%s::Init pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
         x = np.array([self.last_pose.position.x-msg.position.x,self.last_pose.position.y-msg.position.y,self.last_pose.position.z-msg.position.z])
         if (np.linalg.norm(x)>0.005 and np.linalg.norm(x)>0.05):
             self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
         if ((abs(msg.position.x)>self.xy_lim) or (abs(msg.position.y)>self.xy_lim) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
             self.CONTROL_MODE = 'HighLevel'
             self._is_flying = True
-            self.parent.get_logger().error('CF%s::Out.' % self.scf.cf.link_uri[-2:])
+            self.node.get_logger().error('CF%s::Out.' % self.scf.cf.link_uri[-2:])
             self.gohome()
             t_end = Timer(3, self.descent)
             t_end.start()
@@ -527,6 +538,9 @@ class Crazyflie_ROS2():
             self.cmd_motion_.z = msg.position.z
             self.cmd_motion_.ckeck_pose()
             self.cmd_motion_.send_pose_data_(self.scf.cf)
-            self.parent.get_logger().info('CF%s::New Goal pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
+            self.node.get_logger().info('CF%s::New Goal pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
 
+    def step(self):
+        # rclpy.spin_once(self.node, timeout_sec=0)
+        self.node.get_logger().info('Agent node::inicialize() ok.')
 #####################

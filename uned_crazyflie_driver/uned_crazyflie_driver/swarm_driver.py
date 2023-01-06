@@ -85,7 +85,7 @@ class CFSwarmDriver(Node):
         self.cf_swarm = Swarm(uris, factory=factory)
         i = 0
         for uri in uris:
-            cf = Crazyflie_ROS2(self.cf_swarm._cfs[uri], self, uri, control_mode[i], controller_type[i])
+            cf = Crazyflie_ROS2(self.cf_swarm._cfs[uri], uri, control_mode[i], controller_type[i])
             dron.append(cf)
             while not cf.scf.cf.param.is_updated:
                 time.sleep(1.0)
@@ -93,6 +93,8 @@ class CFSwarmDriver(Node):
             i += 1
 
         self.cf_swarm.parallel_safe(self.update_params)
+        for cf in dron:
+            rclpy.spin(cf.node)
 
     def update_params(self, scf):
         
