@@ -202,6 +202,7 @@ class CrazyflieWebotsDriver:
         self.first_pos = True
         self.first_x_global = 0.0
         self.first_y_global = 0.0
+        self.last_pose = Pose()
 
         self.centroid_leader = False
         self.leader_cmd = Pose()
@@ -234,7 +235,7 @@ class CrazyflieWebotsDriver:
         self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.name_value)))
         # Subscription
         self.node.create_subscription(Twist, self.name_value+'/cmd_vel', self.cmd_vel_callback, 1)
-        self.node.create_subscription(Pose, self.name_value+'/goal_pose', self.goal_pose_callback, 1)
+        self.node.create_subscription(Pose, self.name_value+'/target_pose', self.target_pose_callback, 1)
         self.node.create_subscription(String, self.name_value+'/order', self.order_callback, 1)
         self.node.create_subscription(String, 'swarm/order', self.order_callback, 1)
         self.node.create_subscription(Pose, 'swarm/goal_pose', self.swarm_goalpose_callback, 1)
@@ -245,6 +246,7 @@ class CrazyflieWebotsDriver:
         self.event_z_ = self.node.create_publisher(Bool, self.name_value+'/event_z', 10)
         self.odom_publisher = self.node.create_publisher(Odometry, self.name_value+'/odom', 10)
         self.pose_publisher = self.node.create_publisher(Pose, self.name_value+'/local_pose', 10)
+        self.pub_goalpose = self.node.create_publisher(Pose, self.name_value+'/goal_pose', 10)
 
         self.tfbr = TransformBroadcaster(self.node)
 
@@ -292,7 +294,7 @@ class CrazyflieWebotsDriver:
     def cmd_vel_callback(self, twist):
         self.target_twist = twist
 
-    def goal_pose_callback(self, pose):
+    def target_pose_callback(self, pose):
         self.target_pose = pose
 
     def order_callback(self, msg):
@@ -379,20 +381,24 @@ class CrazyflieWebotsDriver:
         if self.target_pose.position.z > 1.2:
             self.target_pose.position.z = 1.2
 
+        self.pub_goalpose.publish(self.target_pose)
+
+    def delta_distance(self, pose):
+        delta_x = self.last_pose.position.x - pose.position.x
+        delta_y = self.last_pose.position.y - pose.position.y
+        delta_z = self.last_pose.position.z - pose.position.z
+        distance = sqrt(pow(delta_x,2)+pow(delta_y,2)+pow(delta_z,2))
+
+        if distance>0.01:
+            self.last_pose = pose
+            return True
+        else:
+            return False
+
     def step(self):
         rclpy.spin_once(self.node, timeout_sec=0)
 
         dt = self.robot.getTime() - self.past_time
-
-        if self.first_pos is True:
-            self.past_x_global = self.gps.getValues()[0]
-            self.target_pose.position.x = self.gps.getValues()[0]
-            self.past_y_global = self.gps.getValues()[1]
-            self.target_pose.position.y = self.gps.getValues()[1]
-            self.first_pos = False
-            self.z_controller.past_time = self.past_time
-            self.w_controller.past_time = self.past_time
-            self.take_off()
 
         ## Get measurements
         roll = self.imu.getRollPitchYaw()[0]
@@ -408,6 +414,18 @@ class CrazyflieWebotsDriver:
         z_global = self.gps.getValues()[2]
         vz_global = (z_global - self.past_z_global)/dt
 
+        if self.first_pos is True:
+            self.past_x_global = x_global
+            self.target_pose.position.x = x_global
+            self.past_y_global = y_global
+            self.target_pose.position.y = y_global
+            self.last_pose.position.x = x_global
+            self.last_pose.position.y = y_global
+            self.first_pos = False
+            self.z_controller.past_time = self.past_time
+            self.w_controller.past_time = self.past_time
+            self.take_off()
+        
         q = tf_transformations.quaternion_from_euler(roll, pitch, yaw)
         self.gt_pose = Pose()
         self.gt_pose.position.x = x_global
@@ -417,7 +435,8 @@ class CrazyflieWebotsDriver:
         self.gt_pose.orientation.y = q[1]
         self.gt_pose.orientation.z = q[2]
         self.gt_pose.orientation.w = q[3]
-        self.pose_publisher.publish(self.gt_pose)
+        if self.delta_distance(self.gt_pose):
+            self.pose_publisher.publish(self.gt_pose)
 
         t_base = TransformStamped()
         t_base.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
