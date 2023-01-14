@@ -23,8 +23,6 @@ def generate_launch_description():
         parameters=[
             {'first_uri': 'radio://0/80/2M/E7E7E7E702'},
             {'n': 1},
-            {'control_mode': 'HighLevel'},
-            {'controller_type': 'Continuous'},
             {'config': config_path}
         ])
     rqt_node = Node(

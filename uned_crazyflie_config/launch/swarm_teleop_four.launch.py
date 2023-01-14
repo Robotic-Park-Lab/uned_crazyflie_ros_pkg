@@ -23,8 +23,6 @@ def generate_launch_description():
         parameters=[
             {'first_uri': 'radio://0/80/2M/E7E7E7E701'},
             {'n': 4},
-            {'control_mode': 'HighLevel, HighLevel, HighLevel, HighLevel'},
-            {'controller_type': 'Continuous, Continuous, Continuous, Continuous'},
             {'config': config_path}
         ])
     rqt_node = Node(
@@ -53,6 +51,6 @@ def generate_launch_description():
     return LaunchDescription([
         swarm_node,
         rqt_node,
-        rviz_node,
-        vicon_node
+        rviz_node
+        # vicon_node
     ])

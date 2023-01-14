@@ -1,5 +1,8 @@
 # Default crazyflie parameters to ros2 node
 dron01:
+  name: dron01
+  control_mode: HighLevel
+  controller_type: Continuous
   local_pose:
     enable: True
     T: 20
@@ -25,6 +28,9 @@ dron01:
     relationship: 'dron02_0.4'
 
 dron02:
+  name: dron02
+  control_mode: HighLevel
+  controller_type: Continuous
   local_pose:
     enable: True
     T: 20

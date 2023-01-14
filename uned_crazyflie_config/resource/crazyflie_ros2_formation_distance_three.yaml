@@ -1,5 +1,8 @@
 # Default crazyflie parameters to ros2 node
 dron01:
+  name: dron01
+  control_mode: HighLevel
+  controller_type: Continuous
   local_pose:
     enable: True
     T: 20
@@ -22,9 +25,12 @@ dron01:
     enable: True
     role: consensus
     type: distance
-    relationship: 'dron02_0.5, dron03_0.5'
+    relationship: 'dron02_0.6, dron03_0.6'
 
 dron02:
+  name: dron02
+  control_mode: HighLevel
+  controller_type: Continuous
   local_pose:
     enable: True
     T: 20
@@ -47,9 +53,12 @@ dron02:
     enable: True
     role: consensus
     type: distance
-    relationship: 'dron01_0.5, dron03_0.5'
+    relationship: 'dron01_0.6, dron03_0.6'
 
 dron03:
+  name: dron03
+  control_mode: HighLevel
+  controller_type: Continuous
   local_pose:
     enable: True
     T: 20
@@ -72,4 +81,4 @@ dron03:
     enable: True
     role: consensus
     type: distance
-    relationship: 'dron01_0.5, dron02_0.5'
+    relationship: 'dron01_0.6, dron02_0.6'

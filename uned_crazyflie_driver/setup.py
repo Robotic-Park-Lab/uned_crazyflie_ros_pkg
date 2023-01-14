@@ -21,7 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'crazyflie_driver = uned_crazyflie_driver.crazyflie_driver:main',
-            'swarm_driver = uned_crazyflie_driver.swarm_driver:main'
+            'swarm_driver = uned_crazyflie_driver.swarm_driver:main',
             'positioning_system = uned_crazyflie_driver.positioning_system:main'
         ],
     },

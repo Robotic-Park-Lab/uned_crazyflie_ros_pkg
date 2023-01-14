@@ -159,11 +159,11 @@ class CMD_Motion():
 ## CF Logging Class ##
 ######################
 class Crazyflie_ROS2():
-    def __init__(self, parent, scf, link_uri, ctrl_mode, ctrl_type, config):
+    def __init__(self, parent, scf, link_uri, config):
         self.scf = scf
         self.parent = parent
-        self.id = 'dron' + link_uri[-2:]
         self.config = config
+        self.id = self.config['name']
         # self.node = rclpy.create_node(self.id+'_driver', namespace='/my_ns', use_global_arguments=False)
         # self.node = rclpy.create_node(self.id+'_driver', use_global_arguments=False)
         self.ready = False
@@ -190,9 +190,9 @@ class Crazyflie_ROS2():
         self.scf.cf.connection_failed.add_callback(self._connection_failed)
         self.scf.cf.connection_lost.add_callback(self._connection_lost)
         self.scf.cf.open_link(link_uri)
-        self.CONTROL_MODE = ctrl_mode
+        self.CONTROL_MODE = self.config['control_mode']
         self.parent.get_logger().info('CF%s::Control Mode: %s!' % (self.scf.cf.link_uri[-2:], self.CONTROL_MODE))
-        self.scf.CONTROLLER_TYPE = ctrl_type
+        self.scf.CONTROLLER_TYPE = self.config['controller_type']
         self.parent.get_logger().info('CF%s::Controller Type: %s!' % (self.scf.cf.link_uri[-2:], self.scf.CONTROLLER_TYPE))
 
     def _connected(self, link_uri):
@@ -713,7 +713,7 @@ class Crazyflie_ROS2():
             self.cmd_motion_.z = msg.position.z
             self.cmd_motion_.ckeck_pose()
             self.cmd_motion_.send_pose_data_(self.scf.cf)
-            self.parent.get_logger().info('CF%s::New Goal pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
+            self.parent.get_logger().debug('CF%s::New Goal pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
 
     ###############
     #    Tasks    #
@@ -739,6 +739,15 @@ class Crazyflie_ROS2():
 
             delta = sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
 
+            if dx > 0.32:
+                dx = 0.32
+            if dx < -0.32:
+                dx = -0.32
+            if dy > 0.32:
+                dy = 0.32
+            if dy < -0.32:
+                dy = -0.32
+
             target_pose.position.x = self.pose.position.x + dx/4
             target_pose.position.y = self.pose.position.y + dy/4
             target_pose.position.z = 0.8 # self.pose.position.z # + dz/4
@@ -746,8 +755,8 @@ class Crazyflie_ROS2():
             self.goalpose_callback(target_pose)
 
             self.parent.get_logger().debug('Distance: %.4f eX: %.2f eY: %.2f eZ: %.2f' % (sqrt(distance), error_x, error_y, error_z))
-            self.parent.get_logger().debug('Delta: %.4f X: %.2f Y: %.2f Z: %.2f' % (delta, dx, dy, dz))
-            self.parent.get_logger().debug('Target: X: %.2f Y: %.2f Z: %.2f' % (target_pose.position.x, target_pose.position.y, target_pose.position.z))
+            self.parent.get_logger().info('Delta: %.4f X: %.2f Y: %.2f Z: %.2f' % (delta, dx, dy, dz))
+            self.parent.get_logger().info('Target: X: %.2f Y: %.2f Z: %.2f' % (target_pose.position.x, target_pose.position.y, target_pose.position.z))
 
 #####################
 #####################
@@ -759,19 +768,6 @@ class CFSwarmDriver(Node):
         # Params
         self.declare_parameter('first_uri', 'radio://0/80/2M/E7E7E7E701')
         self.declare_parameter('n', 1)
-        self.declare_parameter('control_mode', 'HighLevel')
-        """
-        Test:
-        HighLevel: HighLevel
-        OffBoard: Trajectory + Position
-        LowLevel: Trajectory + Position + Attitude
-        """
-        self.declare_parameter('controller_type', 'EventBased')
-        """
-        Test:
-        Continuous: Continuous PID
-        EventBased: Event Based PID
-        """
         self.declare_parameter('config', 'file_path.yaml')
 
         # Publisher
@@ -789,10 +785,6 @@ class CFSwarmDriver(Node):
         # Read Params
         dron_id = self.get_parameter('first_uri').get_parameter_value().string_value
         n = self.get_parameter('n').get_parameter_value().integer_value
-        aux = self.get_parameter('control_mode').get_parameter_value().string_value
-        control_mode = aux.split(', ')
-        aux = self.get_parameter('controller_type').get_parameter_value().string_value
-        controller_type = aux.split(', ')
         config_file = self.get_parameter('config').get_parameter_value().string_value
 
         with open(config_file, 'r') as file:
@@ -815,7 +807,7 @@ class CFSwarmDriver(Node):
         for uri in uris:
             id = 'dron' + uri[-2:]
             config = documents[id]
-            cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[uri], uri, control_mode[i], controller_type[i], config)
+            cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[uri], uri, config)
             dron.append(cf)
             while not cf.scf.cf.param.is_updated:
                 time.sleep(1.0)
