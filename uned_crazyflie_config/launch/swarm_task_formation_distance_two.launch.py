@@ -6,7 +6,7 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     config_package_dir = get_package_share_directory('uned_crazyflie_config')
-    config_path = os.path.join(config_package_dir, 'resource', 'crazyflie_ros2_teleop_default.yaml')
+    config_path = os.path.join(config_package_dir, 'resource', 'crazyflie_ros2_formation_distance_two.yaml')
     rviz_config_path = os.path.join(config_package_dir, 'rviz', 'test.rviz')
 
     hostname = '10.196.92.136'
@@ -21,10 +21,10 @@ def generate_launch_description():
         shell=True,
         emulate_tty=True,
         parameters=[
-            {'first_uri': 'radio://0/80/2M/E7E7E7E702'},
-            {'n': 1},
-            {'control_mode': 'HighLevel'},
-            {'controller_type': 'Continuous'},
+            {'first_uri': 'radio://0/80/2M/E7E7E7E701'},
+            {'n': 2},
+            {'control_mode': 'HighLevel, HighLevel'},
+            {'controller_type': 'Continuous, Continuous'},
             {'config': config_path}
         ])
     rqt_node = Node(
@@ -54,6 +54,6 @@ def generate_launch_description():
     return LaunchDescription([
         swarm_node,
         rqt_node,
-        rviz_node
-        # vicon_node
+        rviz_node,
+        vicon_node
     ])

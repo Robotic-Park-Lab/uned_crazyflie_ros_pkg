@@ -67,6 +67,14 @@ class CMD_Motion():
         self.logger.info('Command: %s' % self.str_())
         cf.commander.send_setpoint(self.roll, self.pitch, self.yaw, self.thrust)
 
+    def take_off(self, cf):
+        self.logger.info('Take off ... ')
+        cf.high_level_commander.takeoff(0.75, 1.0)
+
+    def land(self, cf):
+        self.logger.info('Take land ... ')
+        cf.high_level_commander.land(0.0, 1.0)
+
 ######################
 ## CF Logging Class ##
 ######################
@@ -89,7 +97,7 @@ class Crazyflie_ROS2():
             aux = self.config['task']['relationship']
             self.relationship = aux.split(', ')
             if self.config['task']['type'] == 'distance':
-                self.timer_task = self.node.create_timer(1, self.task_formation_distance)
+                self.timer_task = self.node.create_timer(0.1, self.task_formation_distance)
                 for rel in self.relationship:
                     aux = rel.split('_')
                     robot = Agent(self, aux[0], d = float(aux[1]))
@@ -241,14 +249,14 @@ class Crazyflie_ROS2():
                 self.node.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
 
         # Subscription
-        self.sub_order = self.node.create_subscription(String, self.id + '/order', self.order_callback, 10)
-        self.sub_swarm_status = self.node.create_subscription(String, '/swarm/status', self.swarm_status_callback, 10)
-        self.sub_pose = self.node.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
+        self.node.create_subscription(String, self.id + '/order', self.order_callback, 10)
+        self.node.create_subscription(String, '/swarm/status', self.swarm_status_callback, 10)
+        self.node.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
         if self.CONTROL_MODE == 'HighLevel':
-            self.sub_goal_pose = self.node.create_subscription(Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
+            self.node.create_subscription(Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
         else:
-            self.sub_cmd = self.node.create_subscription(Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
-        self.sub_controller = self.node.create_subscription(Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
+            self.node.create_subscription(Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
+        self.node.create_subscription(Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
         
         # Params
         '''
@@ -305,8 +313,9 @@ class Crazyflie_ROS2():
 
     def take_off(self):
         self.node.get_logger().info('CF%s::Take Off.' % self.scf.cf.link_uri[-2:])
+        self.cmd_motion_.take_off(self.scf.cf)
         self.cmd_motion_.z = 0.75
-        self.cmd_motion_.send_pose_data_(self.scf.cf)
+        # self.cmd_motion_.send_pose_data_(self.scf.cf)
         self._is_flying = True
         self.t_ready = Timer(2, self._ready)
         self.t_ready.start()
@@ -323,7 +332,8 @@ class Crazyflie_ROS2():
 
     def descent(self):
         self.cmd_motion_.z = 0.1
-        self.cmd_motion_.send_pose_data_(self.scf.cf)
+        self.cmd_motion_.land(self.scf.cf)
+        # self.cmd_motion_.send_pose_data_(self.scf.cf)
         self.node.get_logger().info('CF%s::Descent.' % self.scf.cf.link_uri[-2:])
         self.t_desc = Timer(2, self.take_land)
         self._is_flying = False
@@ -593,7 +603,9 @@ class Crazyflie_ROS2():
         self.swarm_ready = True
 
     def newpose_callback(self, msg):
+        # self.node.get_logger().info('CF%s::New pose: X:%.2f Y:%.2f Z:%.2f' % (self.scf.cf.link_uri[-2:], msg.position.x, msg.position.y, msg.position.z))
         if not self.init_pose:
+            self.node.get_logger().info('CF%s::Test.' % self.scf.cf.link_uri[-2:])
             self.pose = msg
             self.home = msg
             self.publisher_pose.publish(msg)
@@ -604,8 +616,8 @@ class Crazyflie_ROS2():
             self.cmd_motion_.z = msg.position.z
             self.node.get_logger().info('CF%s::Init pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
         x = np.array([self.pose.position.x-msg.position.x,self.pose.position.y-msg.position.y,self.pose.position.z-msg.position.z])
-        if (np.linalg.norm(x)>0.005 and np.linalg.norm(x)>0.05):
-            self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
+        # if (np.linalg.norm(x)>0.005 and np.linalg.norm(x)>0.05):
+        self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
         if ((abs(msg.position.x)>self.xy_lim) or (abs(msg.position.y)>self.xy_lim) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
             self.CONTROL_MODE = 'HighLevel'
             self._is_flying = True
@@ -627,7 +639,7 @@ class Crazyflie_ROS2():
     #    Tasks    #
     ###############
     def task_formation_distance(self):
-        if self.ready and self.swarm_ready and self.distance_formation_bool:
+        if self.ready and self.swarm_ready and True: # self.distance_formation_bool:
             self.distance_formation_bool = False
             dx = dy = dz = 0
             target_pose = Pose()

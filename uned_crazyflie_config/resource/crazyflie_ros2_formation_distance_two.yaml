@@ -22,7 +22,7 @@ dron01:
     enable: True
     role: consensus
     type: distance
-    relationship: 'dron02_0.2'
+    relationship: 'dron02_0.4'
 
 dron02:
   local_pose:
@@ -47,4 +47,4 @@ dron02:
     enable: True
     role: consensus
     type: distance
-    relationship: 'dron01_0.2'
+    relationship: 'dron01_0.4'

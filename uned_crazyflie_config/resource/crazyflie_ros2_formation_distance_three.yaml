@@ -19,10 +19,10 @@ dron01:
     enable: False
     T: 20
   task: 
-    enable: False
-    role: Null
-    type: Null
-    relationship: Null
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron02_0.5, dron03_0.5'
 
 dron02:
   local_pose:
@@ -44,7 +44,32 @@ dron02:
     enable: False
     T: 20
   task: 
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron01_0.5, dron03_0.5'
+
+dron03:
+  local_pose:
+    enable: True
+    T: 20
+  local_twist:
     enable: False
-    role: Null
-    type: Null
-    relationship: Null
+    T: 20
+  data_attitude:
+    enable: False
+    T: 20
+  data_rate: 
+    enable: False
+    T: 20
+  data_motor: 
+    enable: False
+    T: 20
+  data:
+    enable: False
+    T: 20
+  task: 
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron01_0.5, dron02_0.5'
