@@ -190,8 +190,8 @@ class Crazyflie_ROS2():
         self.scf.cf.connection_failed.add_callback(self._connection_failed)
         self.scf.cf.connection_lost.add_callback(self._connection_lost)
         self.scf.cf.open_link(link_uri)
-        self.CONTROL_MODE = self.config['control_mode']
-        self.parent.get_logger().info('CF%s::Control Mode: %s!' % (self.scf.cf.link_uri[-2:], self.CONTROL_MODE))
+        self.scf.CONTROL_MODE = self.config['control_mode']
+        self.parent.get_logger().info('CF%s::Control Mode: %s!' % (self.scf.cf.link_uri[-2:], self.scf.CONTROL_MODE))
         self.scf.CONTROLLER_TYPE = self.config['controller_type']
         self.parent.get_logger().info('CF%s::Controller Type: %s!' % (self.scf.cf.link_uri[-2:], self.scf.CONTROLLER_TYPE))
 
@@ -332,7 +332,7 @@ class Crazyflie_ROS2():
         self.parent.create_subscription(String, self.id + '/order', self.order_callback, 10)
         self.parent.create_subscription(String, '/swarm/status', self.swarm_status_callback, 10)
         self.parent.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
-        if self.CONTROL_MODE == 'HighLevel':
+        if self.scf.CONTROL_MODE == 'HighLevel':
             self.parent.create_subscription(Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
         else:
             self.parent.create_subscription(Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
@@ -525,7 +525,7 @@ class Crazyflie_ROS2():
             self.parent.get_logger().error('CF%s::"%s": Unknown order' % (self.scf.cf.link_uri[-2:], msg.data))
 
     def cmd_control_callback(self, msg):
-        if self.CONTROL_MODE == 'OffBoard':
+        if self.scf.CONTROL_MODE == 'OffBoard':
             self.cmd_motion_.roll = msg.data[1]
             self.cmd_motion_.pitch = msg.data[2]
             self.cmd_motion_.yaw = msg.data[3]
@@ -698,8 +698,8 @@ class Crazyflie_ROS2():
         x = np.array([self.pose.position.x-msg.position.x,self.pose.position.y-msg.position.y,self.pose.position.z-msg.position.z])
         if (np.linalg.norm(x)>0.005 and np.linalg.norm(x)<0.2):
             self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
-        if ((abs(msg.position.x)>self.xy_lim) or (abs(msg.position.y)>self.xy_lim) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
-            self.CONTROL_MODE = 'HighLevel'
+        if ((abs(msg.position.x)>self.xy_lim) or (abs(msg.position.y)>self.xy_lim) or (abs(msg.position.z)>2.0)) and self.scf.CONTROL_MODE != 'HighLevel':
+            self.scf.CONTROL_MODE = 'HighLevel'
             self._is_flying = True
             self.parent.get_logger().error('CF%s::Out.' % self.scf.cf.link_uri[-2:])
             self.gohome()
@@ -707,7 +707,7 @@ class Crazyflie_ROS2():
             t_end.start()
 
     def goalpose_callback(self, msg):
-        if self.CONTROL_MODE == 'HighLevel':
+        if self.scf.CONTROL_MODE == 'HighLevel':
             self.cmd_motion_.x = msg.position.x
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
@@ -819,6 +819,8 @@ class CFSwarmDriver(Node):
     def update_params(self, scf):
         
         # Disable Flow deck to EKF
+        if scf.CONTROL_MODE == 'None':
+            scf.cf.param.set_value('motion.disable', '1')
         # scf.cf.param.set_value('motion.disable', '1')
         # Init Kalman Filter
         scf.cf.param.set_value('stabilizer.estimator', '2')
