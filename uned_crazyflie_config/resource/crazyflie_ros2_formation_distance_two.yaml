@@ -3,6 +3,12 @@ dron01:
   name: dron01
   control_mode: HighLevel
   controller_type: Continuous
+  communication:
+    type: Continuous
+    threshold:
+      type: Null
+      co: Null
+      ai: Null
   local_pose:
     enable: True
     T: 20
@@ -31,6 +37,12 @@ dron02:
   name: dron02
   control_mode: HighLevel
   controller_type: Continuous
+  communication:
+    type: Continuous
+    threshold:
+      type: Null
+      co: Null
+      ai: Null
   local_pose:
     enable: True
     T: 20

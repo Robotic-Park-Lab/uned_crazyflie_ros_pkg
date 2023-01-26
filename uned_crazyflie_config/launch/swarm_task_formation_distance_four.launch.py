@@ -9,10 +9,6 @@ def generate_launch_description():
     config_path = os.path.join(config_package_dir, 'resource', 'crazyflie_ros2_formation_distance_four.yaml')
     rviz_config_path = os.path.join(config_package_dir, 'rviz', 'test.rviz')
 
-    hostname = '10.196.92.136'
-    buffer_size = 200
-    topic_namespace = 'vicon'
-
     swarm_node = Node(
         package='uned_crazyflie_driver',
         executable='swarm_driver',
@@ -24,7 +20,9 @@ def generate_launch_description():
             {'first_uri': 'radio://0/80/2M/E7E7E7E701'},
             {'n': 4},
             {'config': config_path}
-        ])
+        ]
+    )
+
     rqt_node = Node(
         package='rqt_gui',
         executable='rqt_gui',
@@ -37,21 +35,10 @@ def generate_launch_description():
         name='rviz2',
         output='screen',
         arguments=['-d', rviz_config_path],
-
-    )
-
-    vicon_node = Node(
-        package='vicon_receiver',
-        executable='vicon_client',
-        name='vicon_node',
-        parameters=[
-            {'hostname': hostname, 'buffer_size': buffer_size, 'namespace': topic_namespace}
-        ]
     )
 
     return LaunchDescription([
         swarm_node,
         rqt_node,
         rviz_node
-        # vicon_node
     ])

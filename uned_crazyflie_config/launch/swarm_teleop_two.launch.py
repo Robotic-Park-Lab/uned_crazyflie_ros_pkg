@@ -6,12 +6,8 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     config_package_dir = get_package_share_directory('uned_crazyflie_config')
-    config_path = os.path.join(config_package_dir, 'resource', 'crazyflie_ros2_teleop_two.yaml')
+    config_path = os.path.join(config_package_dir, 'resource', 'crazyflie_ros2_teleop_default.yaml')
     rviz_config_path = os.path.join(config_package_dir, 'rviz', 'test.rviz')
-
-    hostname = '10.196.92.136'
-    buffer_size = 200
-    topic_namespace = 'vicon'
     
     swarm_node = Node(
         package='uned_crazyflie_driver',
@@ -24,7 +20,9 @@ def generate_launch_description():
             {'first_uri': 'radio://0/80/2M/E7E7E7E701'},
             {'n': 2},
             {'config': config_path}
-        ])
+        ]
+    )
+
     rqt_node = Node(
         package='rqt_gui',
         executable='rqt_gui',
@@ -40,17 +38,8 @@ def generate_launch_description():
 
     )
 
-    vicon_node = Node(
-        package='vicon_receiver',
-        executable='vicon_client',
-        name='vicon_node',
-        parameters=[
-            {'hostname': hostname, 'buffer_size': buffer_size, 'namespace': topic_namespace}
-        ])
-
     return LaunchDescription([
         swarm_node,
         rqt_node,
-        rviz_node,
-        vicon_node
+        rviz_node
     ])
