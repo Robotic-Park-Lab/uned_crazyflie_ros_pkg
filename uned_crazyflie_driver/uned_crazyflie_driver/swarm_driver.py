@@ -192,7 +192,7 @@ class Crazyflie_ROS2():
         self.parent.get_logger().info('CF%s::Controller Type: %s!' % (self.scf.cf.link_uri[-2:], self.scf.CONTROLLER_TYPE))
         self.communication = (self.config['communication']['type'] == 'Continuous')
         if not self.communication:
-            self.threshold = config['communication']['threshold']['value']
+            self.threshold = config['communication']['threshold']['co']
         else:
             self.threshold = 0.001
 
@@ -464,7 +464,7 @@ class Crazyflie_ROS2():
                 self.tfbr.sendTransform(t_base)
         else:
             try:
-                if self.scf.cf.param.get_value('deck.bcLighthouse4') == '1':
+                if self.scf.cf.param.get_value('deck.bcLighthouse4') == '1': # or self.config['positioning'] == 'Intern':
                     msg = Pose()
                     msg.position.x = data['stateEstimate.x']
                     msg.position.y = data['stateEstimate.y']
@@ -692,7 +692,6 @@ class Crazyflie_ROS2():
     def newpose_callback(self, msg):
         # self.parent.get_logger().info('CF%s::New pose: X:%.2f Y:%.2f Z:%.2f' % (self.scf.cf.link_uri[-2:], msg.position.x, msg.position.y, msg.position.z))
         if not self.init_pose:
-            self.parent.get_logger().info('CF%s::Test.' % self.scf.cf.link_uri[-2:])
             self.pose = msg
             self.home = msg
             self.publisher_pose.publish(msg)
@@ -741,7 +740,7 @@ class Crazyflie_ROS2():
                 dz += (pow(agent.d,2) - distance) * error_z
 
                 msg_data = Float64()
-                msg_data.data = agent.d - sqrt(distance)
+                msg_data.data = abs(agent.d - sqrt(distance))
                 agent.publisher_data_.publish(msg_data)
 
             delta = sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
@@ -762,8 +761,8 @@ class Crazyflie_ROS2():
             self.goalpose_callback(target_pose)
 
             self.parent.get_logger().debug('Distance: %.4f eX: %.2f eY: %.2f eZ: %.2f' % (sqrt(distance), error_x, error_y, error_z))
-            self.parent.get_logger().info('Delta: %.4f X: %.2f Y: %.2f Z: %.2f' % (delta, dx, dy, dz))
-            self.parent.get_logger().info('Target: X: %.2f Y: %.2f Z: %.2f' % (target_pose.position.x, target_pose.position.y, target_pose.position.z))
+            self.parent.get_logger().debug('Delta: %.4f X: %.2f Y: %.2f Z: %.2f' % (delta, dx, dy, dz))
+            self.parent.get_logger().debug('Target: X: %.2f Y: %.2f Z: %.2f' % (target_pose.position.x, target_pose.position.y, target_pose.position.z))
 
 
 #####################

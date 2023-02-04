@@ -1,6 +1,7 @@
 # Default crazyflie parameters to ros2 node
 dron01:
   name: dron01
+  positioning: Extern
   control_mode: HighLevel
   controller_type: Continuous
   communication:
@@ -36,6 +37,7 @@ dron01:
 dron02:
   name: dron02
   control_mode: HighLevel
+  positioning: Extern
   controller_type: Continuous
   communication:
     type: Continuous
@@ -70,6 +72,7 @@ dron02:
 dron03:
   name: dron03
   control_mode: HighLevel
+  positioning: Extern
   controller_type: Continuous
   communication:
     type: Continuous
@@ -103,6 +106,146 @@ dron03:
 
 dron04:
   name: dron04
+  control_mode: HighLevel
+  positioning: Intern
+  controller_type: Continuous
+  communication:
+    type: Continuous
+    threshold:
+      type: Null
+      co: Null
+      ai: Null
+  local_pose:
+    enable: True
+    T: 20
+  local_twist:
+    enable: False
+    T: 20
+  data_attitude:
+    enable: False
+    T: 20
+  data_rate: 
+    enable: False
+    T: 20
+  data_motor: 
+    enable: False
+    T: 20
+  data:
+    enable: False
+    T: 20
+  task: 
+    enable: False
+    role: Null
+    type: Null
+    relationship: Null
+
+dron05:
+  name: dron05
+  control_mode: HighLevel
+  positioning: Intern
+  controller_type: Continuous
+  communication:
+    type: Continuous
+    threshold:
+      type: Null
+      co: Null
+      ai: Null
+  local_pose:
+    enable: True
+    T: 20
+  local_twist:
+    enable: False
+    T: 20
+  data_attitude:
+    enable: False
+    T: 20
+  data_rate: 
+    enable: False
+    T: 20
+  data_motor: 
+    enable: False
+    T: 20
+  data:
+    enable: False
+    T: 20
+  task: 
+    enable: False
+    role: Null
+    type: Null
+    relationship: Null
+
+dron06:
+  name: dron06
+  control_mode: HighLevel
+  positioning: Intern
+  controller_type: Continuous
+  communication:
+    type: Continuous
+    threshold:
+      type: Null
+      co: Null
+      ai: Null
+  local_pose:
+    enable: True
+    T: 20
+  local_twist:
+    enable: False
+    T: 20
+  data_attitude:
+    enable: False
+    T: 20
+  data_rate: 
+    enable: False
+    T: 20
+  data_motor: 
+    enable: False
+    T: 20
+  data:
+    enable: False
+    T: 20
+  task: 
+    enable: False
+    role: Null
+    type: Null
+    relationship: Null
+
+dron07:
+  name: dron07
+  control_mode: HighLevel
+  positioning: Intern
+  controller_type: Continuous
+  communication:
+    type: Continuous
+    threshold:
+      type: Null
+      co: Null
+      ai: Null
+  local_pose:
+    enable: True
+    T: 20
+  local_twist:
+    enable: False
+    T: 20
+  data_attitude:
+    enable: False
+    T: 20
+  data_rate: 
+    enable: False
+    T: 20
+  data_motor: 
+    enable: False
+    T: 20
+  data:
+    enable: False
+    T: 20
+  task: 
+    enable: False
+    role: Null
+    type: Null
+    relationship: Null
+
+dronE7:
+  name: dronE7
   control_mode: HighLevel
   controller_type: Continuous
   communication:
