@@ -10,8 +10,8 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from visualization_msgs.msg import Marker
 
-from math import cos, sin, degrees, radians, pi, sqrt
-import sys
+from math import atan2, cos, sin, degrees, radians, pi, sqrt
+import numpy as np
 import tf_transformations
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
@@ -209,6 +209,17 @@ class CrazyflieWebotsDriver:
 
         ## Intialize Controllers
         self.continuous = True
+        # IPC
+        if properties.get("controller") == 'IPC':
+            self.controller_IPC = True
+            self.controller_PID = False
+            self.eomas = 3.14
+        elif properties.get("controller") == 'PID':
+            self.controller_IPC = False
+            self.controller_PID = True
+        else:
+            self.controller_IPC = False
+            self.controller_PID = True
         # Position
         self.z_controller = PIDController(2.0, 0.50, 0.0, 0.0, 100, 1.0, -1.0, 0.1, 0.01)
         self.x_controller = PIDController(1.0, 0.25, 0.0, 0.0, 100, 1.0, -1.0, 0.1, 0.01)
@@ -399,6 +410,7 @@ class CrazyflieWebotsDriver:
         roll = self.imu.getRollPitchYaw()[0]
         pitch = self.imu.getRollPitchYaw()[1]
         yaw = self.imu.getRollPitchYaw()[2]
+        self.global_yaw = yaw
         roll_rate = self.gyro.getValues()[0]
         pitch_rate = self.gyro.getValues()[1]
         yaw_rate = self.gyro.getValues()[2]
@@ -463,41 +475,77 @@ class CrazyflieWebotsDriver:
         self.node.get_logger().debug('dZ: R: %.2f P: %.2f C: %.2f' % (w_ref, vz_global, cmd_thrust))
 
         # X-Y Controller
-        if self.x_controller.eval_threshold(x_global, self.target_pose.position.x) or self.continuous:
-            self.x_controller.error[0] = self.target_pose.position.x - x_global
-            dtx = self.robot.getTime() - self.x_controller.past_time
-            u_ref = self.x_controller.update(dtx)
-            self.x_controller.past_time = self.robot.getTime()
-            msg = Bool()
-            msg.data = True
-            self.event_x_.publish(msg)
-        else:
-            u_ref = self.x_controller.last_value
-        self.node.get_logger().debug('X: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.x, x_global, u_ref))
+        # IPC Controller 
+        if self.controller_IPC:
+            self.target_twist = self.IPC_controller()
+            # Save zone
+            delta = np.array([self.gt_pose.position.x-self.target_pose.position.x,self.gt_pose.position.y-self.target_pose.position.y])
+            if np.linalg.norm(delta) < 0.02:
+                self.target_twist.angular.z = 0.0
+                self.node.get_logger().info('Save zone')
+                # X Controller
+                if self.x_controller.eval_threshold(x_global, self.target_pose.position.x) or self.continuous:
+                    self.x_controller.error[0] = self.target_pose.position.x - x_global
+                    dtx = self.robot.getTime() - self.x_controller.past_time
+                    self.target_twist.linear.x = self.x_controller.update(dtx)
+                    self.x_controller.past_time = self.robot.getTime()
+                    msg = Bool()
+                    msg.data = True
+                    self.event_x_.publish(msg)
+                else:
+                    self.target_twist.linear.x = self.x_controller.last_value
+                self.node.get_logger().debug('X: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.x, x_global, self.target_twist.linear.x))
+                # Y Controller
+                if self.y_controller.eval_threshold(y_global, self.target_pose.position.y) or self.continuous:
+                    self.y_controller.error[0] = self.target_pose.position.y - y_global
+                    dty = self.robot.getTime() - self.y_controller.past_time
+                    self.target_twist.linear.y = self.y_controller.update(dty)
+                    self.y_controller.past_time = self.robot.getTime()
+                    msg = Bool()
+                    msg.data = True
+                    self.event_y_.publish(msg)
+                else:
+                    self.target_twist.linear.y = self.y_controller.last_value
+                self.node.get_logger().debug('Y: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.y, y_global, self.target_twist.linear.y))
 
-        if self.y_controller.eval_threshold(y_global, self.target_pose.position.y) or self.continuous:
-            self.y_controller.error[0] = self.target_pose.position.y - y_global
-            dty = self.robot.getTime() - self.y_controller.past_time
-            v_ref = self.y_controller.update(dty)
-            self.y_controller.past_time = self.robot.getTime()
-            msg = Bool()
-            msg.data = True
-            self.event_y_.publish(msg)
-        else:
-            v_ref = self.y_controller.last_value
-        self.node.get_logger().debug('Y: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.y, y_global, v_ref))
-
+        if self.controller_PID:    
+            # X Controller
+            if self.x_controller.eval_threshold(x_global, self.target_pose.position.x) or self.continuous:
+                self.x_controller.error[0] = self.target_pose.position.x - x_global
+                dtx = self.robot.getTime() - self.x_controller.past_time
+                self.target_twist.linear.x = self.x_controller.update(dtx)
+                self.x_controller.past_time = self.robot.getTime()
+                msg = Bool()
+                msg.data = True
+                self.event_x_.publish(msg)
+            else:
+                self.target_twist.linear.x = self.x_controller.last_value
+            self.node.get_logger().debug('X: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.x, x_global, self.target_twist.linear.x))
+            # Y Controller
+            if self.y_controller.eval_threshold(y_global, self.target_pose.position.y) or self.continuous:
+                self.y_controller.error[0] = self.target_pose.position.y - y_global
+                dty = self.robot.getTime() - self.y_controller.past_time
+                self.target_twist.linear.y = self.y_controller.update(dty)
+                self.y_controller.past_time = self.robot.getTime()
+                msg = Bool()
+                msg.data = True
+                self.event_y_.publish(msg)
+            else:
+                self.target_twist.linear.y = self.y_controller.last_value
+            self.node.get_logger().debug('Y: R: %.2f P: %.2f C: %.2f' % (self.target_pose.position.y, y_global, self.target_twist.linear.y))
+        
         # dX-dY Controller
-        if self.u_controller.eval_threshold(vx_global, u_ref) or self.continuous:
-            self.u_controller.error[0] =  (u_ref - vx_global)*cos(yaw) + (v_ref - vy_global)*sin(yaw)
+        if self.u_controller.eval_threshold(vx_global, self.target_twist.linear.x) or self.continuous:
+            self.u_controller.error[0] =  (self.target_twist.linear.x - vx_global)*cos(yaw) + (self.target_twist.linear.y - vy_global)*sin(yaw)
             dtu = self.robot.getTime() - self.u_controller.past_time
             pitch_ref = self.u_controller.update(dtu)
             self.u_controller.past_time = self.robot.getTime()
         else:
             pitch_ref = self.u_controller.last_value
-
-        self.v_controller.error[0] = -(u_ref - vx_global)*sin(yaw) + (v_ref - vy_global)*cos(yaw)
-        roll_ref = self.v_controller.update(dt)
+        self.v_controller.error[0] = -(self.target_twist.linear.x - vx_global)*sin(yaw) + (self.target_twist.linear.y - vy_global)*cos(yaw)
+        dtv = self.robot.getTime() - self.v_controller.past_time
+        roll_ref = self.v_controller.update(dtv)
+        self.v_controller.past_time = self.robot.getTime()
         
         ## Attitude Controller
         # Pitch Controller
@@ -509,16 +557,18 @@ class CrazyflieWebotsDriver:
         # Yaw Controller
         self.yaw_controller.error[0] = 0.0 # - degrees(yaw)
         dyaw_ref = self.yaw_controller.update(dt)
+        # IPC Controller TEST
+        dyaw_ref = self.target_twist.angular.z
 
         ## Rate Controller
         self.dpitch_controller.error[0] = dpitch_ref - degrees(pitch_rate)
         delta_pitch = self.dpitch_controller.update(dt)
         self.droll_controller.error[0] = droll_ref - degrees(roll_rate)
         delta_roll = self.droll_controller.update(dt)
-        self.dyaw_controller.error[0] = dyaw_ref - degrees(yaw_rate)
+        self.dyaw_controller.error[0] = dyaw_ref - yaw_rate # degrees(yaw_rate)
         delta_yaw = self.dyaw_controller.update(dt)
         
-        
+        self.node.get_logger().info('IPC:: V: %.4f W: %.4f' % (self.target_twist.linear.x, dyaw_ref))
 
         ## Motor mixing Controller
         motorPower_m1 =  (cmd_thrust - 0.5 * delta_roll - 0.5 * delta_pitch + delta_yaw)
@@ -538,3 +588,27 @@ class CrazyflieWebotsDriver:
         self.past_x_global = x_global
         self.past_y_global = y_global
         self.past_z_global = z_global
+
+    def IPC_controller(self):
+        Vmax = 0.5
+        K1 = 0.005
+        Kp = 1.0
+        Ki = 0.008
+
+        d = sqrt(pow(self.target_pose.position.x-self.gt_pose.position.x,2)+pow(self.target_pose.position.y-self.gt_pose.position.y,2))*100
+        alpha = atan2(self.target_pose.position.y-self.gt_pose.position.y,self.target_pose.position.x-self.gt_pose.position.x)
+        oc = alpha - self.global_yaw
+        eo = atan2(sin(oc),cos(oc))
+        p = (3.14-abs(eo))/3.14
+        V = min(K1*d*p,Vmax)
+
+        self.eomas = eo+self.eomas
+        w = Kp*sin(eo) + Ki*self.eomas*0.003
+
+        ## Cmd_Vel
+        out = Twist()
+        out.linear.x = V * cos(self.global_yaw)
+        out.linear.y =  V * sin(self.global_yaw)
+        out.angular.z = w
+
+        return out 

@@ -3,6 +3,7 @@
     <webots>
         <plugin type="uned_crazyflie_webots.crazyflie_driver.CrazyflieWebotsDriver">
             <relationship>Null</relationship>
+            <controller>PID</controller>
         </plugin>
     </webots>
 </robot>

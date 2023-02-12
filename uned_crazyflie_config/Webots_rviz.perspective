@@ -4,14 +4,14 @@
     "mainwindow": {
       "keys": {
         "geometry": {
-          "repr(QByteArray.hex)": "QtCore.QByteArray(b'01d9d0cb00030000000007ca0000001b00000eff00000437000007ca0000004000000eff0000043700000000000000000780000007ca0000004000000eff00000437')",
+          "repr(QByteArray.hex)": "QtCore.QByteArray(b'01d9d0cb000300000000004a0000005900000636000003a50000004a0000007e00000636000003a500000000000000000a000000004a0000007e00000636000003a5')",
           "type": "repr(QByteArray.hex)",
-          "pretty-print": "           7   @   7        @   7"
+          "pretty-print": "     J Y 6   J ~ 6        J ~ 6  "
         },
         "state": {
-          "repr(QByteArray.hex)": "QtCore.QByteArray(b'000000ff00000000fd000000010000000300000736000003ccfc0100000002fb00000030005f005f0044006f0063006b0057006900640067006500740043006f006e007400610069006e00650072005f005f00310100000000000003510000014300fffffffb00000030005f005f0044006f0063006b0057006900640067006500740043006f006e007400610069006e00650072005f005f00320100000357000003df0000023d00ffffff000007360000000000000004000000040000000800000008fc00000001000000030000000100000036004d0069006e0069006d0069007a006500640044006f0063006b00570069006400670065007400730054006f006f006c0062006100720000000000ffffffff0000000000000000')",
+          "repr(QByteArray.hex)": "QtCore.QByteArray(b'000000ff00000000fd0000000100000003000005ed000002fcfc0100000003fb00000042007200710074005f0070006c006f0074005f005f0050006c006f0074005f005f0031005f005f00440061007400610050006c006f00740057006900640067006500740100000000000002a10000014300fffffffb00000058007200710074005f007000750062006c00690073006800650072005f005f005000750062006c00690073006800650072005f005f0031005f005f005000750062006c0069007300680065007200570069006400670065007401000002a7000003460000023d00fffffffb0000005a007200710074005f0069006d006100670065005f0076006900650077005f005f0049006d0061006700650056006900650077005f005f0031005f005f0049006d00610067006500560069006500770057006900640067006500740100000415000001d80000000000000000000005ed0000000000000004000000040000000800000008fc00000001000000030000000100000036004d0069006e0069006d0069007a006500640044006f0063006b00570069006400670065007400730054006f006f006c0062006100720000000000ffffffff0000000000000000')",
           "type": "repr(QByteArray.hex)",
-          "pretty-print": "                 0__DockWidgetContainer__1          0__DockWidgetContainer__2                            6MinimizedDockWidgetsToolbar        "
+          "pretty-print": "                 Brqt_plot__Plot__1__DataPlotWidget          Xrqt_publisher__Publisher__1__PublisherWidget          Zrqt_image_view__ImageView__1__ImageViewWidget                            6MinimizedDockWidgetsToolbar        "
         }
       },
       "groups": {
@@ -29,22 +29,22 @@
     "pluginmanager": {
       "keys": {
         "running-plugins": {
-          "repr": "{'__DockWidgetContainer': [1, 2], 'rqt_plot/Plot': [1], 'rqt_publisher/Publisher': [1], 'rqt_topic/TopicPlugin': [1]}",
+          "repr": "{'rqt_plot/Plot': [1], 'rqt_publisher/Publisher': [1]}",
           "type": "repr"
         }
       },
       "groups": {
-        "plugin____DockWidgetContainer__1": {
+        "plugin__rqt_image_view__ImageView__1": {
           "keys": {},
           "groups": {
-            "dock_widget": {
+            "dock_widget__ImageViewWidget": {
               "keys": {
                 "dock_widget_title": {
-                  "repr": "'Container'",
+                  "repr": "'Image View'",
                   "type": "repr"
                 },
                 "dockable": {
-                  "repr": "True",
+                  "repr": "'true'",
                   "type": "repr"
                 },
                 "parent": {
@@ -52,61 +52,56 @@
                   "type": "repr"
                 }
               },
-              "groups": {
-                "mainwindow": {
-                  "keys": {
-                    "geometry": {
-                      "repr(QByteArray.hex)": "QtCore.QByteArray(b'01d9d0cb00030000000000000000001500000350000003cb0000000000000000ffffffffffffffff00000000000000000780000000000000001500000350000003cb')",
-                      "type": "repr(QByteArray.hex)",
-                      "pretty-print": "         P                    P  "
-                    },
-                    "state": {
-                      "repr(QByteArray.hex)": "QtCore.QByteArray(b'000000ff00000000fd000000020000000200000351000003b7fc0100000001fb00000042007200710074005f0070006c006f0074005f005f0050006c006f0074005f005f0031005f005f00440061007400610050006c006f00740057006900640067006500740100000000000003510000014300ffffff000000030000000000000000fc0100000001fb0000004c007200710074005f0074006f007000690063005f005f0054006f0070006900630050006c007500670069006e005f005f0031005f005f0054006f007000690063005700690064006700650074030000015f0000006c0000025b000003cc000003510000000000000004000000040000000800000008fc00000000')",
-                      "type": "repr(QByteArray.hex)",
-                      "pretty-print": "                 Brqt_plot__Plot__1__DataPlotWidget                   Lrqt_topic__TopicPlugin__1__TopicWidget                       "
-                    }
-                  },
-                  "groups": {}
-                }
-              }
-            }
-          }
-        },
-        "plugin____DockWidgetContainer__2": {
-          "keys": {},
-          "groups": {
-            "dock_widget": {
+              "groups": {}
+            },
+            "plugin": {
               "keys": {
-                "dock_widget_title": {
-                  "repr": "'Container (2)'",
+                "color_scheme": {
+                  "repr": "'-1'",
                   "type": "repr"
                 },
-                "dockable": {
-                  "repr": "True",
+                "dynamic_range": {
+                  "repr": "'false'",
                   "type": "repr"
                 },
-                "parent": {
-                  "repr": "None",
+                "max_range": {
+                  "repr": "'10'",
+                  "type": "repr"
+                },
+                "mouse_pub_topic": {
+                  "repr": "'/dron01/camera_mouse_left'",
+                  "type": "repr"
+                },
+                "num_gridlines": {
+                  "repr": "'0'",
+                  "type": "repr"
+                },
+                "publish_click_location": {
+                  "repr": "'false'",
+                  "type": "repr"
+                },
+                "rotate": {
+                  "repr": "'0'",
+                  "type": "repr"
+                },
+                "smooth_image": {
+                  "repr": "'false'",
+                  "type": "repr"
+                },
+                "toolbar_hidden": {
+                  "repr": "'false'",
+                  "type": "repr"
+                },
+                "topic": {
+                  "repr": "'/dron01/camera'",
+                  "type": "repr"
+                },
+                "zoom1": {
+                  "repr": "'false'",
                   "type": "repr"
                 }
               },
-              "groups": {
-                "mainwindow": {
-                  "keys": {
-                    "geometry": {
-                      "repr(QByteArray.hex)": "QtCore.QByteArray(b'01d9d0cb000300000000000000000015000003de000003cb0000000000000000ffffffffffffffff000000000000000007800000000000000015000003de000003cb')",
-                      "type": "repr(QByteArray.hex)",
-                      "pretty-print": "                                 "
-                    },
-                    "state": {
-                      "repr(QByteArray.hex)": "QtCore.QByteArray(b'000000ff00000000fd0000000100000002000003df000003b7fc0100000001fc00000000000003df0000023d00fffffffc0200000002fb00000058007200710074005f007000750062006c00690073006800650072005f005f005000750062006c00690073006800650072005f005f0031005f005f005000750062006c0069007300680065007200570069006400670065007401000000000000027b0000008c00fffffffb0000004c007200710074005f0074006f007000690063005f005f0054006f0070006900630050006c007500670069006e005f005f0031005f005f0054006f0070006900630057006900640067006500740100000281000001360000006d00ffffff000003df0000000000000004000000040000000800000008fc00000000')",
-                      "type": "repr(QByteArray.hex)",
-                      "pretty-print": "                     =                                                       {                                                6 m                "
-                    }
-                  },
-                  "groups": {}
-                }
-              }
+              "groups": {}
             }
           }
         },
@@ -124,7 +119,7 @@
                   "type": "repr"
                 },
                 "parent": {
-                  "repr": "1",
+                  "repr": "None",
                   "type": "repr"
                 }
               },
@@ -141,15 +136,15 @@
                   "type": "repr"
                 },
                 "topics": {
-                  "repr": "['/dron01/dron02/data//data', '/dron01/dron03/data//data', '/dron02/dron03/data//data']",
+                  "repr": "['/dron01/local_pose/position/x', '/dron01/local_pose/position/y', '/dron01/local_pose/position/z']",
                   "type": "repr"
                 },
                 "x_limits": {
-                  "repr": "[0.0, 20.0]",
+                  "repr": "[24.024616956710815, 44.024616956710815]",
                   "type": "repr"
                 },
                 "y_limits": {
-                  "repr": "[-0.8477393926520528, 0.8517060036509285]",
+                  "repr": "[-0.40281035582650976, 1.2164290153819157]",
                   "type": "repr"
                 }
               },
@@ -171,7 +166,7 @@
                   "type": "repr"
                 },
                 "parent": {
-                  "repr": "2",
+                  "repr": "None",
                   "type": "repr"
                 }
               },
@@ -180,40 +175,8 @@
             "plugin": {
               "keys": {
                 "publishers": {
-                  "repr": "\"[{'topic_name': '/swarm/order', 'type_name': 'std_msgs/msg/String', 'rate': 1.0, 'enabled': False, 'publisher_id': 0, 'counter': 1, 'expressions': {'/swarm/order/data': 'take_off'}}, {'topic_name': '/khepera01/goal_pose', 'type_name': 'geometry_msgs/msg/Pose', 'rate': 1.0, 'enabled': False, 'publisher_id': 1, 'counter': 0, 'expressions': {'/khepera01/goal_pose/position/x': '1.0', '/khepera01/goal_pose/position/y': '0.0'}}, {'topic_name': '/khepera01/cmd_vel', 'type_name': 'geometry_msgs/msg/Twist', 'rate': 1.0, 'enabled': False, 'publisher_id': 2, 'counter': 0, 'expressions': {'/khepera01/cmd_vel/linear/x': '0.5'}}, {'topic_name': '/swarm/status', 'type_name': 'std_msgs/msg/String', 'rate': 1.0, 'enabled': False, 'publisher_id': 3, 'counter': 0, 'expressions': {'/swarm/status/data': 'Ready'}}, {'topic_name': '/khepera02/goal_pose', 'type_name': 'geometry_msgs/msg/Pose', 'rate': 1.0, 'enabled': False, 'publisher_id': 4, 'counter': 0, 'expressions': {'/khepera02/goal_pose/position/x': '-1.0', '/khepera02/goal_pose/position/y': '0.0'}}, {'topic_name': '/goal_pose', 'type_name': 'geometry_msgs/msg/Pose', 'rate': 1.0, 'enabled': False, 'publisher_id': 5, 'counter': 0, 'expressions': {'/goal_pose/position/x': '0.5'}}, {'topic_name': '/khepera04/goal_pose', 'type_name': 'geometry_msgs/msg/Pose', 'rate': 1.0, 'enabled': False, 'publisher_id': 6, 'counter': 0, 'expressions': {'/khepera04/goal_pose/position/x': '0.5'}}, {'topic_name': '/swarm/order', 'type_name': 'std_msgs/msg/String', 'rate': 1.0, 'enabled': False, 'publisher_id': 7, 'counter': 2, 'expressions': {'/swarm/order/data': 'land'}}, {'topic_name': '/clicked_point', 'type_name': 'geometry_msgs/msg/PointStamped', 'rate': 1.0, 'enabled': False, 'publisher_id': 8, 'counter': 0, 'expressions': {}}, {'topic_name': '/dronE7/pose', 'type_name': 'geometry_msgs/msg/Pose', 'rate': 1.0, 'enabled': False, 'publisher_id': 9, 'counter': 0, 'expressions': {}}]\"",
+                  "repr": "\"[{'topic_name': '/khepera01/goal_pose', 'type_name': 'geometry_msgs/msg/Pose', 'rate': 1.0, 'enabled': False, 'publisher_id': 0, 'counter': 0, 'expressions': {'/khepera01/goal_pose/position/x': '0.0', '/khepera01/goal_pose/position/y': '0.0'}}, {'topic_name': '/dron01/goal_pose', 'type_name': 'geometry_msgs/msg/Pose', 'rate': 1.0, 'enabled': False, 'publisher_id': 1, 'counter': 0, 'expressions': {'/dron01/goal_pose/position/z': '1.2', '/dron01/goal_pose/position/x': '0.0', '/dron01/goal_pose/orientation/z': '1.0', '/dron01/goal_pose/orientation/w': '0.0'}}]\"",
                   "type": "repr"
-                }
-              },
-              "groups": {}
-            }
-          }
-        },
-        "plugin__rqt_topic__TopicPlugin__1": {
-          "keys": {},
-          "groups": {
-            "dock_widget__TopicWidget": {
-              "keys": {
-                "dock_widget_title": {
-                  "repr": "'Topic Monitor'",
-                  "type": "repr"
-                },
-                "dockable": {
-                  "repr": "True",
-                  "type": "repr"
-                },
-                "parent": {
-                  "repr": "2",
-                  "type": "repr"
-                }
-              },
-              "groups": {}
-            },
-            "plugin": {
-              "keys": {
-                "tree_widget_header_state": {
-                  "repr(QByteArray.hex)": "QtCore.QByteArray(b'000000ff000000000000000100000000000000000100000000000000000000000620000000010000000500000064000003bd000000060101000100000000000000000600000064ffffffff000000810000000300000006000000fd0000000100000003000001b500000001000000030000006800000001000000030000003900000001000000030000006a0000000100000003000000000000000100000003000003e80000000064')",
-                  "type": "repr(QByteArray.hex)",
-                  "pretty-print": "                      d                                                            d"
                 }
               },
               "groups": {}
