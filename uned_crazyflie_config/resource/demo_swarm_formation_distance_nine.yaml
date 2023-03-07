@@ -1,8 +1,8 @@
 # Default crazyflie parameters to ros2 node
 dron01:
   name: dron01
-  positioning: Extern
   control_mode: HighLevel
+  positioning: Intern
   controller_type: PID_Continuous
   communication:
     type: Continuous
@@ -29,15 +29,15 @@ dron01:
     enable: False
     T: 20
   task: 
-    enable: False
-    role: Null
-    type: Null
-    relationship: Null
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron02_0.7, dron03_0.7, dron04_0.7, dron05_0.7, dron06_0.7, dron07_0.7'
 
 dron02:
   name: dron02
   control_mode: HighLevel
-  positioning: Extern
+  positioning: Intern
   controller_type: PID_Continuous
   communication:
     type: Continuous
@@ -64,15 +64,15 @@ dron02:
     enable: False
     T: 20
   task: 
-    enable: False
-    role: Null
-    type: Null
-    relationship: Null
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron01_0.7, dron03_0.7, dron07_0.7'
 
 dron03:
   name: dron03
   control_mode: HighLevel
-  positioning: Extern
+  positioning: Intern
   controller_type: PID_Continuous
   communication:
     type: Continuous
@@ -99,10 +99,10 @@ dron03:
     enable: False
     T: 20
   task: 
-    enable: False
-    role: Null
-    type: Null
-    relationship: Null
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron01_0.7, dron02_0.7, dron04_0.7'
 
 dron04:
   name: dron04
@@ -134,10 +134,10 @@ dron04:
     enable: False
     T: 20
   task: 
-    enable: False
-    role: Null
-    type: Null
-    relationship: Null
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron01_0.7, dron03_0.7, dron05_0.7, dron08_0.7'
 
 dron05:
   name: dron05
@@ -169,10 +169,10 @@ dron05:
     enable: False
     T: 20
   task: 
-    enable: False
-    role: Null
-    type: Null
-    relationship: Null
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron01_0.7, dron04_0.7, dron06_0.7, dron08_0.7, dron09_0.7'
 
 dron06:
   name: dron06
@@ -204,10 +204,10 @@ dron06:
     enable: False
     T: 20
   task: 
-    enable: False
-    role: Null
-    type: Null
-    relationship: Null
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron01_0.7, dron05_0.7, dron07_0.7, dron09_0.7'
 
 dron07:
   name: dron07
@@ -239,14 +239,15 @@ dron07:
     enable: False
     T: 20
   task: 
-    enable: False
-    role: Null
-    type: Null
-    relationship: Null
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron01_0.7, dron02_0.7, dron06_0.7'
 
-dronE7:
-  name: dronE7
+dron08:
+  name: dron08
   control_mode: HighLevel
+  positioning: Intern
   controller_type: PID_Continuous
   communication:
     type: Continuous
@@ -273,7 +274,42 @@ dronE7:
     enable: False
     T: 20
   task: 
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron04_0.7, dron05_0.7'
+
+dron09:
+  name: dron09
+  control_mode: HighLevel
+  positioning: Intern
+  controller_type: PID_Continuous
+  communication:
+    type: Continuous
+    threshold:
+      type: Null
+      co: Null
+      ai: Null
+  local_pose:
+    enable: True
+    T: 20
+  local_twist:
     enable: False
-    role: Null
-    type: Null
-    relationship: Null
+    T: 20
+  data_attitude:
+    enable: False
+    T: 20
+  data_rate: 
+    enable: False
+    T: 20
+  data_motor: 
+    enable: False
+    T: 20
+  data:
+    enable: False
+    T: 20
+  task: 
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron06_0.7, dron05_0.7'

@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<robot name="dron04">
+    <webots>
+        <plugin type="uned_crazyflie_webots.crazyflie_driver.CrazyflieWebotsDriver">
+            <relationship>dron03_0.7071,dron01_0.7071,dron05_0.7071</relationship>
+            <controller>PID</controller>
+        </plugin>
+    </webots>
+</robot>

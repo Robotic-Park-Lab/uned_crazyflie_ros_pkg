@@ -61,7 +61,7 @@ class Agent():
         p1.x = self.pose.position.x
         p1.y = self.pose.position.y
         p1.z = self.pose.position.z
-        self.parent.distance_formation_bool = True
+        # self.parent.distance_formation_bool = True
 
         distance = sqrt(pow(p0.x-p1.x,2)+pow(p0.y-p1.y,2)+pow(p0.z-p1.z,2))
     
@@ -399,7 +399,7 @@ class Crazyflie_ROS2():
     def take_off(self):
         self.parent.get_logger().info('CF%s::Take Off.' % self.scf.cf.link_uri[-2:])
         # self.cmd_motion_.take_off(self.scf.cf)
-        self.cmd_motion_.z = 0.75
+        self.cmd_motion_.z = 1.0
         self.cmd_motion_.send_pose_data_(self.scf.cf)
         self._is_flying = True
         self.t_ready = Timer(3, self._ready)
@@ -464,7 +464,7 @@ class Crazyflie_ROS2():
                 self.tfbr.sendTransform(t_base)
         else:
             try:
-                if self.scf.cf.param.get_value('deck.bcLighthouse4') == '1': # or self.config['positioning'] == 'Intern':
+                if self.scf.cf.param.get_value('deck.bcLighthouse4') == '1' or self.config['positioning'] == 'Intern':
                     msg = Pose()
                     msg.position.x = data['stateEstimate.x']
                     msg.position.y = data['stateEstimate.y']
@@ -528,6 +528,10 @@ class Crazyflie_ROS2():
                 self.gohome()
             else:
                 self.parent.get_logger().warning('CF%s::In land' % self.scf.cf.link_uri[-2:])
+        elif msg.data == 'distance_formation_run':
+            self.distance_formation_bool = True
+        elif msg.data == 'formation_stop':
+            self.distance_formation_bool = False
         else:
             self.parent.get_logger().error('CF%s::"%s": Unknown order' % (self.scf.cf.link_uri[-2:], msg.data))
 
@@ -543,7 +547,7 @@ class Crazyflie_ROS2():
 
     def controllers_params_callback(self, msg):
         self.parent.get_logger().info('CF%s: New %s controller parameters' % (self.scf.cf.link_uri[-2:], msg.id))
-        if (self.scf.CONTROLLER_TYPE == 'Continuous'):
+        if (self.scf.CONTROLLER_TYPE == 'PID_Continuous'):
             if msg.id == 'x':
                 groupstr = 'posCtlPid'
                 self.scf.cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
@@ -608,7 +612,7 @@ class Crazyflie_ROS2():
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
             self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
-        elif (self.scf.CONTROLLER_TYPE == 'EventBased'):
+        elif (self.scf.CONTROLLER_TYPE == 'PID_EventBased'):
             if msg.id == 'x':
                 groupstr = 'posEbCtlPid'
                 self.scf.cf.param.set_value(groupstr + '.' + msg.id + 'Kp', msg.kp)
@@ -726,14 +730,14 @@ class Crazyflie_ROS2():
     ###############
     def task_formation_distance(self):
         if self.ready and self.swarm_ready and self.distance_formation_bool:
-            self.distance_formation_bool = False
+            # self.distance_formation_bool = False
             dx = dy = dz = 0
             target_pose = Pose()
             for agent in self.agent_list:
                 # self.parent.get_logger().info('Agent: %s' % agent.id)
                 error_x = self.pose.position.x - agent.pose.position.x
                 error_y = self.pose.position.y - agent.pose.position.y
-                error_z = 0 # self.pose.position.z - agent.pose.position.z
+                error_z = self.pose.position.z - agent.pose.position.z
                 distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
                 dx += (pow(agent.d,2) - distance) * error_x
                 dy += (pow(agent.d,2) - distance) * error_y
@@ -742,6 +746,11 @@ class Crazyflie_ROS2():
                 msg_data = Float64()
                 msg_data.data = abs(agent.d - sqrt(distance))
                 agent.publisher_data_.publish(msg_data)
+
+            error_r = pow(1.0,2) - (pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(self.pose.position.z-0.5,2))
+            dx += 2 * (error_r * self.pose.position.x)
+            dy += 2 * (error_r * self.pose.position.y)
+            dz += 2 * (error_r * (self.pose.position.z-0.5))
 
             delta = sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
 
@@ -753,11 +762,23 @@ class Crazyflie_ROS2():
                 dy = 0.32
             if dy < -0.32:
                 dy = -0.32
+            if dz > 0.32:
+                dz = 0.32
+            if dz < -0.32:
+                dz = -0.32
 
             target_pose.position.x = self.pose.position.x + dx/4
             target_pose.position.y = self.pose.position.y + dy/4
-            target_pose.position.z = 0.8 # self.pose.position.z # + dz/4
+            target_pose.position.z = self.pose.position.z + dz/4
             
+            self.parent.get_logger().info('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, target_pose.position.x, self.pose.position.y, target_pose.position.y, self.pose.position.z, target_pose.position.z)) 
+            if target_pose.position.z < 0.5:
+                target_pose.position.z = 0.5
+
+            if target_pose.position.z > 2.0:
+                target_pose.position.z = 2.0
+
+
             self.goalpose_callback(target_pose)
 
             self.parent.get_logger().debug('Distance: %.4f eX: %.2f eY: %.2f eZ: %.2f' % (sqrt(distance), error_x, error_y, error_z))
@@ -816,7 +837,7 @@ class CFSwarmDriver(Node):
             cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[uri], uri, config)
             dron.append(cf)
             while not cf.scf.cf.param.is_updated:
-                time.sleep(1.0)
+                time.sleep(0.1)
             self.get_logger().warning('Parameters downloaded for %s' % cf.scf.cf.link_uri)
             i += 1
 
@@ -837,7 +858,7 @@ class CFSwarmDriver(Node):
         scf.cf.param.set_value('kalman.resetEstimation', '0')
         # Init HighLevel
         scf.cf.param.set_value('commander.enHighLevel', '1')
-        if (scf.CONTROLLER_TYPE == 'EventBased'):
+        if (scf.CONTROLLER_TYPE == 'PID_EventBased'):
             scf.cf.param.set_value('controller.eventBased', '1')
 
     def order_callback(self, msg):
@@ -852,6 +873,8 @@ class CFSwarmDriver(Node):
                 cf.descent()
         elif msg.data == 'distance_formation_run':
             self._ready()
+            for cf in dron:
+                cf.order_callback(msg)
         else:
             self.get_logger().error('SWARM::"%s": Unknown order' % msg.data)
 

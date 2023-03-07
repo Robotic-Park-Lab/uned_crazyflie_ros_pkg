@@ -1,7 +1,7 @@
 # Default crazyflie parameters to ros2 node
 dron01:
   name: dron01
-  positioning: Extern
+  positioning: Intern
   control_mode: HighLevel
   controller_type: PID_Continuous
   communication:
@@ -37,7 +37,7 @@ dron01:
 dron02:
   name: dron02
   control_mode: HighLevel
-  positioning: Extern
+  positioning: Intern
   controller_type: PID_Continuous
   communication:
     type: Continuous
@@ -72,7 +72,7 @@ dron02:
 dron03:
   name: dron03
   control_mode: HighLevel
-  positioning: Extern
+  positioning: Intern
   controller_type: PID_Continuous
   communication:
     type: Continuous

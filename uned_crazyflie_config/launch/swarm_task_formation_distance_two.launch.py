@@ -6,7 +6,7 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     config_package_dir = get_package_share_directory('uned_crazyflie_config')
-    config_path = os.path.join(config_package_dir, 'resource', 'crazyflie_ros2_formation_distance_two.yaml')
+    config_path = os.path.join(config_package_dir, 'resource', 'demo_swarm_formation_distance_two.yaml')
     rviz_config_path = os.path.join(config_package_dir, 'rviz', 'test.rviz')
 
     swarm_node = Node(

@@ -3,6 +3,7 @@ import os
 from rclpy.node import Node
 from rclpy.time import Time
 from threading import Timer
+import yaml
 
 from std_msgs.msg import String, Bool, Float64
 from geometry_msgs.msg import Twist, Pose, Point
@@ -243,7 +244,7 @@ class CrazyflieWebotsDriver:
         self.name_value = os.environ['WEBOTS_ROBOT_NAME']
         rclpy.init(args=None)
         self.node = rclpy.create_node(self.name_value+'_driver')
-        self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.name_value)))
+        
         # Subscription
         self.node.create_subscription(Twist, self.name_value+'/cmd_vel', self.cmd_vel_callback, 1)
         self.node.create_subscription(Pose, self.name_value+'/goal_pose', self.goal_pose_callback, 1)
@@ -263,15 +264,30 @@ class CrazyflieWebotsDriver:
         self.msg_laser = LaserScan()
         self.node.create_timer(0.2, self.publish_laserscan_data)
 
+        self.initialize()
+
+    def initialize(self):
+        self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.name_value)))
+        # Read Params
+        config_file = os.environ['WEBOTS_ROBOT_CONFIG_FILE']
+
+        with open(config_file, 'r') as file:
+            documents = yaml.safe_load(file)
+        self.config = documents[self.name_value]
+
         # Init relationship
-        relationship = properties.get("relationship").split(',')
-        self.agent_list = list()
-        for rel in relationship:
-            if rel != 'Null':
-                aux = rel.split('_')
-                robot = Agent(self, aux[0], d = float(aux[1]))
-                self.node.get_logger().info('CF: %s: Agent: %s \td: %s' % (self.name_value, aux[0], aux[1]))
-                self.agent_list.append(robot)
+        if self.config['task']['enable']:
+            self.node.get_logger().info('Task %s' % self.config['task']['type'])
+            self.agent_list = list()
+            aux = self.config['task']['relationship']
+            self.relationship = aux.split(', ')
+            if self.config['task']['type'] == 'distance':
+                for rel in self.relationship:
+                    aux = rel.split('_')
+                    robot = Agent(self, aux[0], d = float(aux[1]))
+                    self.node.get_logger().info('CF: %s: Agent: %s \td: %s' % (self.name_value, aux[0], aux[1]))
+                    self.agent_list.append(robot)
+
 
     def publish_laserscan_data(self):
 
@@ -373,8 +389,27 @@ class CrazyflieWebotsDriver:
             dz += (pow(agent.d,2) - distance) * error_z
 
             msg_data = Float64()
-            msg_data.data = agent.d - sqrt(distance)
+            msg_data.data = abs(agent.d - sqrt(distance))
             agent.publisher_data_.publish(msg_data)
+            self.node.get_logger().debug('Agent %s: D: %.2f dx: %.2f dy: %.2f dz: %.2f ' % (agent.id, msg_data.data, dx, dy, dz)) 
+
+        error_r = pow(1.0,2) - (pow(self.gt_pose.position.x,2)+pow(self.gt_pose.position.y,2)+pow(self.gt_pose.position.z-0.5,2))
+        dx += 2 * (error_r *self.gt_pose.position.x)
+        dy += 2 * (error_r * self.gt_pose.position.y)
+        dz += 2 * (error_r * (self.gt_pose.position.z-0.5))
+        
+        if dx > 0.32:
+            dx = 0.32
+        if dx < -0.32:
+            dx = -0.32
+        if dy > 0.32:
+            dy = 0.32
+        if dy < -0.32:
+            dy = -0.32
+        if dz > 0.32:
+            dz = 0.32
+        if dz < -0.32:
+            dz = -0.32
 
         self.target_pose.position.x = self.gt_pose.position.x + dx/4
         self.target_pose.position.y = self.gt_pose.position.y + dy/4
@@ -385,11 +420,13 @@ class CrazyflieWebotsDriver:
             self.target_pose.position.y += self.leader_cmd.position.y
             self.target_pose.position.z += self.leader_cmd.position.z
 
+        self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.gt_pose.position.x, self.target_pose.position.x, self.gt_pose.position.y, self.target_pose.position.y, self.gt_pose.position.z, self.target_pose.position.z)) 
         if self.target_pose.position.z < 0.5:
             self.target_pose.position.z = 0.5
 
-        if self.target_pose.position.z > 1.2:
-            self.target_pose.position.z = 1.2
+        if self.target_pose.position.z > 2.0:
+            self.target_pose.position.z = 2.0
+
 
     def step(self):
         rclpy.spin_once(self.node, timeout_sec=0)
@@ -568,7 +605,7 @@ class CrazyflieWebotsDriver:
         self.dyaw_controller.error[0] = dyaw_ref - yaw_rate # degrees(yaw_rate)
         delta_yaw = self.dyaw_controller.update(dt)
         
-        self.node.get_logger().info('IPC:: V: %.4f W: %.4f' % (self.target_twist.linear.x, dyaw_ref))
+        self.node.get_logger().debug('IPC:: V: %.4f W: %.4f' % (self.target_twist.linear.x, dyaw_ref))
 
         ## Motor mixing Controller
         motorPower_m1 =  (cmd_thrust - 0.5 * delta_roll - 0.5 * delta_pitch + delta_yaw)

@@ -2,7 +2,8 @@
 dron01:
   name: dron01
   control_mode: HighLevel
-  controller_type: Continuous
+  positioning: Intern
+  controller_type: PID_Continuous
   communication:
     type: Continuous
     threshold:
@@ -36,7 +37,8 @@ dron01:
 dron02:
   name: dron02
   control_mode: HighLevel
-  controller_type: Continuous
+  positioning: Intern
+  controller_type: PID_Continuous
   communication:
     type: Continuous
     threshold:
@@ -70,7 +72,8 @@ dron02:
 dron03:
   name: dron03
   control_mode: HighLevel
-  controller_type: Continuous
+  positioning: Intern
+  controller_type: PID_Continuous
   communication:
     type: Continuous
     threshold:
