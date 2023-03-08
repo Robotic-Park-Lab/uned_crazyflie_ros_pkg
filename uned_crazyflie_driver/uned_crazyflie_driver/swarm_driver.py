@@ -61,7 +61,7 @@ class Agent():
         p1.x = self.pose.position.x
         p1.y = self.pose.position.y
         p1.z = self.pose.position.z
-        # self.parent.distance_formation_bool = True
+        self.parent.distance_formation_bool = True
 
         distance = sqrt(pow(p0.x-p1.x,2)+pow(p0.y-p1.y,2)+pow(p0.z-p1.z,2))
     
@@ -160,8 +160,6 @@ class Crazyflie_ROS2():
         self.parent = parent
         self.config = config
         self.id = self.config['name']
-        # self.node = rclpy.create_node(self.id+'_driver', namespace='/my_ns', use_global_arguments=False)
-        # self.node = rclpy.create_node(self.id+'_driver', use_global_arguments=False)
         self.ready = False
         self.swarm_ready = False
         self.distance_formation_bool = False
@@ -341,7 +339,7 @@ class Crazyflie_ROS2():
             self.parent.create_subscription(Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
         else:
             self.parent.create_subscription(Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
-        self.parent.create_subscription(Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
+        # self.parent.create_subscription(Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
         
         # Params
         '''
@@ -352,9 +350,10 @@ class Crazyflie_ROS2():
         self.scf.cf.param.add_update_callback(group='pid_attitude', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='pid_rate', cb=self.param_stab_est_callback)
         '''
-        self.scf.cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
+        # self.scf.cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='controller', cb=self.param_stab_est_callback)
-        self.scf.cf.param.add_update_callback(group='commander', cb=self.param_stab_est_callback)
+        # self.scf.cf.param.add_update_callback(group='commander', cb=self.param_stab_est_callback)
+        # self.scf.cf.param.add_update_callback(group='stabilizer', cb=self.param_stab_est_callback)
 
         self._is_flying = False
         self.xy_lim = 1.5
@@ -399,10 +398,10 @@ class Crazyflie_ROS2():
     def take_off(self):
         self.parent.get_logger().info('CF%s::Take Off.' % self.scf.cf.link_uri[-2:])
         # self.cmd_motion_.take_off(self.scf.cf)
-        self.cmd_motion_.z = 1.0
+        self.cmd_motion_.z = 0.75
         self.cmd_motion_.send_pose_data_(self.scf.cf)
         self._is_flying = True
-        self.t_ready = Timer(3, self._ready)
+        self.t_ready = Timer(2, self._ready)
         self.t_ready.start()
 
     def _ready(self):
@@ -721,7 +720,7 @@ class Crazyflie_ROS2():
             self.cmd_motion_.x = msg.position.x
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
-            self.cmd_motion_.ckeck_pose()
+            # self.cmd_motion_.ckeck_pose()
             self.cmd_motion_.send_pose_data_(self.scf.cf)
             self.parent.get_logger().debug('CF%s::New Goal pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
 
@@ -771,7 +770,7 @@ class Crazyflie_ROS2():
             target_pose.position.y = self.pose.position.y + dy/4
             target_pose.position.z = self.pose.position.z + dz/4
             
-            self.parent.get_logger().info('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, target_pose.position.x, self.pose.position.y, target_pose.position.y, self.pose.position.z, target_pose.position.z)) 
+            # self.parent.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, target_pose.position.x, self.pose.position.y, target_pose.position.y, self.pose.position.z, target_pose.position.z)) 
             if target_pose.position.z < 0.5:
                 target_pose.position.z = 0.5
 
@@ -781,9 +780,9 @@ class Crazyflie_ROS2():
 
             self.goalpose_callback(target_pose)
 
-            self.parent.get_logger().debug('Distance: %.4f eX: %.2f eY: %.2f eZ: %.2f' % (sqrt(distance), error_x, error_y, error_z))
-            self.parent.get_logger().debug('Delta: %.4f X: %.2f Y: %.2f Z: %.2f' % (delta, dx, dy, dz))
-            self.parent.get_logger().debug('Target: X: %.2f Y: %.2f Z: %.2f' % (target_pose.position.x, target_pose.position.y, target_pose.position.z))
+            # self.parent.get_logger().debug('Distance: %.4f eX: %.2f eY: %.2f eZ: %.2f' % (sqrt(distance), error_x, error_y, error_z))
+            # self.parent.get_logger().debug('Delta: %.4f X: %.2f Y: %.2f Z: %.2f' % (delta, dx, dy, dz))
+            # self.parent.get_logger().debug('Target: X: %.2f Y: %.2f Z: %.2f' % (target_pose.position.x, target_pose.position.y, target_pose.position.z))
 
 
 #####################
@@ -850,6 +849,7 @@ class CFSwarmDriver(Node):
             scf.cf.param.set_value('motion.disable', '1')
         # Init Kalman Filter
         scf.cf.param.set_value('stabilizer.estimator', '2')
+        # scf.cf.param.set_value('stabilizer.controller', '5')
         # Set the std deviation for the quaternion data pushed into the
         # kalman filter. The default value seems to be a bit too low.
         scf.cf.param.set_value('locSrv.extQuatStdDev', 0.06)
@@ -889,7 +889,7 @@ class CFSwarmDriver(Node):
             cf.cmd_motion_.x = cf.cmd_motion_.x + msg.position.x
             cf.cmd_motion_.y = cf.cmd_motion_.y + msg.position.y
             cf.cmd_motion_.z = cf.cmd_motion_.z + msg.position.z
-            cf.cmd_motion_.ckeck_pose()
+            # cf.cmd_motion_.ckeck_pose()
             delta = [abs(msg.position.x), abs(msg.position.y), abs(msg.position.z)]
             self.cmd_motion_.flight_time = max(delta)/self.max_vel
             # self.cmd_motion_.flight_time = 0.5

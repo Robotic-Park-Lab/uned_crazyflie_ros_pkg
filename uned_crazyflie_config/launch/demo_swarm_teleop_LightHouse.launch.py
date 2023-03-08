@@ -18,7 +18,7 @@ def generate_launch_description():
         emulate_tty=True,
         parameters=[
             {'first_uri': 'radio://0/80/2M/E7E7E7E701'},
-            {'n': 7},
+            {'n': 1},
             {'config': config_path}
         ]
     )

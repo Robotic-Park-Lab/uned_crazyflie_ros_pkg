@@ -177,6 +177,8 @@ class CrazyflieWebotsDriver:
         self.target_pose.position.z = 0.0
 
         ## Initialize Sensors
+        self.cam = self.robot.getDevice("camera")
+        self.cam.disable()
         self.imu = self.robot.getDevice("inertial unit")
         self.imu.enable(timestep)
         self.gps = self.robot.getDevice("gps")
@@ -207,6 +209,7 @@ class CrazyflieWebotsDriver:
 
         self.centroid_leader = False
         self.leader_cmd = Pose()
+        self.last_pose = Pose()
 
         ## Intialize Controllers
         self.continuous = True
@@ -287,6 +290,11 @@ class CrazyflieWebotsDriver:
                     robot = Agent(self, aux[0], d = float(aux[1]))
                     self.node.get_logger().info('CF: %s: Agent: %s \td: %s' % (self.name_value, aux[0], aux[1]))
                     self.agent_list.append(robot)
+        self.communication = (self.config['communication']['type'] == 'Continuous')
+        if not self.communication:
+            self.threshold = self.config['communication']['threshold']['co']
+        else:
+            self.threshold = 0.001
 
 
     def publish_laserscan_data(self):
@@ -439,6 +447,18 @@ class CrazyflieWebotsDriver:
             self.past_y_global = self.gps.getValues()[1]
             self.target_pose.position.y = self.gps.getValues()[1]
             self.first_pos = False
+            self.last_pose.position.x = self.gps.getValues()[0]
+            self.last_pose.position.y = self.gps.getValues()[1]
+            self.last_pose.position.z = self.gps.getValues()[2]
+            roll = self.imu.getRollPitchYaw()[0]
+            pitch = self.imu.getRollPitchYaw()[1]
+            yaw = self.imu.getRollPitchYaw()[2]
+            q = tf_transformations.quaternion_from_euler(roll, pitch, yaw)
+            self.last_pose.orientation.x = q[0]
+            self.last_pose.orientation.y = q[1]
+            self.last_pose.orientation.z = q[2]
+            self.last_pose.orientation.w = q[3]
+            self.pose_publisher.publish(self.last_pose)
             self.z_controller.past_time = self.past_time
             self.w_controller.past_time = self.past_time
             self.take_off()
@@ -466,21 +486,26 @@ class CrazyflieWebotsDriver:
         self.gt_pose.orientation.y = q[1]
         self.gt_pose.orientation.z = q[2]
         self.gt_pose.orientation.w = q[3]
-        # TO-DO: Add here trigger
-        self.pose_publisher.publish(self.gt_pose)
 
-        t_base = TransformStamped()
-        t_base.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
-        t_base.header.frame_id = 'map'
-        t_base.child_frame_id = self.name_value
-        t_base.transform.translation.x = x_global
-        t_base.transform.translation.y = y_global
-        t_base.transform.translation.z = z_global
-        t_base.transform.rotation.x = q[0]
-        t_base.transform.rotation.y = q[1]
-        t_base.transform.rotation.z = q[2]
-        t_base.transform.rotation.w = q[3]
-        self.tfbr.sendTransform(t_base)
+        delta = np.array([self.gt_pose.position.x-self.last_pose.position.x,self.gt_pose.position.y-self.last_pose.position.y,self.gt_pose.position.z-self.last_pose.position.z])
+
+        if self.communication or np.linalg.norm(delta)>self.threshold:
+            self.pose_publisher.publish(self.gt_pose)
+            self.last_pose.position.x = self.gt_pose.position.x
+            self.last_pose.position.y = self.gt_pose.position.y
+            self.last_pose.position.z = self.gt_pose.position.z
+            t_base = TransformStamped()
+            t_base.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
+            t_base.header.frame_id = 'map'
+            t_base.child_frame_id = self.name_value
+            t_base.transform.translation.x = x_global
+            t_base.transform.translation.y = y_global
+            t_base.transform.translation.z = z_global
+            t_base.transform.rotation.x = q[0]
+            t_base.transform.rotation.y = q[1]
+            t_base.transform.rotation.z = q[2]
+            t_base.transform.rotation.w = q[3]
+            self.tfbr.sendTransform(t_base)
 
         ## Formation Control
         if self.distance_formation_bool:
