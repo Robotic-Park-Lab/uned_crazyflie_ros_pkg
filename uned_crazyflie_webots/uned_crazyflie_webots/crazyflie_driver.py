@@ -172,10 +172,6 @@ class CrazyflieWebotsDriver:
         self.m4_motor.setPosition(float('inf'))
         self.m4_motor.setVelocity(1)
 
-        self.target_twist = Twist()
-        self.target_pose = Pose()
-        self.target_pose.position.z = 0.0
-
         ## Initialize Sensors
         self.cam = self.robot.getDevice("camera")
         self.cam.disable()
@@ -195,6 +191,9 @@ class CrazyflieWebotsDriver:
         self.range_right.enable(timestep)
 
         ## Intialize Variables
+        self.target_twist = Twist()
+        self.target_pose = Pose()
+        self.target_pose.position.z = 0.0
         self.past_x_global = 0
         self.past_y_global = 0
         self.past_z_global = 0
@@ -288,7 +287,7 @@ class CrazyflieWebotsDriver:
                 for rel in self.relationship:
                     aux = rel.split('_')
                     robot = Agent(self, aux[0], d = float(aux[1]))
-                    self.node.get_logger().info('CF: %s: Agent: %s \td: %s' % (self.name_value, aux[0], aux[1]))
+                    # self.node.get_logger().info('CF: %s: Agent: %s \td: %s' % (self.name_value, aux[0], aux[1]))
                     self.agent_list.append(robot)
         self.communication = (self.config['communication']['type'] == 'Continuous')
         if not self.communication:
@@ -401,7 +400,7 @@ class CrazyflieWebotsDriver:
             agent.publisher_data_.publish(msg_data)
             self.node.get_logger().debug('Agent %s: D: %.2f dx: %.2f dy: %.2f dz: %.2f ' % (agent.id, msg_data.data, dx, dy, dz)) 
 
-        error_r = pow(1.0,2) - (pow(self.gt_pose.position.x,2)+pow(self.gt_pose.position.y,2)+pow(self.gt_pose.position.z-0.5,2))
+        error_r = pow(1.0,2) - (pow(self.gt_pose.position.x,2)+pow(self.gt_pose.position.y,2)+pow(self.gt_pose.position.z,2))
         dx += 2 * (error_r *self.gt_pose.position.x)
         dy += 2 * (error_r * self.gt_pose.position.y)
         dz += 2 * (error_r * (self.gt_pose.position.z-0.5))
@@ -497,7 +496,7 @@ class CrazyflieWebotsDriver:
             t_base = TransformStamped()
             t_base.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
             t_base.header.frame_id = 'map'
-            t_base.child_frame_id = self.name_value
+            t_base.child_frame_id = self.name_value+'/base_link'
             t_base.transform.translation.x = x_global
             t_base.transform.translation.y = y_global
             t_base.transform.translation.z = z_global
@@ -511,6 +510,7 @@ class CrazyflieWebotsDriver:
         if self.distance_formation_bool:
             self.distance_formation_control()
             # self.distance_formation_bool = False
+
         ## Position Controller
         # Z Controller
         if self.z_controller.eval_threshold(z_global, self.target_pose.position.z) or self.continuous:
