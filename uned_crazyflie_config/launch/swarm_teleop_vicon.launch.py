@@ -6,9 +6,13 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     config_package_dir = get_package_share_directory('uned_crazyflie_config')
-    config_path = os.path.join(config_package_dir, 'resources', 'demo_swarm_formation_distance_five_sphere.yaml')
-    rviz_config_path = os.path.join(config_package_dir, 'rviz', 'sphere.rviz')
+    config_path = os.path.join(config_package_dir, 'resources', 'swarm_teleop.yaml')
+    rviz_config_path = os.path.join(config_package_dir, 'rviz', 'demo_swarm_teleop.rviz')
 
+    hostname = '10.196.92.136'
+    buffer_size = 200
+    topic_namespace = 'vicon'
+    
     swarm_node = Node(
         package='uned_crazyflie_driver',
         executable='swarm_driver',
@@ -19,10 +23,10 @@ def generate_launch_description():
         parameters=[
             {'config': config_path},
             {'enviroment': 'swarm'},
-            {'robots': 'dron01, dron02, dron03, dron04, dron05'}
+            {'robots': 'dron08, dron02, dron03'}
         ]
     )
-
+    
     rqt_node = Node(
         package='rqt_gui',
         executable='rqt_gui',
@@ -35,10 +39,20 @@ def generate_launch_description():
         name='rviz2',
         output='screen',
         arguments=['-d', rviz_config_path],
+
     )
+
+    vicon_node = Node(
+        package='vicon_receiver',
+        executable='vicon_client',
+        name='vicon_node',
+        parameters=[
+            {'hostname': hostname, 'buffer_size': buffer_size, 'namespace': topic_namespace}
+        ])
 
     return LaunchDescription([
         swarm_node,
         rqt_node,
-        rviz_node
+        rviz_node,
+        vicon_node
     ])

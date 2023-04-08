@@ -13,11 +13,11 @@ from webots_ros2_driver.utils import controller_url_prefix
 def generate_launch_description():
     dron_package_dir = get_package_share_directory('uned_crazyflie_webots')
     config_package_dir = get_package_share_directory('uned_crazyflie_config')
-    dron01_description = pathlib.Path(os.path.join(dron_package_dir, 'resource', 'MRS_sphere_dron01.urdf')).read_text()
-    dron02_description = pathlib.Path(os.path.join(dron_package_dir, 'resource', 'MRS_sphere_dron02.urdf')).read_text()
-    dron03_description = pathlib.Path(os.path.join(dron_package_dir, 'resource', 'MRS_sphere_dron03.urdf')).read_text()
-    dron04_description = pathlib.Path(os.path.join(dron_package_dir, 'resource', 'MRS_sphere_dron04.urdf')).read_text()
-    dron05_description = pathlib.Path(os.path.join(dron_package_dir, 'resource', 'MRS_sphere_dron05.urdf')).read_text()
+    dron01_description = pathlib.Path(os.path.join(dron_package_dir, 'resources', 'MRS_sphere_dron01.urdf')).read_text()
+    dron02_description = pathlib.Path(os.path.join(dron_package_dir, 'resources', 'MRS_sphere_dron02.urdf')).read_text()
+    dron03_description = pathlib.Path(os.path.join(dron_package_dir, 'resources', 'MRS_sphere_dron03.urdf')).read_text()
+    dron04_description = pathlib.Path(os.path.join(dron_package_dir, 'resources', 'MRS_sphere_dron04.urdf')).read_text()
+    dron05_description = pathlib.Path(os.path.join(dron_package_dir, 'resources', 'MRS_sphere_dron05.urdf')).read_text()
     rviz_config_path = os.path.join(config_package_dir, 'rviz', 'sphere.rviz')
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
     webots = WebotsLauncher(

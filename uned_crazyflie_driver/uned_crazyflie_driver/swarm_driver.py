@@ -4,6 +4,8 @@ import rclpy
 from threading import Timer
 import numpy as np
 import yaml
+from ament_index_python.packages import get_package_share_directory
+import os
 
 from rclpy.node import Node
 from std_msgs.msg import String, UInt16, UInt16MultiArray, Float64, Float64MultiArray
@@ -15,8 +17,7 @@ from math import cos, sin, degrees, radians, pi, sqrt
 
 import cflib.crtp
 from cflib.crazyflie.log import LogConfig
-from cflib.crazyflie.swarm import CachedCfFactory
-from cflib.crazyflie.swarm import Swarm
+from cflib.crazyflie.swarm import CachedCfFactory, Swarm
 
 # List of URIs, comment the one you do not want to fly
 uris = set()
@@ -25,6 +26,7 @@ dron = list()
 class Agent():
     def __init__(self, parent, node, id, x = None, y = None, z = None, d = None):
         self.id = id
+        self.distance = False
         self.parent = parent
         self.node = node
         if d == None:
@@ -34,6 +36,7 @@ class Agent():
             self.node.get_logger().info('Agent: %s' % self.str_())
         else:
             self.d = d
+            self.distance = True
             self.node.get_logger().info('Agent: %s' % self.str_distance_())
         self.pose = Pose()
         self.sub_pose_ = self.node.create_subscription(Pose, '/' + self.id + '/local_pose', self.gtpose_callback, 10)
@@ -61,10 +64,7 @@ class Agent():
         p1.x = self.pose.position.x
         p1.y = self.pose.position.y
         p1.z = self.pose.position.z
-        self.parent.distance_formation_bool = True
 
-        distance = sqrt(pow(p0.x-p1.x,2)+pow(p0.y-p1.y,2)+pow(p0.z-p1.z,2))
-    
         line.header.frame_id = 'map'
         line.header.stamp = self.node.get_clock().now().to_msg()
         line.id = 1
@@ -73,15 +73,30 @@ class Agent():
         line.scale.x = 0.01
         line.scale.y = 0.01
         line.scale.z = 0.01
-
-        if abs(distance - self.d) > 0.05:
-            line.color.r = 1.0
-        else:
-            if abs(distance - self.d) > 0.025:
+        
+        if self.distance:
+            self.parent.distance_formation_bool = True
+            distance = sqrt(pow(p0.x-p1.x,2)+pow(p0.y-p1.y,2)+pow(p0.z-p1.z,2))
+            if abs(distance - self.d) > 0.05:
                 line.color.r = 1.0
-                line.color.g = 0.5
             else:
-                line.color.g = 1.0
+                if abs(distance - self.d) > 0.025:
+                    line.color.r = 1.0
+                    line.color.g = 0.5
+                else:
+                    line.color.g = 1.0
+        else:
+            dx = p0.x-p1.x
+            dy = p0.y-p1.y
+            dz = p0.z-p1.z
+            if abs(dx) > 0.05 or abs(dy) > 0.05 or abs(dz) > 0.05:
+                line.color.r = 1.0
+            else:
+                if abs(dx) > 0.025 or abs(dy) > 0.025 or abs(dz) > 0.025:
+                    line.color.r = 1.0
+                    line.color.g = 0.5
+                else:
+                    line.color.g = 1.0
         line.color.a = 1.0
         line.points.append(p1)
         line.points.append(p0)
@@ -155,11 +170,12 @@ class CMD_Motion():
 ## CF Logging Class ##
 ######################
 class Crazyflie_ROS2():
-    def __init__(self, parent, scf, link_uri, config):
+    def __init__(self, parent, scf, link_uri, id, config):
         self.scf = scf
         self.parent = parent
         self.config = config
-        self.id = self.config['name']
+        self.id = id
+        self.parent.get_logger().info('Connecting to %s' % self.id)
         self.ready = False
         self.swarm_ready = False
         self.distance_formation_bool = False
@@ -175,6 +191,13 @@ class Crazyflie_ROS2():
                 for rel in self.relationship:
                     aux = rel.split('_')
                     robot = Agent(self, self.parent, aux[0], d = float(aux[1]))
+                    self.agent_list.append(robot)
+            if self.config['task']['type'] == 'relative_pose':
+                self.timer_task = self.parent.create_timer(0.1, self.task_formation_pose)
+                for rel in self.relationship:
+                    aux = rel.split('_')
+                    rel_pose = aux[1].split('/')
+                    robot = Agent(self, self.parent, aux[0], x = float(rel_pose[0]), y = float(rel_pose[1]), z = float(rel_pose[2]))
                     self.agent_list.append(robot)
         self.init_pose = False
         self.tfbr = TransformBroadcaster(self.parent)
@@ -452,7 +475,7 @@ class Crazyflie_ROS2():
                 t_base = TransformStamped()
                 t_base.header.stamp = self.parent.get_clock().now().to_msg()
                 t_base.header.frame_id = 'map'
-                t_base.child_frame_id = self.id
+                t_base.child_frame_id = self.id+'/base_link'
                 t_base.transform.translation.x = msg.position.x
                 t_base.transform.translation.y = msg.position.y
                 t_base.transform.translation.z = msg.position.z
@@ -784,6 +807,10 @@ class Crazyflie_ROS2():
             # self.parent.get_logger().debug('Delta: %.4f X: %.2f Y: %.2f Z: %.2f' % (delta, dx, dy, dz))
             # self.parent.get_logger().debug('Target: X: %.2f Y: %.2f Z: %.2f' % (target_pose.position.x, target_pose.position.y, target_pose.position.z))
 
+    def task_formation_pose(self):
+        if self.ready and self.swarm_ready:
+            # self.distance_formation_bool = False
+            dx = dy = dz = 0
 
 #####################
 ## CF Swarm Class  ##
@@ -792,9 +819,9 @@ class CFSwarmDriver(Node):
     def __init__(self):
         super().__init__('swarm_driver')
         # Params
-        self.declare_parameter('first_uri', 'radio://0/80/2M/E7E7E7E701')
-        self.declare_parameter('n', 1)
         self.declare_parameter('config', 'file_path.yaml')
+        self.declare_parameter('enviroment', 'swarm')
+        self.declare_parameter('robots', 'dron01')
 
         # Publisher
         self.publisher_status_ = self.create_publisher(String,'/swarm/status', 10)
@@ -807,39 +834,49 @@ class CFSwarmDriver(Node):
 
     def initialize(self):
         self.get_logger().info('SwarmDriver::inicialize() ok.')
+        enviroment = self.get_parameter('enviroment').get_parameter_value().string_value
+        if enviroment == 'swarm':
+            config_package_dir = get_package_share_directory('uned_crazyflie_config')
+        else:
+            config_package_dir = get_package_share_directory('uned_swarm_config')
         self.pose = Pose()
         # Read Params
-        dron_id = self.get_parameter('first_uri').get_parameter_value().string_value
-        n = self.get_parameter('n').get_parameter_value().integer_value
+        aux = self.get_parameter('robots').get_parameter_value().string_value
+        robot_list = aux.split(', ')
+        n_robot = len(robot_list)
         config_file = self.get_parameter('config').get_parameter_value().string_value
 
         with open(config_file, 'r') as file:
             documents = yaml.safe_load(file)
             
         # Define crazyflie URIs
-        id_address = dron_id[-10:]
-        id_base = dron_id[:16]
-        id_address_int = int(id_address, 16)
-        for i in range(int(n),0,-1):
-            cf_str = id_base + hex(id_address_int+i-1)[-10:].upper()
-            uris.add(cf_str)
-            self.get_logger().info('Crazyflie %d URI: %s!' % (i, cf_str))
+        for i in range(int(n_robot),0,-1):
+            aux = documents[robot_list[i-1]]
+            self.get_logger().info('Crazyflie %s:: %s' % (aux['name'], aux['uri']))
+            uris.add(aux['uri'])
 
         # logging.basicConfig(level=logging.DEBUG)
         cflib.crtp.init_drivers()
         factory = CachedCfFactory(rw_cache='./cache')
         self.cf_swarm = Swarm(uris, factory=factory)
-        i = 0
-        for uri in uris:
-            id = 'dron' + uri[-2:]
-            config = documents[id]
-            cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[uri], uri, config)
+
+        for i in range(int(n_robot),0,-1):
+            aux = documents[robot_list[i-1]]
+            id = aux['name']
+            self.get_logger().info('Crazyflie %s:: %s' % (id, aux['uri']))
+            config_path = os.path.join(config_package_dir, 'resources', aux['config_path'])
+            with open(config_path, 'r') as file:
+                aux_conf = yaml.safe_load(file)
+            if aux['config_path'] == 'crazyflie_intern_default.yaml' or aux['config_path'] == 'crazyflie_extern_default.yaml' or aux['config_path'] == 'crazyflie_intern_event_default.yaml' or aux['config_path'] == 'crazyflie_extern_event_default.yaml':
+                config =  aux_conf['dronXX']
+            else:
+                config =  aux_conf[id]
+            cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[aux['uri']], aux['uri'], id, config)
             dron.append(cf)
             while not cf.scf.cf.param.is_updated:
                 time.sleep(0.1)
             self.get_logger().warning('Parameters downloaded for %s' % cf.scf.cf.link_uri)
-            i += 1
-
+        
         self.cf_swarm.parallel_safe(self.update_params)
 
     def update_params(self, scf):
@@ -849,7 +886,6 @@ class CFSwarmDriver(Node):
             scf.cf.param.set_value('motion.disable', '1')
         # Init Kalman Filter
         scf.cf.param.set_value('stabilizer.estimator', '2')
-        # scf.cf.param.set_value('stabilizer.controller', '5')
         # Set the std deviation for the quaternion data pushed into the
         # kalman filter. The default value seems to be a bit too low.
         scf.cf.param.set_value('locSrv.extQuatStdDev', 0.06)
@@ -859,7 +895,7 @@ class CFSwarmDriver(Node):
         # Init HighLevel
         scf.cf.param.set_value('commander.enHighLevel', '1')
         if (scf.CONTROLLER_TYPE == 'PID_EventBased'):
-            scf.cf.param.set_value('controller.eventBased', '1')
+            scf.cf.param.set_value('stabilizer.controller', '5')
 
     def order_callback(self, msg):
         self.get_logger().info('SWARM::Order: "%s"' % msg.data)

@@ -1,0 +1,63 @@
+# Default crazyflie parameters to ros2 node
+dron01:
+  name: dron01
+  config_path: crazyflie_extern_default.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E701
+
+dron02:
+  name: dron02
+  config_path: crazyflie_extern_default.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E702
+
+dron03:
+  name: dron03
+  config_path: crazyflie_extern_default.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E703
+
+dron04:
+  name: dron04
+  config_path: crazyflie_extern_default.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E704
+
+dron05:
+  name: dron05
+  config_path: crazyflie_extern_default.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E705
+
+dron06:
+  name: dron06
+  config_path: crazyflie_extern_default.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E706
+
+dron07:
+  name: dron07
+  config_path: crazyflie_extern_default.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E707
+
+dron08:
+  name: dron08
+  config_path: crazyflie_extern_default.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E708
+
+dronE7:
+  name: dronE7
+  config_path: crazyflie_extern_default.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E7E7

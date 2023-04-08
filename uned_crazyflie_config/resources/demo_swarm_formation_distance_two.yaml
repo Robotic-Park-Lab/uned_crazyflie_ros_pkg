@@ -1,0 +1,14 @@
+# Default crazyflie parameters to ros2 node
+dron01:
+  name: dron01
+  config_path: DSFD_2_dron01.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E701
+
+dron02:
+  name: dron02
+  config_path: DSFD_2_dron02.yaml
+  description: crazyflie
+  type: virtual
+  uri: radio://0/80/2M/E7E7E7E702

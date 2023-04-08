@@ -1,0 +1,35 @@
+# Default crazyflie parameters to ros2 node
+dron04:
+  name: dron04
+  positioning: Intern
+  control_mode: HighLevel
+  controller_type: PID_Continuous
+  communication:
+    type: Continuous
+    threshold:
+      type: Null
+      co: Null
+      ai: Null
+  local_pose:
+    enable: True
+    T: 20
+  local_twist:
+    enable: False
+    T: 20
+  data_attitude:
+    enable: False
+    T: 20
+  data_rate: 
+    enable: False
+    T: 20
+  data_motor: 
+    enable: False
+    T: 20
+  data:
+    enable: False
+    T: 20
+  task: 
+    enable: True
+    role: consensus
+    type: distance
+    relationship: 'dron01_0.7071, dron03_0.7071, dron05_0.7071'

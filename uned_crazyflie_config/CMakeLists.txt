@@ -42,14 +42,14 @@ install(
   DIRECTORY
     launch
     model
-    resource
+    resources
     rviz
+    rqt
   DESTINATION share/${PROJECT_NAME}
 )
 
 install(
   PROGRAMS
-  launch/spawn_crazyflie_bot.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

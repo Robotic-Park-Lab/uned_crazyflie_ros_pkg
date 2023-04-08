@@ -12,7 +12,7 @@ from webots_ros2_driver.utils import controller_url_prefix
 
 def generate_launch_description():
     dron_package_dir = get_package_share_directory('uned_crazyflie_webots')
-    dron_description = pathlib.Path(os.path.join(dron_package_dir, 'resource', 'crazyflie.urdf')).read_text()
+    dron_description = pathlib.Path(os.path.join(dron_package_dir, 'resources', 'crazyflie.urdf')).read_text()
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
     webots = WebotsLauncher(
         world=os.path.join(dron_package_dir, 'worlds', 'RoboticPark_4cf.wbt')

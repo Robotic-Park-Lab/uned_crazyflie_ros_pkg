@@ -246,7 +246,7 @@ class CrazyflieWebotsDriver:
         self.name_value = os.environ['WEBOTS_ROBOT_NAME']
         rclpy.init(args=None)
         self.node = rclpy.create_node(self.name_value+'_driver')
-        
+        self.digital_twin = os.environ['WEBOTS_ROBOT_ROLE'] == 'digital_twin'
         # Subscription
         self.node.create_subscription(Twist, self.name_value+'/cmd_vel', self.cmd_vel_callback, 1)
         self.node.create_subscription(Pose, self.name_value+'/goal_pose', self.goal_pose_callback, 1)
@@ -259,7 +259,11 @@ class CrazyflieWebotsDriver:
         self.event_y_ = self.node.create_publisher(Bool, self.name_value+'/event_y', 10)
         self.event_z_ = self.node.create_publisher(Bool, self.name_value+'/event_z', 10)
         self.odom_publisher = self.node.create_publisher(Odometry, self.name_value+'/odom', 10)
-        self.pose_publisher = self.node.create_publisher(Pose, self.name_value+'/local_pose', 10)
+        if self.digital_twin:
+            pose_name = self.name_value+'/dt_pose'
+        else:
+            pose_name = self.name_value+'/local_pose'
+        self.pose_publisher = self.node.create_publisher(Pose, pose_name, 10)
 
         self.tfbr = TransformBroadcaster(self.node)
 
@@ -271,8 +275,8 @@ class CrazyflieWebotsDriver:
     def initialize(self):
         self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.name_value)))
         # Read Params
+        
         config_file = os.environ['WEBOTS_ROBOT_CONFIG_FILE']
-
         with open(config_file, 'r') as file:
             documents = yaml.safe_load(file)
         self.config = documents[self.name_value]
@@ -440,7 +444,7 @@ class CrazyflieWebotsDriver:
 
         dt = self.robot.getTime() - self.past_time
 
-        if self.first_pos is True:
+        if self.first_pos:
             self.past_x_global = self.gps.getValues()[0]
             self.target_pose.position.x = self.gps.getValues()[0]
             self.past_y_global = self.gps.getValues()[1]
@@ -496,7 +500,11 @@ class CrazyflieWebotsDriver:
             t_base = TransformStamped()
             t_base.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
             t_base.header.frame_id = 'map'
-            t_base.child_frame_id = self.name_value+'/base_link'
+            if self.digital_twin:
+                base_name = self.name_value+'/base_link_dt'
+            else:
+                base_name = self.name_value+'/base_link'
+            t_base.child_frame_id = base_name
             t_base.transform.translation.x = x_global
             t_base.transform.translation.y = y_global
             t_base.transform.translation.z = z_global
