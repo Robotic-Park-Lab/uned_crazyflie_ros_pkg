@@ -1,6 +1,12 @@
 <?xml version="1.0" ?>
 <robot name="crazyflie">
     <webots>
+        <device reference="camera" type="Camera">
+            <ros>
+                <alwaysOn>false</alwaysOn>
+                <enabled>true</enabled>
+            </ros>
+        </device>
         <plugin type="uned_crazyflie_webots.crazyflie_driver.CrazyflieWebotsDriver">
             <relationship>Null</relationship>
             <controller>PID</controller>
