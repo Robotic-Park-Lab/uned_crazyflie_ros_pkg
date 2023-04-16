@@ -170,7 +170,7 @@ class CMD_Motion():
 ## CF Logging Class ##
 ######################
 class Crazyflie_ROS2():
-    def __init__(self, parent, scf, link_uri, id, config):
+    def __init__(self, parent, scf, link_uri, id, config, DT = False):
         self.scf = scf
         self.parent = parent
         self.config = config
@@ -178,6 +178,7 @@ class Crazyflie_ROS2():
         self.parent.get_logger().info('Connecting to %s' % self.id)
         self.ready = False
         self.swarm_ready = False
+        self.digital_twin = DT
         self.distance_formation_bool = False
         self.pose = Pose()
         self.home = Pose()
@@ -227,6 +228,8 @@ class Crazyflie_ROS2():
                 self.publisher_pose = self.parent.create_publisher(Pose, self.id + '/pose', 10)
             else:
                 self.publisher_pose = self.parent.create_publisher(Pose, self.id + '/local_pose', 10)
+                if self.digital_twin:
+                    self.publisher_dtpose = self.parent.create_publisher(Pose, self.id + '/pose_dt', 10)
             self._lg_stab_pose = LogConfig(name='Pose', period_in_ms=self.config['local_pose']['T'])
             self._lg_stab_pose.add_variable('stateEstimate.x', 'float')
             self._lg_stab_pose.add_variable('stateEstimate.y', 'float')
@@ -472,6 +475,8 @@ class Crazyflie_ROS2():
             if self.communication or np.linalg.norm(delta)>self.threshold:
                 self.pose = msg
                 self.publisher_pose.publish(msg)
+                if self.digital_twin:
+                    self.publisher_dtpose.publish(msg)
                 t_base = TransformStamped()
                 t_base.header.stamp = self.parent.get_clock().now().to_msg()
                 t_base.header.frame_id = 'map'
@@ -769,10 +774,10 @@ class Crazyflie_ROS2():
                 msg_data.data = abs(agent.d - sqrt(distance))
                 agent.publisher_data_.publish(msg_data)
 
-            error_r = pow(1.0,2) - (pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(self.pose.position.z-0.5,2))
+            error_r = pow(2.0,2) - (pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(self.pose.position.z,2))
             dx += 2 * (error_r * self.pose.position.x)
             dy += 2 * (error_r * self.pose.position.y)
-            dz += 2 * (error_r * (self.pose.position.z-0.5))
+            dz += 2 * (error_r * self.pose.position.z)
 
             delta = sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
 
@@ -809,7 +814,7 @@ class Crazyflie_ROS2():
 
     def task_formation_pose(self):
         if self.ready and self.swarm_ready:
-            # self.distance_formation_bool = False
+            # TO-DO
             dx = dy = dz = 0
 
 #####################
@@ -871,7 +876,8 @@ class CFSwarmDriver(Node):
                 config =  aux_conf['dronXX']
             else:
                 config =  aux_conf[id]
-            cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[aux['uri']], aux['uri'], id, config)
+                
+            cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[aux['uri']], aux['uri'], id, config, DT = aux['type'] == 'digital_twin')
             dron.append(cf)
             while not cf.scf.cf.param.is_updated:
                 time.sleep(0.1)

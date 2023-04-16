@@ -35,8 +35,7 @@ def generate_launch_description():
             
             individual_config_path = os.path.join(general_package_dir, 'resources', robot['config_path'])
 
-
-            if robot['type'] == 'virtual' or robot['type'] == 'digital_twin':
+            if not robot['type'] == 'physical':
                 robot_node_list.append(Node(package='webots_ros2_driver', 
                                             executable='driver', 
                                             output='screen',
@@ -51,7 +50,7 @@ def generate_launch_description():
                                             ]
                                         )
                 )
-            if robot['type'] == 'physical' or robot['type'] == 'digital_twin':
+            if not robot['type'] == 'virtual':
                 physical_agent_list += ', '+robot['name']
 
     robot_state_publisher = Node(
