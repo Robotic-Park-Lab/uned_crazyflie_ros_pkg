@@ -19,7 +19,7 @@ def generate_launch_description():
         parameters=[
             {'config': config_path},
             {'enviroment': 'swarm'},
-            {'robots': 'dron02'}
+            {'robots': 'dron01'}
         ]
     )
 

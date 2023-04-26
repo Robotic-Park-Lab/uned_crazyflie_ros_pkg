@@ -39,7 +39,12 @@ class Agent():
             self.distance = True
             self.node.get_logger().info('Agent: %s' % self.str_distance_())
         self.pose = Pose()
-        self.sub_pose_ = self.node.create_subscription(Pose, '/' + self.id + '/local_pose', self.gtpose_callback, 10)
+        if self.id == 'origin':
+            self.pose.position.x = 0.0
+            self.pose.position.y = 0.0
+            self.pose.position.z = 0.0
+        else:
+            self.sub_pose_ = self.node.create_subscription(Pose, '/' + self.id + '/local_pose', self.gtpose_callback, 10)
         self.publisher_data_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/data', 10)
         self.publisher_marker_ = self.node.create_publisher(Marker, self.parent.id + '/' + self.id + '/marker', 10)
 
@@ -761,23 +766,26 @@ class Crazyflie_ROS2():
             dx = dy = dz = 0
             target_pose = Pose()
             for agent in self.agent_list:
-                # self.parent.get_logger().info('Agent: %s' % agent.id)
-                error_x = self.pose.position.x - agent.pose.position.x
-                error_y = self.pose.position.y - agent.pose.position.y
-                error_z = self.pose.position.z - agent.pose.position.z
-                distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
-                dx += (pow(agent.d,2) - distance) * error_x
-                dy += (pow(agent.d,2) - distance) * error_y
-                dz += (pow(agent.d,2) - distance) * error_z
+                self.parent.get_logger().debug('Agent: %s' % agent.id)
+                if agent.id == 'origin':
+                    error_r = pow(agent.d,2) - (pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(self.pose.position.z,2))
+                    dx += 2 * (error_r * self.pose.position.x)
+                    dy += 2 * (error_r * self.pose.position.y)
+                    dz += 2 * (error_r * self.pose.position.z)
+                else:
+                    error_x = self.pose.position.x - agent.pose.position.x
+                    error_y = self.pose.position.y - agent.pose.position.y
+                    error_z = self.pose.position.z - agent.pose.position.z
+                    distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
+                    dx += (pow(agent.d,2) - distance) * error_x
+                    dy += (pow(agent.d,2) - distance) * error_y
+                    dz += (pow(agent.d,2) - distance) * error_z
 
                 msg_data = Float64()
                 msg_data.data = abs(agent.d - sqrt(distance))
                 agent.publisher_data_.publish(msg_data)
 
-            error_r = pow(2.0,2) - (pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(self.pose.position.z,2))
-            dx += 2 * (error_r * self.pose.position.x)
-            dy += 2 * (error_r * self.pose.position.y)
-            dz += 2 * (error_r * self.pose.position.z)
+            
 
             delta = sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
 

@@ -36,7 +36,12 @@ class Agent():
             self.distance = True
             self.parent.node.get_logger().info('Agent: %s' % self.str_distance_())
         self.pose = Pose()
-        self.sub_pose = self.parent.node.create_subscription(Pose, self.id + '/local_pose', self.gtpose_callback, 10)
+        if self.id == 'origin':
+            self.pose.position.x = 0.0
+            self.pose.position.y = 0.0
+            self.pose.position.z = 0.0
+        else:
+            self.sub_pose = self.parent.node.create_subscription(Pose, self.id + '/local_pose', self.gtpose_callback, 10)
         if not self.parent.digital_twin:
             self.publisher_data_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/data', 10)
             self.publisher_marker_ = self.parent.node.create_publisher(Marker, self.parent.name_value + '/' + self.id + '/marker', 10)
@@ -416,24 +421,25 @@ class CrazyflieWebotsDriver:
     def distance_formation_control(self):
         dx = dy = dz = 0
         for agent in self.agent_list:
-            error_x = self.gt_pose.position.x - agent.pose.position.x
-            error_y = self.gt_pose.position.y - agent.pose.position.y
-            error_z = self.gt_pose.position.z - agent.pose.position.z
-            distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
-            dx += (pow(agent.d,2) - distance) * error_x
-            dy += (pow(agent.d,2) - distance) * error_y
-            dz += (pow(agent.d,2) - distance) * error_z
-
+            if agent.id == 'origin':
+                error_r = pow(agent.d,2) - (pow(self.gt_pose.position.x,2)+pow(self.gt_pose.position.y,2)+pow(self.gt_pose.position.z,2))
+                dx += 2 * (error_r * self.gt_pose.position.x)
+                dy += 2 * (error_r * self.gt_pose.position.y)
+                dz += 2 * (error_r * self.gt_pose.position.z)
+            else:
+                error_x = self.gt_pose.position.x - agent.pose.position.x
+                error_y = self.gt_pose.position.y - agent.pose.position.y
+                error_z = self.gt_pose.position.z - agent.pose.position.z
+                distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
+                dx += (pow(agent.d,2) - distance) * error_x
+                dy += (pow(agent.d,2) - distance) * error_y
+                dz += (pow(agent.d,2) - distance) * error_z
+            
             if not self.digital_twin:
                 msg_data = Float64()
                 msg_data.data = abs(agent.d - sqrt(distance))
                 agent.publisher_data_.publish(msg_data)
                 self.node.get_logger().debug('Agent %s: D: %.2f dx: %.2f dy: %.2f dz: %.2f ' % (agent.id, msg_data.data, dx, dy, dz)) 
-
-        error_r = pow(1.0,2) - (pow(self.gt_pose.position.x,2)+pow(self.gt_pose.position.y,2)+pow(self.gt_pose.position.z,2))
-        dx += 2 * (error_r *self.gt_pose.position.x)
-        dy += 2 * (error_r * self.gt_pose.position.y)
-        dz += 2 * (error_r * self.gt_pose.position.z)
         
         if dx > 0.32:
             dx = 0.32
