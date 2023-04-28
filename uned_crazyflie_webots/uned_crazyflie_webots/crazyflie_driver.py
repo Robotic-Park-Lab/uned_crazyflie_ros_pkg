@@ -355,7 +355,7 @@ class CrazyflieWebotsDriver:
         self.laser_publisher.publish(self.msg_laser)
 
     def dt_pose_callback(self, pose):
-        self.node.get_logger().info('TO-DO: DT Pose: X:%f Y:%f' % (pose.position.x,pose.position.y))
+        self.node.get_logger().debug('TO-DO: DT Pose: X:%f Y:%f' % (pose.position.x,pose.position.y))
         # self.robot.getSelf().getField("translation").setSFVec3f([pose.position.x, pose.position.y, pose.position.z])
         # self.robot.getSelf().getField("rotation").setSFVec3f([0.0, 0.0, 0.0])
 
