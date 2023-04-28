@@ -18,7 +18,7 @@ def generate_launch_description():
         emulate_tty=True,
         parameters=[
             {'config': config_path},
-            {'robots': 'dron08, dron03'}
+            {'robots': 'dron02, dron03'}
         ]
     )
 
