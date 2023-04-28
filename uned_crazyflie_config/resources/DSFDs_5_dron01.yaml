@@ -32,4 +32,4 @@ dron01:
     enable: True
     role: consensus
     type: distance
-    relationship: 'dron02_0.7071, dron03_0.7071, dron04_0.7071, dron05_0.7071'
+    relationship: 'dron02_0.7071, dron03_0.7071, dron04_0.7071, dron05_0.7071, origin_1.5'
