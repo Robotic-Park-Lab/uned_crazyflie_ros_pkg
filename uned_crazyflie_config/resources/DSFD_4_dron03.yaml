@@ -12,7 +12,7 @@ dron03:
       ai: Null
   local_pose:
     enable: True
-    T: 20
+    T: 1000
   local_twist:
     enable: False
     T: 20

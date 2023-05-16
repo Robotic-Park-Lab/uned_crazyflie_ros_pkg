@@ -12,7 +12,7 @@ dron01:
       ai: Null
   local_pose:
     enable: True
-    T: 20
+    T: 100
   local_twist:
     enable: False
     T: 20
@@ -32,4 +32,4 @@ dron01:
     enable: True
     role: consensus
     type: distance
-    relationship: 'dron02_0.4'
+    relationship: 'dron01_0.4, origin_1.0'

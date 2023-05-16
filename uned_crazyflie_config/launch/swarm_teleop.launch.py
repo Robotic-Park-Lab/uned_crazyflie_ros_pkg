@@ -7,6 +7,8 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     config_package_dir = get_package_share_directory('uned_crazyflie_config')
     config_path = os.path.join(config_package_dir, 'resources', 'swarm_teleop.yaml')
+    # config_path = os.path.join(config_package_dir, 'resources', 'swarm_formation_distance.yaml')
+    
     rviz_config_path = os.path.join(config_package_dir, 'rviz', 'test.rviz')
 
     swarm_node = Node(
@@ -18,7 +20,7 @@ def generate_launch_description():
         emulate_tty=True,
         parameters=[
             {'config': config_path},
-            {'robots': 'dron02, dron03'}
+            {'robots': 'dron01'}
         ]
     )
 

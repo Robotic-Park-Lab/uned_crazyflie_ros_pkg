@@ -4,7 +4,7 @@ dron01:
   config_path: DSFD_4_dron01.yaml
   description: crazyflie
   type: virtual
-  uri: radio://0/80/2M/E7E7E7E701
+  uri: radio://0/80/2M/E7E7E7E705
 
 dron02:
   name: dron02
