@@ -43,6 +43,7 @@ class Agent():
         else:
             self.sub_pose = self.parent.node.create_subscription(Pose, self.id + '/local_pose', self.gtpose_callback, 10)
         if not self.parent.digital_twin:
+            self.sub_d_ = self.parent.node.create_subscription(Float64, '/' + self.id + '/d', self.d_callback, 10)
             self.publisher_data_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/data', 10)
             self.publisher_marker_ = self.parent.node.create_publisher(Marker, self.parent.name_value + '/' + self.id + '/marker', 10)
 
@@ -53,9 +54,12 @@ class Agent():
     def str_distance_(self):
         return ('ID: ' + str(self.id) + ' Distance: ' + str(self.d))
 
+    def d_callback(self, msg):
+        self.d = msg.data
+
     def gtpose_callback(self, msg):
         self.pose = msg
-        if not self.parent.digital_twin:
+        if not self.parent.digital_twin and self.config['task']['enable']:
             line = Marker()
             p0 = Point()
             p0.x = self.parent.gt_pose.position.x
@@ -375,6 +379,7 @@ class CrazyflieWebotsDriver:
         elif msg.data == 'land':
             if self._is_flying:
                 self.descent()
+                self.distance_formation_bool = False
             else:
                 self.node.get_logger().warning('In land')
         elif msg.data == 'distance_formation_run':
@@ -382,6 +387,10 @@ class CrazyflieWebotsDriver:
                 self.distance_formation_bool = True
         elif msg.data == 'formation_stop':
             self.distance_formation_bool = False
+        elif not msg.data.find("agent") == -1 and self.config['task']['enable']:
+            aux = msg.data.split('_')
+            if aux[1] == 'remove':
+                print(self.agent_list)
         else:
             self.node.get_logger().error('"%s": Unknown order' % (msg.data))
     

@@ -30,6 +30,8 @@ dron03:
     T: 20
   task: 
     enable: True
+    T: 100
+    Onboard: False
     role: consensus
     type: distance
     relationship: 'dron01_0.6, dron02_0.85, dron04_0.6, origin_1.0'

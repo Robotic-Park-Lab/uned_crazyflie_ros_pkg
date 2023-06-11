@@ -8,10 +8,9 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 from rclpy.node import Node
-from std_msgs.msg import String, UInt16, UInt16MultiArray, Float64, Float64MultiArray
+from std_msgs.msg import String, UInt16MultiArray, Float64, Float64MultiArray
 from geometry_msgs.msg import Pose, Twist, Point, TransformStamped
 from visualization_msgs.msg import Marker
-from uned_crazyflie_config.msg import Pidcontroller
 from tf2_ros import TransformBroadcaster
 from math import cos, sin, degrees, radians, pi, sqrt
 
@@ -44,17 +43,18 @@ class Agent():
             self.node.get_logger().info('Agent: %d %s' % (self.idn, self.str_distance_()))
         self.pose = Pose()
         if self.id == 'origin':
-            self.pose.position.x = 0.5
+            self.pose.position.x = 0.0
             self.pose.position.y = 0.0
             self.pose.position.z = 0.0
             self.k = 4.0
         else:
             self.sub_pose_ = self.node.create_subscription(Pose, '/' + self.id + '/local_pose', self.gtpose_callback, 10)
-        
-        parent.scf.cf.high_level_commander.new_neighbour(self.idn, self.d, self.k)
+        if self.parent.config['task']['Onboard']:
+            parent.scf.cf.high_level_commander.new_neighbour(self.idn, self.d, self.k)
         self.publisher_data_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/data', 10)
         self.publisher_iae_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/iae', 10)
         self.publisher_marker_ = self.node.create_publisher(Marker, self.parent.id + '/' + self.id + '/marker', 10)
+        self.sub_d_ = self.parent.create_subscription(Float64, '/' + self.id + '/d', self.d_callback, 10)
 
     def str_(self):
         return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
@@ -63,9 +63,13 @@ class Agent():
     def str_distance_(self):
         return ('ID: ' + str(self.id) + ' Distance: ' + str(self.d))
 
+    def d_callback(self, msg):
+        self.d = msg.data
+
     def gtpose_callback(self, msg):
         self.pose = msg
-        self.parent.scf.cf.high_level_commander.update_neighbour(self.idn, self.pose.position.x, self.pose.position.y, self.pose.position.z)
+        if self.parent.config['task']['Onboard']:
+            self.parent.scf.cf.high_level_commander.update_neighbour(self.idn, self.pose.position.x, self.pose.position.y, self.pose.position.z)
         self.node.get_logger().debug('Agent: X: %.2f Y: %.2f Z: %.2f' % (msg.position.x, msg.position.y, msg.position.z))
 
         line = Marker()
@@ -353,6 +357,7 @@ class Crazyflie_ROS2():
                     '{} not found in TOC'.format(str(e)))
             except AttributeError:
                 self.parent.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
+        
         # DATA.
         if self.config['data']['enable']:
             self.publisher_data = self.parent.create_publisher(UInt16MultiArray, self.id + '/data', 10)
@@ -586,8 +591,9 @@ class Crazyflie_ROS2():
             else:
                 self.parent.get_logger().warning('CF%s::In land' % self.scf.cf.link_uri[-2:])
         elif msg.data == 'distance_formation_run':
-            self.distance_formation_bool = True
-            self.scf.cf.high_level_commander.enable_formation()
+            if self.config['task']['enable']:
+                self.distance_formation_bool = True
+                self.scf.cf.high_level_commander.enable_formation()
         elif msg.data == 'formation_stop':
             self.distance_formation_bool = False
             self.scf.cf.param.set_value('stabilizer.controller', '1')
@@ -778,12 +784,14 @@ class Crazyflie_ROS2():
 
     def goalpose_callback(self, msg):
         if self.scf.CONTROL_MODE == 'HighLevel':
-            self.cmd_motion_.x = msg.position.x
-            self.cmd_motion_.y = msg.position.y
-            self.cmd_motion_.z = msg.position.z
+            # self.cmd_motion_.x = msg.position.x
+            # self.cmd_motion_.y = msg.position.y
+            # self.cmd_motion_.z = msg.position.z
             # self.cmd_motion_.ckeck_pose()
-            self.cmd_motion_.send_pose_data_(self.scf.cf)
-            self.parent.get_logger().debug('CF%s::New Goal pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_())) 
+            # self.cmd_motion_.send_pose_data_(self.scf.cf)
+            # self.parent.get_logger().debug('CF%s::New Goal pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_())) 
+            self.parent.get_logger().debug('CF%s::New Target pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
+            self.scf.cf.high_level_commander.go_to_target_pose(msg.position.x, msg.position.y, msg.position.z)
 
     def targetpose_callback(self, msg):
         self.cmd_motion_.x = msg.position.x
@@ -802,13 +810,17 @@ class Crazyflie_ROS2():
             aux = self.config['task']['relationship']
             self.relationship = aux.split(', ')
             if self.config['task']['type'] == 'distance':
-                self.timer_task = self.parent.create_timer(0.1, self.task_formation_distance)
+                if self.config['task']['Onboard']:
+                    self.timer_task = self.parent.create_timer(self.config['task']['T']/1000, self.task_formation_info)
+                else:
+                    self.timer_task = self.parent.create_timer(self.config['task']['T']/1000, self.task_formation_distance)
+                
                 for rel in self.relationship:
                     aux = rel.split('_')
                     robot = Agent(self, self.parent, aux[0], d = float(aux[1]))
                     self.agent_list.append(robot)
             if self.config['task']['type'] == 'relative_pose':
-                self.timer_task = self.parent.create_timer(0.1, self.task_formation_pose)
+                self.timer_task = self.parent.create_timer(self.config['task']['T']/1000, self.task_formation_pose)
                 for rel in self.relationship:
                     aux = rel.split('_')
                     rel_pose = aux[1].split('/')
@@ -816,6 +828,64 @@ class Crazyflie_ROS2():
                     self.agent_list.append(robot)
 
     def task_formation_distance(self):
+        if self.distance_formation_bool:
+            msg_iae = Float64()
+            msg_iae.data = 0.0
+            dx = dy = dz = 0
+            target_pose = Pose()
+            for agent in self.agent_list:
+                if agent.id == 'origin':
+                    distance = sqrt((pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(self.pose.position.z,2)))
+                    error_r = pow(agent.d,2) - (pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(self.pose.position.z,2))
+                    dx += 2 * (error_r * self.pose.position.x)
+                    dy += 2 * (error_r * self.pose.position.y)
+                    dz += 2 * (error_r * self.pose.position.z)
+                else:
+                    error_x = self.pose.position.x - agent.pose.position.x
+                    error_y = self.pose.position.y - agent.pose.position.y
+                    error_z = self.pose.position.z - agent.pose.position.z
+                    distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
+                    dx += (pow(agent.d,2) - distance) * error_x
+                    dy += (pow(agent.d,2) - distance) * error_y
+                    dz += (pow(agent.d,2) - distance) * error_z
+                
+                msg_data = Float64()
+                msg_data.data = abs(agent.d - distance)
+                agent.publisher_data_.publish(msg_data)
+                msg_data.data = agent.last_iae + (agent.last_error + msg_data.data) * 0.1 /2
+                agent.last_error = distance
+                agent.publisher_iae_.publish(msg_data)
+                agent.last_iae = msg_data.data
+                msg_iae.data += abs(agent.d - distance)
+
+            if dx > 0.32:
+                dx = 0.32
+            if dx < -0.32:
+                dx = -0.32
+            if dy > 0.32:
+                dy = 0.32
+            if dy < -0.32:
+                dy = -0.32
+            if dz > 0.32:
+                dz = 0.32
+            if dz < -0.32:
+                dz = -0.32
+            
+            target_pose.position.x = self.pose.position.x + dx/4
+            target_pose.position.y = self.pose.position.y + dy/4
+            target_pose.position.z = self.pose.position.z + dz/4
+            
+            # self.parent.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, target_pose.position.x, self.pose.position.y, target_pose.position.y, self.pose.position.z, target_pose.position.z)) 
+            if target_pose.position.z < 0.5:
+                target_pose.position.z = 0.5
+
+            if target_pose.position.z > 2.0:
+                target_pose.position.z = 2.0
+            
+            self.goalpose_callback(target_pose)
+            self.publisher_global_iae_.publish(msg_iae)
+
+    def task_formation_info(self):
         if self.distance_formation_bool:
             msg_iae = Float64()
             msg_iae.data = 0.0
@@ -912,7 +982,6 @@ class CFSwarmDriver(Node):
             
 
     def update_params(self, scf):
-        
         # Disable Flow deck to EKF
         if scf.CONTROL_MODE == 'None':
             scf.cf.param.set_value('motion.disable', '1')
