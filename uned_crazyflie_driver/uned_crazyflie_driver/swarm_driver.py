@@ -12,6 +12,7 @@ from std_msgs.msg import String, UInt16MultiArray, Float64, Float64MultiArray
 from geometry_msgs.msg import Pose, Twist, Point, TransformStamped
 from visualization_msgs.msg import Marker
 from tf2_ros import TransformBroadcaster
+from builtin_interfaces.msg import Time
 from math import cos, sin, degrees, radians, pi, sqrt
 
 import cflib.crtp
@@ -54,7 +55,7 @@ class Agent():
         self.publisher_data_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/data', 10)
         self.publisher_iae_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/iae', 10)
         self.publisher_marker_ = self.node.create_publisher(Marker, self.parent.id + '/' + self.id + '/marker', 10)
-        self.sub_d_ = self.parent.create_subscription(Float64, '/' + self.id + '/d', self.d_callback, 10)
+        self.sub_d_ = self.node.create_subscription(Float64, '/' + self.id + '/d', self.d_callback, 10)
 
     def str_(self):
         return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
@@ -383,6 +384,7 @@ class Crazyflie_ROS2():
         self.parent.create_subscription(String, self.id + '/order', self.order_callback, 10)
         self.parent.create_subscription(String, '/swarm/status', self.swarm_status_callback, 10)
         self.parent.create_subscription(Pose, self.id + '/target_pose', self.targetpose_callback, 10)
+        # self.parent.create_subscription(Time, '/swarm/time', self.time_callback, 1)
         if not self.scf.CONTROL_MODE == 'None':
             self.parent.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
         if self.scf.CONTROL_MODE == 'HighLevel':
@@ -800,6 +802,9 @@ class Crazyflie_ROS2():
         self.parent.get_logger().debug('CF%s::New Target pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
         self.scf.cf.high_level_commander.go_to_target_pose(msg.position.x, msg.position.y, msg.position.z)
 
+    def time_callback(self,msg):
+        time = self.parent.get_clock().now().to_msg()
+        self.parent.get_logger().info('CF%s::Delay: %.2f, %.2f' % (self.scf.cf.link_uri[-2:], msg.sec - time.sec, msg.nanosec - time.nanosec))
     ###############
     #    Tasks    #
     ###############
@@ -876,8 +881,8 @@ class Crazyflie_ROS2():
             target_pose.position.z = self.pose.position.z + dz/4
             
             # self.parent.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, target_pose.position.x, self.pose.position.y, target_pose.position.y, self.pose.position.z, target_pose.position.z)) 
-            if target_pose.position.z < 0.5:
-                target_pose.position.z = 0.5
+            if target_pose.position.z < 0.6:
+                target_pose.position.z = 0.6
 
             if target_pose.position.z > 2.0:
                 target_pose.position.z = 2.0
@@ -923,6 +928,8 @@ class CFSwarmDriver(Node):
 
         # Publisher
         self.publisher_status_ = self.create_publisher(String,'/swarm/status', 10)
+        self.publisher_order = self.create_publisher(String, '/swarm/order', 10)
+
         # Subscription
         self.sub_order = self.create_subscription(String, '/swarm/order', self.order_callback, 10)
         self.sub_pose_ = self.create_subscription(Pose, '/swarm/pose', self.newpose_callback, 10)
@@ -980,7 +987,6 @@ class CFSwarmDriver(Node):
         for agent in dron:
             agent.load_formation_params()
             
-
     def update_params(self, scf):
         # Disable Flow deck to EKF
         if scf.CONTROL_MODE == 'None':
@@ -999,8 +1005,6 @@ class CFSwarmDriver(Node):
             scf.cf.param.set_value('stabilizer.controller', '5')
         scf.cf.param.set_value('stabilizer.controller', '5')
         
-        
-
     def order_callback(self, msg):
         self.get_logger().info('SWARM::Order: "%s"' % msg.data)
         if msg.data == 'take_off':
@@ -1015,11 +1019,19 @@ class CFSwarmDriver(Node):
             self._ready()
             for cf in dron:
                 cf.order_callback(msg)
+            self.t_stop = Timer(20, self.stop_dataset)
+            self.t_stop.start()
         elif msg.data == 'formation_stop':
             for cf in dron:
                 cf.order_callback(msg)
         else:
             self.get_logger().error('SWARM::"%s": Unknown order' % msg.data)
+
+    def stop_dataset(self):
+        msg = String()
+        msg.data = 'formation_stop'
+        self.publisher_order.publish(msg)
+        self.get_logger().info('Multi-Robot-System::Order: "%s"' % msg.data)
 
     def _ready(self):
         self.get_logger().info('SWARM::Ready!!')
@@ -1042,6 +1054,7 @@ class CFSwarmDriver(Node):
 
     def newpose_callback(self, msg):
         self.pose = msg
+
 
 def main(args=None):
     rclpy.init(args=args)
