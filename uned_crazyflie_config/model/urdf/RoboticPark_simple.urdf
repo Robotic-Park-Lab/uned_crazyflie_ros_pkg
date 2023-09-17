@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<robot name="RoboticPark">
+  
+  <link name="base_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://uned_crazyflie_config/model/meshes/RoboticPark.dae" scale="1 1 1"/>
+      </geometry>
+    </visual>
+  </link>
+
+</robot>
