@@ -47,7 +47,7 @@ class Agent():
             self.pose.position.x = 0.0
             self.pose.position.y = 0.0
             self.pose.position.z = 0.0
-            self.k = 4.0
+            self.k = 2.0
         else:
             self.sub_pose_ = self.node.create_subscription(Pose, '/' + self.id + '/local_pose', self.gtpose_callback, 10)
         if self.parent.config['task']['Onboard']:
@@ -896,7 +896,7 @@ class Crazyflie_ROS2():
             msg_iae.data = 0.0
             for agent in self.agent_list:
                 if agent.id == 'origin':
-                    distance = sqrt((pow(self.pose.position.x-0.5,2)+pow(self.pose.position.y,2)+pow(self.pose.position.z,2)))
+                    distance = sqrt((pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(self.pose.position.z,2)))
                 else:
                     distance = sqrt(pow(self.pose.position.x-agent.pose.position.x,2)+pow(self.pose.position.y-agent.pose.position.y,2)+pow(self.pose.position.z-agent.pose.position.z,2))
                 msg_data = Float64()
