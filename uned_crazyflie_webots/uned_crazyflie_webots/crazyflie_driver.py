@@ -40,7 +40,10 @@ class Agent():
             self.pose.position.x = 0.0
             self.pose.position.y = 0.0
             self.pose.position.z = 0.0
+            self.k = 2.0
+            self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
         else:
+            self.k = 1.0
             self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
         if not self.parent.digital_twin:
             self.sub_d_ = self.parent.node.create_subscription(Float64, '/' + self.id + '/d', self.d_callback, 10)
@@ -439,19 +442,13 @@ class CrazyflieWebotsDriver:
     def distance_formation_control(self):
         dx = dy = dz = 0
         for agent in self.agent_list:
-            if agent.id == 'origin':
-                error_r = pow(agent.d,2) - (pow(self.gt_pose.position.x,2)+pow(self.gt_pose.position.y,2)+pow(self.gt_pose.position.z,2))
-                dx += 2 * (error_r * self.gt_pose.position.x)
-                dy += 2 * (error_r * self.gt_pose.position.y)
-                dz += 2 * (error_r * self.gt_pose.position.z)
-            else:
-                error_x = self.gt_pose.position.x - agent.pose.position.x
-                error_y = self.gt_pose.position.y - agent.pose.position.y
-                error_z = self.gt_pose.position.z - agent.pose.position.z
-                distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
-                dx += (pow(agent.d,2) - distance) * error_x
-                dy += (pow(agent.d,2) - distance) * error_y
-                dz += (pow(agent.d,2) - distance) * error_z
+            error_x = self.gt_pose.position.x - agent.pose.position.x
+            error_y = self.gt_pose.position.y - agent.pose.position.y
+            error_z = self.gt_pose.position.z - agent.pose.position.z
+            distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
+            dx += agent.k * (pow(agent.d,2) - distance) * error_x
+            dy += agent.k * (pow(agent.d,2) - distance) * error_y
+            dz += agent.k * (pow(agent.d,2) - distance) * error_z
             
             if not self.digital_twin:
                 msg_data = Float64()
