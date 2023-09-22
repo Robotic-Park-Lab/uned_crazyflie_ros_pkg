@@ -321,7 +321,7 @@ class CrazyflieWebotsDriver:
         with open(self.config_file, 'r') as file:
             documents = yaml.safe_load(file)
         self.config = documents[self.name_value]
-
+        self.node.get_logger().info('Webots_Node::TEST::inicialize() ok. %s' % (str(self.name_value)))
         # Init relationship
         if self.config['task']['enable']:
             self.node.get_logger().info('Task %s' % self.config['task']['type'])
@@ -446,13 +446,14 @@ class CrazyflieWebotsDriver:
             error_y = self.gt_pose.position.y - agent.pose.position.y
             error_z = self.gt_pose.position.z - agent.pose.position.z
             distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
-            dx += agent.k * (pow(agent.d,2) - distance) * error_x
-            dy += agent.k * (pow(agent.d,2) - distance) * error_y
-            dz += agent.k * (pow(agent.d,2) - distance) * error_z
+            d = sqrt(distance)
+            dx += agent.k * (pow(agent.d,2) - distance) * error_x/d
+            dy += agent.k * (pow(agent.d,2) - distance) * error_y/d
+            dz += agent.k * (pow(agent.d,2) - distance) * error_z/d
             
             if not self.digital_twin:
                 msg_data = Float64()
-                msg_data.data = abs(agent.d - sqrt(distance))
+                msg_data.data = abs(agent.d - d)
                 agent.publisher_data_.publish(msg_data)
                 self.node.get_logger().debug('Agent %s: D: %.2f dx: %.2f dy: %.2f dz: %.2f ' % (agent.id, msg_data.data, dx, dy, dz)) 
         
