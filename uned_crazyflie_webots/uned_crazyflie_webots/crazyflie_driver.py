@@ -6,7 +6,7 @@ from threading import Timer
 import yaml
 
 from std_msgs.msg import String, Bool, Float64
-from geometry_msgs.msg import Twist, Pose, Point, PoseStamped
+from geometry_msgs.msg import Twist, Pose, Point, PoseStamped, Vector3
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry, Path
 from visualization_msgs.msg import Marker
@@ -22,30 +22,39 @@ from geometry_msgs.msg import TransformStamped
 # import cffirmware
 
 class Agent():
-    def __init__(self, parent, id, x = None, y = None, z = None, d = None):
+    def __init__(self, parent, id, x = None, y = None, z = None, d = None, point = None, vector = None):
         self.id = id
         self.distance = False
         self.parent = parent
-        if d == None:
-            self.distance_bool = False
-            self.x = x
-            self.y = y
-            self.z = z
-            self.parent.node.get_logger().info('Agent: %s' % self.str_())
-        else:
-            self.distance_bool = True
-            self.d = d
-            self.parent.node.get_logger().info('Agent: %s' % self.str_distance_())
         self.pose = Pose()
-        if self.id == 'origin':
-            self.pose.position.x = 0.0
-            self.pose.position.y = 0.0
-            self.pose.position.z = 0.0
-            self.k = 2.0
-            self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
+        if not id.find("line") == -1:
+            self.distance_bool = True
+            self.d = 0
+            self.point = point
+            self.vector = vector
+            self.mod=pow(vector.x,2)+pow(vector.y,2)+pow(vector.z,2)
+            self.k = 4.0
         else:
-            self.k = 1.0
-            self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
+            if d == None:
+                self.distance_bool = False
+                self.x = x
+                self.y = y
+                self.z = z
+                self.parent.node.get_logger().info('Agent: %s' % self.str_())
+            else:
+                self.distance_bool = True
+                self.d = d
+                self.parent.node.get_logger().info('Agent: %s' % self.str_distance_())
+            
+            if self.id == 'origin':
+                self.pose.position.x = 0.0
+                self.pose.position.y = 0.0
+                self.pose.position.z = 0.0
+                self.k = 2.0
+                self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
+            else:
+                self.k = 1.0
+                self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
         if not self.parent.digital_twin:
             self.sub_d_ = self.parent.node.create_subscription(Float64, '/' + self.id + '/d', self.d_callback, 10)
             self.publisher_data_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/data', 10)
@@ -355,8 +364,22 @@ class CrazyflieWebotsDriver:
                     self.node.create_timer(self.controller['period'], self.distance_pid_controller)
                 for rel in self.relationship:
                     aux = rel.split('_')
-                    robot = Agent(self, aux[0], d = float(aux[1]))
-                    self.node.get_logger().info('Agent: %s: Neighbour: %s \td: %s' % (self.name_value, aux[0], aux[1]))
+                    id = aux[0]
+
+                    if not id.find("line") == -1:
+                        p = Point()
+                        p.x = float(aux[1])
+                        p.y = float(aux[2])
+                        p.z = float(aux[3])
+                        u = Vector3()
+                        u.x = float(aux[4])
+                        u.y = float(aux[5])
+                        u.z = float(aux[6])
+                        robot = Agent(self, id, point = p, vector = u)
+                        self.node.get_logger().info('Agent: %s: Neighbour: %s ::: Px: %s Py: %s Pz: %s' % (self.name_value, id, aux[1], aux[2], aux[3]))
+                    else:
+                        robot = Agent(self, aux[0], d = float(aux[1]))
+                        self.node.get_logger().info('Agent: %s: Neighbour: %s \td: %s' % (self.name_value, aux[0], aux[1]))
                     self.agent_list.append(robot)
             elif self.config['task']['type'] == 'pose':
                 if self.controller_type == 'gradient':
@@ -478,11 +501,21 @@ class CrazyflieWebotsDriver:
         if self.formation_bool:
             dx = dy = dz = 0
             for agent in self.agent_list:
+                if not agent.id.find("line") == -1:
+                    nearest = PoseStamped()
+                    nearest.header.frame_id = "map"
+                    gamma = -np.dot([agent.point.x-self.gt_pose.position.x, agent.point.y-self.gt_pose.position.y, agent.point.z-self.gt_pose.position.z],[agent.vector.x, agent.vector.y, agent.vector.z])/agent.mod
+                    nearest.pose.position.x = agent.point.x + gamma * agent.vector.x
+                    nearest.pose.position.y = agent.point.y + gamma * agent.vector.y
+                    nearest.pose.position.z = agent.point.z + gamma * agent.vector.z
+                    agent.gtpose_callback(nearest)
                 error_x = self.gt_pose.position.x - agent.pose.position.x
                 error_y = self.gt_pose.position.y - agent.pose.position.y
                 error_z = self.gt_pose.position.z - agent.pose.position.z
                 distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
                 d = sqrt(distance)
+                if d == 0:
+                    d = 1.0
                 dx += self.k * agent.k * (pow(agent.d,2) - distance) * error_x/d
                 dy += self.k * agent.k * (pow(agent.d,2) - distance) * error_y/d
                 dz += self.k * agent.k * (pow(agent.d,2) - distance) * error_z/d
@@ -551,11 +584,21 @@ class CrazyflieWebotsDriver:
         if self.formation_bool:
             ex = ey = ez = 0
             for agent in self.agent_list:
+                if not agent.id.find("line") == -1:
+                    nearest = PoseStamped()
+                    nearest.header.frame_id = "map"
+                    gamma = -np.dot([agent.point.x-self.gt_pose.position.x, agent.point.y-self.gt_pose.position.y, agent.point.z-self.gt_pose.position.z],[agent.vector.x, agent.vector.y, agent.vector.z])/agent.mod
+                    nearest.pose.position.x = agent.point.x + gamma * agent.vector.x
+                    nearest.pose.position.y = agent.point.y + gamma * agent.vector.y
+                    nearest.pose.position.z = agent.point.z + gamma * agent.vector.z
+                    agent.gtpose_callback(nearest)
                 error_x = self.gt_pose.position.x - agent.pose.position.x
                 error_y = self.gt_pose.position.y - agent.pose.position.y
                 error_z = self.gt_pose.position.z - agent.pose.position.z
                 distance = sqrt(pow(error_x,2)+pow(error_y,2)+pow(error_z,2))
                 e = agent.d - distance
+                if distance == 0:
+                    distance = 1.0
                 ex += agent.k * e * (error_x/distance)
                 ey += agent.k * e * (error_y/distance)
                 ez += agent.k * e * (error_z/distance)
@@ -599,7 +642,7 @@ class CrazyflieWebotsDriver:
             delta=sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
             angles = tf_transformations.euler_from_quaternion((self.gt_pose.orientation.x, self.gt_pose.orientation.y, self.gt_pose.orientation.z, self.gt_pose.orientation.w))
                     
-            if delta<0.05:
+            if delta<0.1:
                 roll = angles[0]
                 pitch = angles[1]
                 yaw = angles[2]
