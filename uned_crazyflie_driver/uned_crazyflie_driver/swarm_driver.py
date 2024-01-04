@@ -204,6 +204,9 @@ class Crazyflie_ROS2():
         self.home = Pose()
         self.path = Path()
         self.path.header.frame_id = "map"
+        self.roll = 0.0
+        self.pitch = 0.0
+        self.yaw = 0.0
         
         self.init_pose = False
         self.tfbr = TransformBroadcaster(self.parent)
@@ -215,6 +218,8 @@ class Crazyflie_ROS2():
         self.scf.cf.open_link(link_uri)
         self.scf.CONTROL_MODE = self.config['control_mode']
         self.parent.get_logger().info('CF%s::Control Mode: %s!' % (self.scf.cf.link_uri[-2:], self.scf.CONTROL_MODE))
+        if self.scf.CONTROL_MODE == 'Gimbal':
+            self.iterate_loop = self.parent.create_timer(0.01, self.iterate)
         self.scf.CONTROLLER_TYPE = self.config['controller']['type']
         self.parent.get_logger().info('CF%s::Controller Type: %s!' % (self.scf.cf.link_uri[-2:], self.scf.CONTROLLER_TYPE))
         self.communication = (self.config['communication']['type'] == 'Continuous')
@@ -236,6 +241,12 @@ class Crazyflie_ROS2():
                 self.publisher_pose = self.parent.create_publisher(PoseStamped, self.id + '/pose', 10)
             else:
                 self.publisher_pose = self.parent.create_publisher(PoseStamped, self.id + '/local_pose', 10)
+                self.publisher_roll = self.parent.create_publisher(Float64, self.id + '/roll', 10)
+                self.publisher_pitch = self.parent.create_publisher(Float64, self.id + '/pitch', 10)
+                self.publisher_yaw = self.parent.create_publisher(Float64, self.id + '/yaw', 10)
+                self.sub_goal_roll_ = self.parent.create_subscription(Float64, self.id + '/goal_roll', self.roll_callback, 10)
+                self.sub_goal_pitch_ = self.parent.create_subscription(Float64, self.id + '/goal_pitch', self.pitch_callback, 10)
+                self.sub_goal_yaw_ = self.parent.create_subscription(Float64, self.id + '/goal_yaw', self.yaw_callback, 10)
                 if self.digital_twin:
                     self.publisher_dtpose = self.parent.create_publisher(PoseStamped, self.id + '/pose_dt', 10)
             self._lg_stab_pose = LogConfig(name='Pose', period_in_ms=self.config['local_pose']['T'])
@@ -256,7 +267,6 @@ class Crazyflie_ROS2():
                     '{} not found in TOC'.format(str(e)))
             except AttributeError:
                 self.parent.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
-
         # TWIST
         if self.config['local_twist']['enable']:
             self.publisher_twist = self.parent.create_publisher(Twist, self.id + '/local_twist', 10)
@@ -323,7 +333,7 @@ class Crazyflie_ROS2():
                 self.parent.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
 
         # DATA MOTOR.
-        if self.config['data_rate']['enable']:
+        if self.config['data_motor']['enable']:
             self.publisher_data_motor = self.parent.create_publisher(Float64MultiArray, self.id + '/data_motor', 10)
             self._lg_stab_data_m = LogConfig(name='Data_motor', period_in_ms=self.config['data_rate']['T'])
             self._lg_stab_data_m.add_variable('posCtl.targetVZ', 'float')
@@ -346,7 +356,7 @@ class Crazyflie_ROS2():
 
         # MULTIROBOT
          # DATA.
-        if True:
+        if False:
             self.publisher_mrs_data = self.parent.create_publisher(Float64MultiArray, self.id + '/mr_data', 10)
             self._lg_stab_data = LogConfig(name='Data_multirobot', period_in_ms=100)
             self._lg_stab_data.add_variable('multirobot.cmd_x', 'float')
@@ -457,6 +467,24 @@ class Crazyflie_ROS2():
         self.is_connected = False
         self.parent.destroy_node()
 
+    def roll_callback(self, msg):
+        self.cmd_motion_.roll = msg.data
+
+    def pitch_callback(self, msg):
+        self.cmd_motion_.pitch = msg.data
+
+    def yaw_callback(self, msg):
+        self.cmd_motion_.yaw = msg.data
+
+    def iterate(self):
+        self.parent.get_logger().info('SetPoint:::Roll: %.2f, Pitch: %.2f, Yaw: %.2f, Thrust: %d' % (self.cmd_motion_.roll, self.cmd_motion_.pitch, self.cmd_motion_.yaw, self.cmd_motion_.thrust))
+        self.parent.get_logger().info('CF:::Roll: %.2f, Pitch: %.2f, Yaw: %.2f' % (self.roll, self.pitch, self.yaw))
+        # self.cmd_motion_.roll = self.roll
+        # self.cmd_motion_.pitch = self.pitch
+        # self.cmd_motion_.yaw = self.yaw
+        self.scf.cf.extpos.send_extpos(0.0, 0.0, 0.7)
+        self.cmd_motion_.send_offboard_setpoint_(self.scf.cf)
+
     def take_off(self):
         self.parent.get_logger().info('CF%s::Take Off.' % self.scf.cf.link_uri[-2:])
         # self.cmd_motion_.take_off(self.scf.cf)
@@ -502,6 +530,9 @@ class Crazyflie_ROS2():
             msg.pose.position.x = data['stateEstimate.x']
             msg.pose.position.y = data['stateEstimate.y']
             msg.pose.position.z = data['stateEstimate.z']
+            self.roll = data['stabilizer.roll']
+            self.pitch = data['stabilizer.pitch']
+            self.yaw = data['stabilizer.yaw']
             q = quaternion_from_euler(data['stabilizer.roll'], data['stabilizer.pitch'], data['stabilizer.yaw'])
             msg.pose.orientation.x = q[0]
             msg.pose.orientation.y = q[1]
@@ -513,6 +544,13 @@ class Crazyflie_ROS2():
             if self.communication or np.linalg.norm(delta)>self.threshold:
                 self.pose = msg.pose
                 self.publisher_pose.publish(msg)
+                value = Float64()
+                value.data = self.roll
+                self.publisher_roll.publish(value)
+                value.data = self.pitch
+                self.publisher_pitch.publish(value)
+                value.data = self.yaw
+                self.publisher_yaw.publish(value)
                 if self.digital_twin:
                     self.publisher_dtpose.publish(msg)
                 t_base = TransformStamped()
@@ -550,6 +588,9 @@ class Crazyflie_ROS2():
                     msg.pose.position.x = data['stateEstimate.x']
                     msg.pose.position.y = data['stateEstimate.y']
                     msg.pose.position.z = data['stateEstimate.z']
+                    self.roll = data['stabilizer.roll']
+                    self.pitch = data['stabilizer.pitch']
+                    self.yaw = data['stabilizer.yaw']
                     q = quaternion_from_euler(data['stabilizer.roll'], data['stabilizer.pitch'], data['stabilizer.yaw'])
                     msg.pose.orientation.x = q[0]
                     msg.pose.orientation.y = q[1]
@@ -571,12 +612,19 @@ class Crazyflie_ROS2():
                     self.pose = msg.pose
                     self.home = msg.pose
                     self.publisher_pose.publish(msg)
+                    value = Float64()
+                    value.data = self.roll
+                    self.publisher_roll.publish(value)
+                    value.data = self.pitch
+                    self.publisher_pitch.publish(value)
+                    value.data = self.yaw
+                    self.publisher_yaw.publish(value)
                     self.cmd_motion_.x = msg.pose.position.x
                     self.cmd_motion_.y = msg.pose.position.y
                     self.cmd_motion_.z = msg.pose.position.z
                     self.parent.get_logger().info('CF%s::Home pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
             except:
-                pass
+                pass        
 
     def twist_callback(self, data):
         msg = Twist()
@@ -588,7 +636,7 @@ class Crazyflie_ROS2():
         msg.angular.z = data['gyro.z']
 
         self.publisher_twist.publish(msg)
-
+    
     def dataAttitude_callback(self, data):
         msg = Float64MultiArray()
         msg.data = {data['posCtl.targetVX'], data['posCtl.targetVY'], data['controller.roll'], data['controller.pitch'], data['controller.yaw']}
@@ -639,11 +687,35 @@ class Crazyflie_ROS2():
             self.formation = False
             self.scf.cf.param.set_value('stabilizer.controller', '1')
             self.descent()
+        elif msg.data == 'test':
+            self.scf.cf.param.set_value('motion.disable', '1')
+            # Init Kalman Filter
+            self.scf.cf.param.set_value('stabilizer.estimator', '2')
+            # Reset Estimator
+            self.scf.cf.param.set_value('kalman.resetEstimation', '1')
+            self.scf.cf.param.set_value('kalman.resetEstimation', '0')
+            self.cmd_motion_.roll = 0.0
+            self.cmd_motion_.pitch = 0.0
+            self.cmd_motion_.yaw = 0.0
+  
+            self.scf.cf.param.set_value('pid_attitude.roll_kp', 3.0)
+            self.scf.cf.param.set_value('pid_attitude.roll_ki', 1.75)
+            self.scf.cf.param.set_value('pid_attitude.roll_kd', 0.0)
+
+            self.scf.cf.param.set_value('pid_attitude.pitch_kp', 3.0)
+            self.scf.cf.param.set_value('pid_attitude.pitch_ki', 1.75)
+            self.scf.cf.param.set_value('pid_attitude.pitch_kd', 0.0)
+
+            self.scf.cf.param.set_value('pid_attitude.yaw_kp', 3.0)
+            self.scf.cf.param.set_value('pid_attitude.yaw_ki', 0.0)
+            self.scf.cf.param.set_value('pid_attitude.yaw_kd', 0.0)
+
+            self.cmd_motion_.thrust = int(10001.0)
         else:
             self.parent.get_logger().error('CF%s::"%s": Unknown order' % (self.scf.cf.link_uri[-2:], msg.data))
 
     def cmd_control_callback(self, msg):
-        if self.scf.CONTROL_MODE == 'OffBoard':
+        if self.scf.CONTROL_MODE == 'OffBoard' or self.scf.CONTROL_MODE == 'Gimbal':
             self.cmd_motion_.roll = msg.data[1]
             self.cmd_motion_.pitch = msg.data[2]
             self.cmd_motion_.yaw = msg.data[3]
@@ -813,9 +885,9 @@ class Crazyflie_ROS2():
             self.cmd_motion_.z = msg.pose.position.z
             self.parent.get_logger().info('CF%s::Init pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
         x = np.array([self.pose.position.x-msg.pose.position.x,self.pose.position.y-msg.pose.position.y,self.pose.position.z-msg.pose.position.z])
-        if (np.linalg.norm(x)>0.005 and np.linalg.norm(x)<0.2):
-            self.scf.cf.extpos.send_extpos(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z)
-        if ((abs(msg.position.x)>self.xy_lim) or (abs(msg.position.y)>self.xy_lim) or (abs(msg.position.z)>2.0)) and self.scf.CONTROL_MODE != 'HighLevel':
+        # if (np.linalg.norm(x)>0.005 and np.linalg.norm(x)<0.2):
+        self.scf.cf.extpos.send_extpos(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z)
+        if ((abs(msg.pose.position.x)>self.xy_lim) or (abs(msg.pose.position.y)>self.xy_lim) or (abs(msg.pose.position.z)>2.0)) and self.scf.CONTROL_MODE != 'OffBoard':
             self.scf.CONTROL_MODE = 'HighLevel'
             self._is_flying = True
             self.parent.get_logger().error('CF%s::Out.' % self.scf.cf.link_uri[-2:])
@@ -1032,7 +1104,7 @@ class CFSwarmDriver(Node):
         scf.cf.param.set_value('commander.enHighLevel', '1')
         if (scf.CONTROLLER_TYPE == 'PID_EventBased'):
             scf.cf.param.set_value('stabilizer.controller', '5')
-        scf.cf.param.set_value('stabilizer.controller', '5')
+        # scf.cf.param.set_value('stabilizer.controller', '5')
         
     def order_callback(self, msg):
         self.get_logger().info('SWARM::Order: "%s"' % msg.data)
@@ -1073,7 +1145,7 @@ class CFSwarmDriver(Node):
             cf.cmd_motion_.x = cf.cmd_motion_.x + msg.position.x
             cf.cmd_motion_.y = cf.cmd_motion_.y + msg.position.y
             cf.cmd_motion_.z = cf.cmd_motion_.z + msg.position.z
-            # cf.cmd_motion_.ckeck_pose()
+            cf.cmd_motion_.ckeck_pose()
             delta = [abs(msg.position.x), abs(msg.position.y), abs(msg.position.z)]
             self.cmd_motion_.flight_time = max(delta)/self.max_vel
             # self.cmd_motion_.flight_time = 0.5
