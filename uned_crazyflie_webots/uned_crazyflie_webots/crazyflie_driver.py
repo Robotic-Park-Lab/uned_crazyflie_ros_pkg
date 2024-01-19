@@ -49,7 +49,7 @@ class Agent():
             if self.id == 'origin':
                 self.pose.position.x = 0.0
                 self.pose.position.y = 0.0
-                self.pose.position.z = 0.0
+                self.pose.position.z = 0.8
                 self.k = 2.0
                 self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
             else:
@@ -190,7 +190,6 @@ class CrazyflieWebotsDriver:
     def init(self, webots_node, properties):
         
         self.robot = webots_node.robot
-        
         timestep = int(self.robot.getBasicTimeStep())
 
         ## Initialize motors
@@ -247,14 +246,22 @@ class CrazyflieWebotsDriver:
         self.leader_cmd.header.frame_id = "map"
         self.last_pose = Pose()
 
+        ## Read config_file
+        self.config_file = properties.get("config_file")
+        with open(self.config_file, 'r') as file:
+            documents = yaml.safe_load(file)
+        for robot in documents['Robots']:
+            if documents['Robots'][robot]['name'] == properties.get("name_id"):
+                self.config = documents['Robots'][robot]
+
         ## Intialize Controllers
         self.continuous = True
         # IPC
-        if properties.get("controller") == 'IPC':
+        if self.config['controller']['type'] == 'ipc':
             self.controller_IPC = True
             self.controller_PID = False
             self.eomas = 3.14
-        elif properties.get("controller") == 'PID':
+        elif self.config['controller']['type'] == 'pid':
             self.controller_IPC = False
             self.controller_PID = True
         else:
@@ -282,10 +289,10 @@ class CrazyflieWebotsDriver:
         # cffirmware.controllerPidInit()
 
         # Init ROS2 Node
-        self.name_value = properties.get("name")
+        self.name_value = self.config['name']
         rclpy.init(args=None)
         self.node = rclpy.create_node(self.name_value+'_driver')
-        self.digital_twin = properties.get("type") == 'digital_twin'
+        self.digital_twin = self.config['type'] == 'digital_twin'
         # Subscription
         self.node.create_subscription(Twist, self.name_value+'/cmd_vel', self.cmd_vel_callback, 1)
         self.node.create_subscription(PoseStamped, self.name_value+'/pose_dt', self.dt_pose_callback, 1)
@@ -299,6 +306,7 @@ class CrazyflieWebotsDriver:
         self.event_y_ = self.node.create_publisher(Bool, self.name_value+'/event_y', 10)
         self.event_z_ = self.node.create_publisher(Bool, self.name_value+'/event_z', 10)
         self.path_publisher = self.node.create_publisher(Path, self.name_value+'/path', 10)
+        self.swarm_status_publisher = self.node.create_publisher(String, 'swarm/status', 10)
 
         self.odom_publisher = self.node.create_publisher(Odometry, self.name_value+'/odom', 10)
         if self.digital_twin:
@@ -310,8 +318,7 @@ class CrazyflieWebotsDriver:
         self.tfbr = TransformBroadcaster(self.node)
         self.msg_laser = LaserScan()
         self.node.create_timer(0.2, self.publish_laserscan_data)
-
-        self.config_file = properties.get("config_file")
+        
         self.path = Path()
         self.path.header.frame_id = "map"
 
@@ -326,14 +333,12 @@ class CrazyflieWebotsDriver:
     def initialize(self):
         self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.name_value)))
         # Read Params
-        with open(self.config_file, 'r') as file:
-            documents = yaml.safe_load(file)
-        self.config = documents[self.name_value]
+        
         # Set Formation
         if self.config['task']['enable']:
             self.node.destroy_subscription(self.sub_goalpose)
             self.publisher_goalpose = self.node.create_publisher(PoseStamped, self.name_value + '/goal_pose', 10)
-        if self.config['task']['enable'] and not self.config['task']['Onboard']:
+        if self.config['task']['enable'] or self.config['task']['Onboard']:
             self.node.get_logger().info('Task %s by %s' % (self.config['task']['type'], self.config['task']['role']))
             self.controller = self.config['task']['controller']
             self.controller_type = self.controller['type']
@@ -473,12 +478,16 @@ class CrazyflieWebotsDriver:
         self.node.get_logger().info('Take Off...')
         self.target_pose.pose.position.z = 1.0
         self._is_flying = True
-        self.t_ready = Timer(2, self._ready)
+        self.t_ready = Timer(4, self._ready)
         self.t_ready.start()
 
     def _ready(self):
         self.node.get_logger().info('Ready!!.')
         self.ready = True
+        if self.name_value == 'dron01':
+            msg = String()
+            msg.data = 'ready'
+            self.swarm_status_publisher.publish(msg)
 
     def descent(self):
         self.target_pose.pose.position.z = 0.8
@@ -565,7 +574,7 @@ class CrazyflieWebotsDriver:
                 pitch = -atan2(dz,h)
                 yaw = atan2(dy,dx)
 
-            q = tf_transformations.quaternion_from_euler(roll, pitch, yaw)
+            q = tf_transformations.quaternion_from_euler(roll, pitch, 0.0)
             self.target_pose.pose.orientation.x = q[0]
             self.target_pose.pose.orientation.y = q[1]
             self.target_pose.pose.orientation.z = q[2]
@@ -574,8 +583,8 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.gt_pose.position.x, self.target_pose.pose.position.x, self.gt_pose.position.y, self.target_pose.pose.position.y, self.gt_pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.6:
-                self.target_pose.pose.position.z = 0.6
+            if self.target_pose.pose.position.z < 0.4:
+                self.target_pose.pose.position.z = 0.4
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -661,8 +670,8 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.gt_pose.position.x, self.target_pose.pose.position.x, self.gt_pose.position.y, self.target_pose.pose.position.y, self.gt_pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.6:
-                self.target_pose.pose.position.z = 0.6
+            if self.target_pose.pose.position.z < 0.4:
+                self.target_pose.pose.position.z = 0.4
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -732,8 +741,8 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.gt_pose.position.x, self.target_pose.pose.position.x, self.gt_pose.position.y, self.target_pose.pose.position.y, self.gt_pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.6:
-                self.target_pose.pose.position.z = 0.6
+            if self.target_pose.pose.position.z < 0.4:
+                self.target_pose.pose.position.z = 0.4
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -809,8 +818,8 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.gt_pose.position.x, self.target_pose.pose.position.x, self.gt_pose.position.y, self.target_pose.pose.position.y, self.gt_pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.6:
-                self.target_pose.pose.position.z = 0.6
+            if self.target_pose.pose.position.z < 0.4:
+                self.target_pose.pose.position.z = 0.4
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -876,7 +885,7 @@ class CrazyflieWebotsDriver:
             self.pose_publisher.publish(init_pose)
             self.z_controller.past_time = self.past_time
             self.w_controller.past_time = self.past_time
-            self.take_off()
+            # self.take_off()
 
         ## Get measurements
         roll = self.imu.getRollPitchYaw()[0]

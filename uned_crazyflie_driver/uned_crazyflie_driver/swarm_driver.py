@@ -47,14 +47,14 @@ class Agent():
         if self.id == 'origin':
             self.pose.position.x = 0.0
             self.pose.position.y = 0.0
-            self.pose.position.z = 0.0
+            self.pose.position.z = 0.8
             self.k = 2.0
         else:
-            self.sub_pose_ = self.node.create_subscription(Pose, '/' + self.id + '/local_pose', self.gtpose_callback, 10)
+            self.sub_pose_ = self.node.create_subscription(PoseStamped, '/' + self.id + '/local_pose', self.gtpose_callback, 10)
         if self.parent.config['task']['Onboard']:
             parent.scf.cf.high_level_commander.new_neighbour(self.idn, self.d, self.k)
         self.publisher_data_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/data', 10)
-        self.publisher_iae_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/iae', 10)
+        self.publisher_iae_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/error', 10)
         self.publisher_marker_ = self.node.create_publisher(Marker, self.parent.id + '/' + self.id + '/marker', 10)
         self.sub_d_ = self.node.create_subscription(Float64, '/' + self.id + '/d', self.d_callback, 10)
 
@@ -69,10 +69,10 @@ class Agent():
         self.d = msg.data
 
     def gtpose_callback(self, msg):
-        self.pose = msg
+        self.pose = msg.pose
         if self.parent.config['task']['Onboard']:
             self.parent.scf.cf.high_level_commander.update_neighbour(self.idn, self.pose.position.x, self.pose.position.y, self.pose.position.z)
-        self.node.get_logger().debug('Agent: X: %.2f Y: %.2f Z: %.2f' % (msg.position.x, msg.position.y, msg.position.z))
+        self.node.get_logger().debug('Agent: X: %.2f Y: %.2f Z: %.2f' % (msg.pose.position.x, msg.pose.position.y, msg.pose.position.z))
 
         line = Marker()
         p0 = Point()
@@ -123,6 +123,95 @@ class Agent():
 
         self.publisher_marker_.publish(line)
 
+
+class PIDController():
+    def __init__(self, Kp, Ki, Kd, Td, Nd, UpperLimit, LowerLimit, ai, co):
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self.Td = Td
+        self.Nd = Nd
+        self.UpperLimit = UpperLimit
+        self.LowerLimit = LowerLimit
+        self.integral = 0
+        self.derivative = 0
+        self.error = [0.0, 0.0]
+        self.trigger_ai = ai
+        self.trigger_co = co
+        self.trigger_last_signal = 0.0
+        self.noise = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.past_time = 0.0
+        self.last_value = 0.0
+        self.th = 0.0
+        self.rele = False
+        self.range = 20.0
+        self.cmd = 60.0
+
+    def update(self, dt):
+        P = self.Kp * self.error[0]
+        self.integral = self.integral + self.Ki*self.error[1]*dt
+        self.derivative = (self.Td/(self.Td+self.Nd+dt))*self.derivative+(self.Kd*self.Nd/(self.Td+self.Nd*dt))*(self.error[0]-self.error[1])
+        out = P + self.integral + self.derivative
+        
+        if not self.UpperLimit==0.0:
+            # out_i = out
+            if out>self.UpperLimit:
+                out = self.UpperLimit
+            if out<self.LowerLimit:
+                out = self.LowerLimit
+
+            # self.integral = self.integral - (out-out_i) * sqrt(self.Kp/self.Ki)
+        
+        self.error[1] = self.error[0]
+
+        self.last_value = out
+        
+        return out
+    
+    def rele_update(self,dt):
+        if not self.rele:
+            if self.error[0] > self.range:
+                out = self.cmd
+                self.rele = True
+            else:
+                out = -self.cmd
+        else:
+            if self.error[0] < -self.range:
+                out = -self.cmd
+                self.rele = False
+            else: 
+                out = self.cmd
+        
+        return out
+
+    def eval_threshold(self, signal, ref):
+        # Noise (Cn)
+        mean = signal/len(self.noise)
+        for i in range(0,len(self.noise)-2):
+            self.noise[i] = self.noise[i+1]
+            mean += self.noise[i]/len(self.noise)
+        
+        self.noise[len(self.noise)-1] = signal
+
+        trigger_cn = 0.0
+        for i in range(0,len(self.noise)-1):
+            if abs(self.noise[i]-mean) > trigger_cn:
+                trigger_cn = self.noise[i]-mean
+        trigger_cn = 0.0
+        # a
+        a = self.trigger_ai * abs(signal - ref)
+        if a > self.trigger_ai:
+            a = self.trigger_ai
+
+        # Threshold
+        self.th = self.trigger_co + a + trigger_cn
+        self.inc = abs(abs(ref-signal) - self.trigger_last_signal) 
+        # Delta Error
+        if (self.inc >= abs(self.th)):
+            self.trigger_last_signal = abs(ref-signal)
+            return True
+
+        return False
 
 class CMD_Motion():
     def __init__(self, logger, xy_lim = 10):
@@ -175,8 +264,8 @@ class CMD_Motion():
         cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 1.5)
 
     def send_offboard_setpoint_(self, cf):
-        self.logger.info('Command: %s' % self.str_())
-        cf.commander.send_setpoint(self.roll, self.pitch, self.yaw, self.thrust)
+        self.logger.debug('Command: %s' % self.str_())
+        cf.commander.send_setpoint(self.roll, -self.pitch, self.yaw, self.thrust)
 
     def take_off(self, cf):
         self.logger.info('Take off ... ')
@@ -204,9 +293,15 @@ class Crazyflie_ROS2():
         self.home = Pose()
         self.path = Path()
         self.path.header.frame_id = "map"
+        self.pitch_controller = PIDController(0.8395, 0.8483, 0.0, 0.0, 100, 30, -30, 0.1, 0.1)
+        self.gimbal = False
         self.roll = 0.0
         self.pitch = 0.0
         self.yaw = 0.0
+        self.sp_roll = 0.0
+        self.sp_pitch = 0.0
+        self.sp_yaw = 0.0
+        self.scf.uri = link_uri
         
         self.init_pose = False
         self.tfbr = TransformBroadcaster(self.parent)
@@ -215,7 +310,7 @@ class Crazyflie_ROS2():
         self.scf.cf.disconnected.add_callback(self._disconnected)
         self.scf.cf.connection_failed.add_callback(self._connection_failed)
         self.scf.cf.connection_lost.add_callback(self._connection_lost)
-        self.scf.cf.open_link(link_uri)
+        # self.scf.cf.open_link(link_uri)
         self.scf.CONTROL_MODE = self.config['control_mode']
         self.parent.get_logger().info('CF%s::Control Mode: %s!' % (self.scf.cf.link_uri[-2:], self.scf.CONTROL_MODE))
         if self.scf.CONTROL_MODE == 'Gimbal':
@@ -238,17 +333,20 @@ class Crazyflie_ROS2():
             if self.path_enable:
                 self.path_publisher = self.parent.create_publisher(Path, self.id + '/path', 10)
             if self.scf.CONTROL_MODE == 'None':
+                self.parent.create_subscription(PoseStamped, self.id + '/pose', self.newpose_callback, 10)
                 self.publisher_pose = self.parent.create_publisher(PoseStamped, self.id + '/pose', 10)
-            else:
-                self.publisher_pose = self.parent.create_publisher(PoseStamped, self.id + '/local_pose', 10)
-                self.publisher_roll = self.parent.create_publisher(Float64, self.id + '/roll', 10)
-                self.publisher_pitch = self.parent.create_publisher(Float64, self.id + '/pitch', 10)
-                self.publisher_yaw = self.parent.create_publisher(Float64, self.id + '/yaw', 10)
+            elif self.scf.CONTROL_MODE == 'Gimbal':
+                self.publisher_sp_pitch = self.parent.create_publisher(Float64, self.id + '/sp_pitch', 10)
                 self.sub_goal_roll_ = self.parent.create_subscription(Float64, self.id + '/goal_roll', self.roll_callback, 10)
                 self.sub_goal_pitch_ = self.parent.create_subscription(Float64, self.id + '/goal_pitch', self.pitch_callback, 10)
                 self.sub_goal_yaw_ = self.parent.create_subscription(Float64, self.id + '/goal_yaw', self.yaw_callback, 10)
-                if self.digital_twin:
-                    self.publisher_dtpose = self.parent.create_publisher(PoseStamped, self.id + '/pose_dt', 10)
+            else:
+                self.publisher_pose = self.parent.create_publisher(PoseStamped, self.id + '/local_pose', 10)
+            if self.digital_twin:
+                self.publisher_dtpose = self.parent.create_publisher(PoseStamped, self.id + '/pose_dt', 10)
+            self.publisher_roll = self.parent.create_publisher(Float64, self.id + '/roll', 10)
+            self.publisher_pitch = self.parent.create_publisher(Float64, self.id + '/pitch', 10)
+            self.publisher_yaw = self.parent.create_publisher(Float64, self.id + '/yaw', 10)
             self._lg_stab_pose = LogConfig(name='Pose', period_in_ms=self.config['local_pose']['T'])
             self._lg_stab_pose.add_variable('stateEstimate.x', 'float')
             self._lg_stab_pose.add_variable('stateEstimate.y', 'float')
@@ -260,7 +358,6 @@ class Crazyflie_ROS2():
                 self.scf.cf.log.add_config(self._lg_stab_pose)
                 self._lg_stab_pose.data_received_cb.add_callback(self._stab_log_data)
                 self._lg_stab_pose.error_cb.add_callback(self._stab_log_error)
-
                 self._lg_stab_pose.start()
             except KeyError as e:
                 self.parent.get_logger().info('Could not start log configuration,'
@@ -356,7 +453,7 @@ class Crazyflie_ROS2():
 
         # MULTIROBOT
          # DATA.
-        if False:
+        if True:
             self.publisher_mrs_data = self.parent.create_publisher(Float64MultiArray, self.id + '/mr_data', 10)
             self._lg_stab_data = LogConfig(name='Data_multirobot', period_in_ms=100)
             self._lg_stab_data.add_variable('multirobot.cmd_x', 'float')
@@ -395,14 +492,12 @@ class Crazyflie_ROS2():
             except AttributeError:
                 self.parent.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
 
-        self.publisher_global_iae_ = self.parent.create_publisher(Float64, self.id + '/global_iae', 10)
+        self.publisher_global_iae_ = self.parent.create_publisher(Float64, self.id + '/global_error', 10)
         # Subscription
         self.parent.create_subscription(String, self.id + '/order', self.order_callback, 10)
         self.parent.create_subscription(String, '/swarm/status', self.swarm_status_callback, 10)
         self.parent.create_subscription(PoseStamped, self.id + '/target_pose', self.targetpose_callback, 10)
         # self.parent.create_subscription(Time, '/swarm/time', self.time_callback, 1)
-        if not self.scf.CONTROL_MODE == 'None':
-            self.parent.create_subscription(PoseStamped, self.id + '/pose', self.newpose_callback, 10)
         if self.scf.CONTROL_MODE == 'HighLevel':
             self.parent.create_subscription(PoseStamped, self.id + '/goal_pose', self.goalpose_callback, 10)
         else:
@@ -419,12 +514,14 @@ class Crazyflie_ROS2():
         self.scf.cf.param.add_update_callback(group='pid_rate', cb=self.param_stab_est_callback)
         '''
         # self.scf.cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
-        self.scf.cf.param.add_update_callback(group='controller', cb=self.param_stab_est_callback)
+        # self.scf.cf.param.add_update_callback(group='controller', cb=self.param_stab_est_callback)
+        # self.scf.cf.param.add_update_callback(group='flightmode', cb=self.param_stab_est_callback)
+        # self.scf.cf.param.add_update_callback(group='pid_attitude', cb=self.param_stab_est_callback)
         # self.scf.cf.param.add_update_callback(group='commander', cb=self.param_stab_est_callback)
         # self.scf.cf.param.add_update_callback(group='stabilizer', cb=self.param_stab_est_callback)
 
         self._is_flying = False
-        self.xy_lim = 1.5
+        self.xy_lim = 2.0
         self.cmd_motion_ = CMD_Motion(self.parent.get_logger(), xy_lim = self.xy_lim)
         self.scf.cf.commander.set_client_xmode(True)
 
@@ -468,22 +565,30 @@ class Crazyflie_ROS2():
         self.parent.destroy_node()
 
     def roll_callback(self, msg):
-        self.cmd_motion_.roll = msg.data
+        self.sp_roll = msg.data
 
     def pitch_callback(self, msg):
-        self.cmd_motion_.pitch = msg.data
+        self.sp_pitch = msg.data
 
     def yaw_callback(self, msg):
-        self.cmd_motion_.yaw = msg.data
+        self.sp_yaw = msg.data
 
     def iterate(self):
-        self.parent.get_logger().info('SetPoint:::Roll: %.2f, Pitch: %.2f, Yaw: %.2f, Thrust: %d' % (self.cmd_motion_.roll, self.cmd_motion_.pitch, self.cmd_motion_.yaw, self.cmd_motion_.thrust))
-        self.parent.get_logger().info('CF:::Roll: %.2f, Pitch: %.2f, Yaw: %.2f' % (self.roll, self.pitch, self.yaw))
-        # self.cmd_motion_.roll = self.roll
-        # self.cmd_motion_.pitch = self.pitch
-        # self.cmd_motion_.yaw = self.yaw
-        self.scf.cf.extpos.send_extpos(0.0, 0.0, 0.7)
-        self.cmd_motion_.send_offboard_setpoint_(self.scf.cf)
+        msg = Float64()
+        self.parent.get_logger().info('CF:::SP_Pitch: %.2f, Pitch: %.2f' % (self.cmd_motion_.pitch, self.pitch))
+        if self.gimbal:
+            # self.parent.get_logger().info('SetPoint:::Roll: %.2f, Pitch: %.2f, Yaw: %.2f, Thrust: %d' % (self.cmd_motion_.roll, self.cmd_motion_.pitch, self.cmd_motion_.yaw, self.cmd_motion_.thrust))
+            self.pitch_controller.error[0] = self.sp_pitch - self.pitch
+            # self.cmd_motion_.pitch = self.pitch_controller.update(0.01)
+            self.cmd_motion_.pitch = self.sp_pitch
+            # self.cmd_motion_.pitch = self.pitch_controller.rele_update(0.01)
+            self.scf.cf.extpos.send_extpos(0.0, 0.0, 0.7)
+            try:
+                msg.data = self.cmd_motion_.pitch
+                self.publisher_sp_pitch.publish(msg)
+            except:
+                pass
+            self.cmd_motion_.send_offboard_setpoint_(self.scf.cf)
 
     def take_off(self):
         self.parent.get_logger().info('CF%s::Take Off.' % self.scf.cf.link_uri[-2:])
@@ -687,30 +792,34 @@ class Crazyflie_ROS2():
             self.formation = False
             self.scf.cf.param.set_value('stabilizer.controller', '1')
             self.descent()
-        elif msg.data == 'test':
-            self.scf.cf.param.set_value('motion.disable', '1')
-            # Init Kalman Filter
-            self.scf.cf.param.set_value('stabilizer.estimator', '2')
-            # Reset Estimator
-            self.scf.cf.param.set_value('kalman.resetEstimation', '1')
-            self.scf.cf.param.set_value('kalman.resetEstimation', '0')
+        elif msg.data == 'gimbal':
             self.cmd_motion_.roll = 0.0
             self.cmd_motion_.pitch = 0.0
             self.cmd_motion_.yaw = 0.0
+            self.gimbal = True
   
-            self.scf.cf.param.set_value('pid_attitude.roll_kp', 3.0)
-            self.scf.cf.param.set_value('pid_attitude.roll_ki', 1.75)
+            self.scf.cf.param.set_value('stabilizer.estimator', '1')
+            self.scf.cf.param.set_value('kalman.resetEstimation', '1')
+            self.scf.cf.param.set_value('kalman.resetEstimation', '0')
+            
+            self.scf.cf.param.set_value('flightmode.stabModeRoll', '1')
+            self.scf.cf.param.set_value('pid_attitude.roll_kp', 0.0)
+            self.scf.cf.param.set_value('pid_attitude.roll_ki', 0.0)
             self.scf.cf.param.set_value('pid_attitude.roll_kd', 0.0)
 
-            self.scf.cf.param.set_value('pid_attitude.pitch_kp', 3.0)
-            self.scf.cf.param.set_value('pid_attitude.pitch_ki', 1.75)
+            self.scf.cf.param.set_value('flightmode.stabModePitch', '1')
+            self.scf.cf.param.set_value('pid_attitude.pitch_kp', 0.8395)
+            self.scf.cf.param.set_value('pid_attitude.pitch_ki', 0.8483)
             self.scf.cf.param.set_value('pid_attitude.pitch_kd', 0.0)
 
-            self.scf.cf.param.set_value('pid_attitude.yaw_kp', 3.0)
+            self.scf.cf.param.set_value('flightmode.stabModeYaw', '1')
+            self.scf.cf.param.set_value('pid_attitude.yaw_kp', 0.0)
             self.scf.cf.param.set_value('pid_attitude.yaw_ki', 0.0)
             self.scf.cf.param.set_value('pid_attitude.yaw_kd', 0.0)
 
-            self.cmd_motion_.thrust = int(10001.0)
+            self.scf.cf.commander.send_setpoint(0, 0, 0, 0)
+
+            self.cmd_motion_.thrust = 1001
         else:
             self.parent.get_logger().error('CF%s::"%s": Unknown order' % (self.scf.cf.link_uri[-2:], msg.data))
 
@@ -906,7 +1015,6 @@ class Crazyflie_ROS2():
             # self.parent.get_logger().debug('CF%s::New Target pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
             self.scf.cf.high_level_commander.go_to_target_pose(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z)
 
-
     def targetpose_callback(self, msg):
         self.cmd_motion_.x = msg.pose.position.x
         self.cmd_motion_.y = msg.pose.position.y
@@ -914,10 +1022,10 @@ class Crazyflie_ROS2():
         self.parent.get_logger().debug('CF%s::New Target pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
         self.scf.cf.high_level_commander.go_to_target_pose(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z)
 
-
     def time_callback(self,msg):
         time = self.parent.get_clock().now().to_msg()
         self.parent.get_logger().info('CF%s::Delay: %.2f, %.2f' % (self.scf.cf.link_uri[-2:], msg.sec - time.sec, msg.nanosec - time.nanosec))
+    
     ###############
     #    Tasks    #
     ###############
@@ -937,7 +1045,7 @@ class Crazyflie_ROS2():
                     aux = rel.split('_')
                     robot = Agent(self, self.parent, aux[0], d = float(aux[1]))
                     self.agent_list.append(robot)
-            if self.config['task']['type'] == 'relative_pose':
+            elif self.config['task']['type'] == 'relative_pose':
                 self.timer_task = self.parent.create_timer(self.config['task']['T']/1000, self.task_formation_pose)
                 for rel in self.relationship:
                     aux = rel.split('_')
@@ -1008,18 +1116,15 @@ class Crazyflie_ROS2():
             msg_iae = Float64()
             msg_iae.data = 0.0
             for agent in self.agent_list:
-                if agent.id == 'origin':
-                    distance = sqrt((pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(self.pose.position.z,2)))
-                else:
-                    distance = sqrt(pow(self.pose.position.x-agent.pose.position.x,2)+pow(self.pose.position.y-agent.pose.position.y,2)+pow(self.pose.position.z-agent.pose.position.z,2))
+                distance = sqrt(pow(self.pose.position.x-agent.pose.position.x,2)+pow(self.pose.position.y-agent.pose.position.y,2)+pow(self.pose.position.z-agent.pose.position.z,2))
                 msg_data = Float64()
-                msg_data.data = abs(agent.d - distance)
+                msg_data.data = pow(distance,2) - pow(agent.d,2)
                 agent.publisher_data_.publish(msg_data)
-                msg_data.data = agent.last_iae + (agent.last_error + msg_data.data) * 0.1 /2
+                msg_data.data = agent.last_iae + (agent.last_error + msg_data.data) * 0.05 /2
                 agent.last_error = distance
                 agent.publisher_iae_.publish(msg_data)
                 agent.last_iae = msg_data.data
-                msg_iae.data += abs(agent.d - distance)
+                msg_iae.data += pow(distance,2) - pow(agent.d,2)
 
             self.publisher_global_iae_.publish(msg_iae)
 
@@ -1036,7 +1141,7 @@ class CFSwarmDriver(Node):
         super().__init__('swarm_driver')
         # Params
         self.declare_parameter('config', 'file_path.yaml')
-        self.declare_parameter('robots', 'dron01')
+        self.declare_parameter('robots', '')
 
         # Publisher
         self.publisher_status_ = self.create_publisher(String,'/swarm/status', 10)
@@ -1063,34 +1168,42 @@ class CFSwarmDriver(Node):
             documents = yaml.safe_load(file)
             
         # Define crazyflie URIs
-        for i in range(int(n_robot),0,-1):
-            aux = documents[robot_list[i-1]]
-            self.get_logger().info('Crazyflie %s:: %s' % (aux['name'], aux['uri']))
-            uris.add(aux['uri'])
+        for robot in documents['Robots']:
+            if not documents['Robots'][robot]['type'] == 'virtual':
+                self.get_logger().info('Crazyflie %s:: %s' % (documents['Robots'][robot]['name'], documents['Robots'][robot]['uri']))
+                uris.add(documents['Robots'][robot]['uri'])
 
         # logging.basicConfig(level=logging.DEBUG)
         cflib.crtp.init_drivers()
         factory = CachedCfFactory(rw_cache='./cache')
         self.cf_swarm = Swarm(uris, factory=factory)
 
-        for i in range(int(n_robot),0,-1):
-            config = documents[robot_list[i-1]]
-            id = config['name']
-            self.get_logger().info('Crazyflie %s:: %s' % (id, config['uri']))
-                
-            cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[config['uri']], config['uri'], id, config, DT = config['type'] == 'digital_twin')
-            dron.append(cf)
-            while not cf.scf.cf.param.is_updated:
-                time.sleep(0.1)
-            self.get_logger().warning('Parameters downloaded for %s' % cf.scf.cf.link_uri)
+
+        for robot in documents['Robots']:
+            if not documents['Robots'][robot]['type'] == 'virtual':
+                config = documents['Robots'][robot]
+                id = config['name']
+                self.get_logger().info('Crazyflie %s::%s' % (id, config['uri']))
+                    
+                cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[config['uri']], config['uri'], id, config, DT = config['type'] == 'digital_twin')
+                dron.append(cf)
+                # while not cf.scf.cf.param.is_updated:
+                #     time.sleep(0.1)
+                # self.get_logger().warning('Parameters downloaded for %s' % cf.scf.cf.link_uri)
         
+        time.sleep(1.0)
+        self.cf_swarm.parallel_safe(self.swarm_connection)
+        time.sleep(1.0)
         self.cf_swarm.parallel_safe(self.update_params)
-        # for agent in dron:
-        #     agent.load_formation_params()
+
+        for agent in dron:
+            agent.load_formation_params()
+
+        # TO-DO: Init
             
     def update_params(self, scf):
         # Disable Flow deck to EKF
-        if scf.CONTROL_MODE == 'None':
+        if scf.CONTROL_MODE == 'None' or scf.CONTROL_MODE == 'Gimbal':
             scf.cf.param.set_value('motion.disable', '1')
         # Init Kalman Filter
         scf.cf.param.set_value('stabilizer.estimator', '2')
@@ -1102,10 +1215,14 @@ class CFSwarmDriver(Node):
         scf.cf.param.set_value('kalman.resetEstimation', '0')
         # Init HighLevel
         scf.cf.param.set_value('commander.enHighLevel', '1')
-        if (scf.CONTROLLER_TYPE == 'PID_EventBased'):
-            scf.cf.param.set_value('stabilizer.controller', '5')
-        # scf.cf.param.set_value('stabilizer.controller', '5')
-        
+        # Multi-Agent Robotic Control
+        scf.cf.param.set_value('stabilizer.controller', '5')
+    
+    def swarm_connection(self, scf):
+        scf.cf.open_link(scf.uri)
+        while not scf.cf.param.is_updated:
+            time.sleep(0.1)
+
     def order_callback(self, msg):
         self.get_logger().info('SWARM::Order: "%s"' % msg.data)
         if msg.data == 'take_off':
@@ -1117,11 +1234,10 @@ class CFSwarmDriver(Node):
             for cf in dron:
                 cf.descent()
         elif msg.data == 'formation_run':
-            self._ready()
             for cf in dron:
                 cf.order_callback(msg)
-            # self.t_stop = Timer(20, self.stop_dataset)
-            # self.t_stop.start()
+            self.t_stop = Timer(20, self.stop_dataset)
+            self.t_stop.start()
         elif msg.data == 'formation_stop':
             for cf in dron:
                 cf.order_callback(msg)
@@ -1130,14 +1246,14 @@ class CFSwarmDriver(Node):
 
     def stop_dataset(self):
         msg = String()
-        msg.data = 'formation_stop'
+        msg.data = 'end'
         self.publisher_order.publish(msg)
         self.get_logger().info('Multi-Robot-System::Order: "%s"' % msg.data)
 
     def _ready(self):
         self.get_logger().info('SWARM::Ready!!')
         msg = String()
-        msg.data = 'Ready'
+        msg.data = 'ready'
         self.publisher_status_.publish(msg)
 
     def goalpose_callback(self, msg):
@@ -1146,9 +1262,6 @@ class CFSwarmDriver(Node):
             cf.cmd_motion_.y = cf.cmd_motion_.y + msg.position.y
             cf.cmd_motion_.z = cf.cmd_motion_.z + msg.position.z
             cf.cmd_motion_.ckeck_pose()
-            delta = [abs(msg.position.x), abs(msg.position.y), abs(msg.position.z)]
-            self.cmd_motion_.flight_time = max(delta)/self.max_vel
-            # self.cmd_motion_.flight_time = 0.5
             cf.cmd_motion_.send_pose_data_(cf.scf.cf)
 
         self.get_logger().info('SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' % (msg.position.x, msg.position.y, msg.position.z))
