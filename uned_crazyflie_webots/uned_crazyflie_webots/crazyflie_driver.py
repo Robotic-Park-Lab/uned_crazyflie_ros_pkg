@@ -96,9 +96,6 @@ class Agent():
             
             if self.distance_bool:
                 distance = sqrt(pow(p0.x-p1.x,2)+pow(p0.y-p1.y,2)+pow(p0.z-p1.z,2))
-                msg_data = Float64()
-                msg_data.data = distance
-                self.publisher_data_.publish(msg_data)
                 e = abs(distance - self.d)
             else:
                 e = sqrt(pow(self.x-(p0.x-p1.x),2)+pow(self.y-(p0.y-p1.y),2)+pow(self.z-(p0.z-p1.z),2))
@@ -555,9 +552,8 @@ class CrazyflieWebotsDriver:
                 
                 if not self.digital_twin:
                     msg_data = Float64()
-                    if agent.id == 'origin':
-                        msg_data.data = sqrt(distance)
-                        agent.publisher_data_.publish(msg_data)
+                    msg_data.data = sqrt(distance)
+                    agent.publisher_data_.publish(msg_data)
                     error = abs(sqrt(distance) - agent.d)
                     msg_data.data = agent.last_iae + (agent.last_error + error) * self.task_period /2
                     agent.last_error = error
