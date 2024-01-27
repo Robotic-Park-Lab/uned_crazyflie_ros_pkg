@@ -5,7 +5,7 @@ from rclpy.time import Time
 from threading import Timer
 import yaml
 
-from std_msgs.msg import String, Bool, Float64
+from std_msgs.msg import String, Bool, Float64, Float64MultiArray, MultiArrayDimension
 from geometry_msgs.msg import Twist, Pose, Point, PoseStamped, Vector3
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry, Path
@@ -51,7 +51,7 @@ class Agent():
             if self.id == 'origin':
                 self.pose.position.x = 0.0
                 self.pose.position.y = 0.0
-                self.pose.position.z = 0.8
+                self.pose.position.z = 0.6
                 self.k = 2.0
             self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
         if not self.parent.digital_twin:
@@ -227,6 +227,7 @@ class CrazyflieWebotsDriver:
         self.init_pose = False
         self.formation = False
         self.distance_formation_bool_update = True
+        self.N = 1.0
         self.pose = Pose()
         self.home = Pose()
         self.path = Path()
@@ -331,7 +332,26 @@ class CrazyflieWebotsDriver:
             else:
                 pose_name = self.name_value+'/local_pose'
             self.pose_publisher = self.node.create_publisher(PoseStamped, pose_name, 10)
-        
+        # TWIST
+        if self.config['local_twist']['enable']:
+            self.publisher_twist = self.node.create_publisher(Twist, self.name_value + '/local_twist', 10)
+            
+        # DATA ATTITUDE.
+        if self.config['data_attitude']['enable']:
+            self.publisher_data_attitude = self.node.create_publisher(Float64MultiArray, self.name_value + '/data_attitude', 10)
+            
+        # DATA RATE.
+        if self.config['data_rate']['enable']:
+            self.publisher_data_rate = self.node.create_publisher(Float64MultiArray, self.name_value + '/data_rate', 10)
+            
+        # DATA MOTOR.
+        if self.config['data_motor']['enable']:
+            self.publisher_data_motor = self.node.create_publisher(Float64MultiArray, self.name_value + '/data_motor', 10)
+            
+        # MULTIROBOT
+        if self.config['mars_data']['enable']:
+            self.publisher_mrs_data = self.node.create_publisher(Float64MultiArray, self.name_value + '/mr_data', 10)
+            
         # DATA.
         if self.config['data']['enable']:
             self.publisher_data = self.node.create_publisher(UInt16MultiArray, self.name_value + '/data', 10)
@@ -498,6 +518,7 @@ class CrazyflieWebotsDriver:
                 elif self.controller_type == 'pid':
                     self.node.create_timer(self.controller['period'], self.distance_pid_controller)
                 for rel in self.relationship:
+                    self.N = self.N + 1.0
                     aux = rel.split('_')
                     id = aux[0]
 
@@ -572,6 +593,15 @@ class CrazyflieWebotsDriver:
             msg = Bool()
             msg.data = True
             self.event_x.publish(msg)
+
+            msg = Float64MultiArray()
+            msg.data = [round(dx,3), round(dy,3), round(dz,3), self.N]
+            msg.layout.data_offset = 0
+            msg.layout.dim.append(MultiArrayDimension())
+            msg.layout.dim[0].label = 'data'
+            msg.layout.dim[0].size = 4
+            msg.layout.dim[0].stride = 1
+            self.publisher_mrs_data.publish(msg)
     
             if dx > self.ul:
                 dx = self.ul
@@ -613,8 +643,8 @@ class CrazyflieWebotsDriver:
             self.publisher_global_error_.publish(msg_error)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.4:
-                self.target_pose.pose.position.z = 0.4
+            if self.target_pose.pose.position.z < 0.6:
+                self.target_pose.pose.position.z = 0.6
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -695,8 +725,8 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.4:
-                self.target_pose.pose.position.z = 0.4
+            if self.target_pose.pose.position.z < 0.6:
+                self.target_pose.pose.position.z = 0.6
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -762,8 +792,8 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.4:
-                self.target_pose.pose.position.z = 0.4
+            if self.target_pose.pose.position.z < 0.6:
+                self.target_pose.pose.position.z = 0.6
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -835,8 +865,8 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.4:
-                self.target_pose.pose.position.z = 0.4
+            if self.target_pose.pose.position.z < 0.6:
+                self.target_pose.pose.position.z = 0.6
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -1104,6 +1134,16 @@ class CrazyflieWebotsDriver:
         motorPower_m2 =  (cmd_thrust - 0.5 * delta_roll + 0.5 * delta_pitch - delta_yaw)
         motorPower_m3 =  (cmd_thrust + 0.5 * delta_roll + 0.5 * delta_pitch + delta_yaw)
         motorPower_m4 =  (cmd_thrust + 0.5 * delta_roll - 0.5 * delta_pitch - delta_yaw)
+
+        if self.config['data_motor']['enable']:
+            msg = Float64MultiArray()
+            msg.data = {cmd_thrust, motorPower_m1, motorPower_m2, motorPower_m3, motorPower_m4}
+            msg.layout.data_offset = 0
+            msg.layout.dim.append(MultiArrayDimension())
+            msg.layout.dim[0].label = 'data'
+            msg.layout.dim[0].size = 5
+            msg.layout.dim[0].stride = 1
+            self.publisher_data_motor.publish(msg)
 
         self.node.get_logger().debug('Thrust(C): %.2f CRoll(C): %.2f CPitch(C): %.2f CYaw(C): %.2f' % (cmd_thrust, delta_roll, delta_pitch, delta_yaw))
 

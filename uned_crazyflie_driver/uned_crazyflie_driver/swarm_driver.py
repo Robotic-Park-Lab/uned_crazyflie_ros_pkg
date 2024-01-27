@@ -8,7 +8,7 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 from rclpy.node import Node
-from std_msgs.msg import String, UInt16MultiArray, Float64, Float64MultiArray
+from std_msgs.msg import String, UInt16MultiArray, Float64, Float64MultiArray, MultiArrayDimension
 from geometry_msgs.msg import Pose, Twist, Point, TransformStamped, PoseStamped
 from visualization_msgs.msg import Marker
 from tf2_ros import TransformBroadcaster
@@ -463,7 +463,7 @@ class Crazyflie_ROS2():
 
         # MULTIROBOT
          # DATA.
-        if True:
+        if self.config['mars_data']['enable']:
             self.publisher_mrs_data = self.parent.create_publisher(Float64MultiArray, self.id + '/mr_data', 10)
             self._lg_stab_data = LogConfig(name='Data_multirobot', period_in_ms=100)
             self._lg_stab_data.add_variable('multirobot.cmd_x', 'float')
@@ -752,26 +752,51 @@ class Crazyflie_ROS2():
     def dataAttitude_callback(self, data):
         msg = Float64MultiArray()
         msg.data = {data['posCtl.targetVX'], data['posCtl.targetVY'], data['controller.roll'], data['controller.pitch'], data['controller.yaw']}
+        msg.layout.data_offset = 0
+        msg.layout.dim.append(MultiArrayDimension())
+        msg.layout.dim[0].label = 'data'
+        msg.layout.dim[0].size = 5
+        msg.layout.dim[0].stride = 1
         self.publisher_data_attitude.publish(msg)
 
     def dataRate_callback(self, data):
         msg = Float64MultiArray()
         msg.data = {data['controller.rollRate'], data['controller.pitchRate'], data['controller.yawRate'], data['controller.cmd_roll'], data['controller.cmd_pitch'], data['controller.cmd_yaw']}
+        msg.layout.data_offset = 0
+        msg.layout.dim.append(MultiArrayDimension())
+        msg.layout.dim[0].label = 'data'
+        msg.layout.dim[0].size = 6
+        msg.layout.dim[0].stride = 1
         self.publisher_data_rate.publish(msg)
 
     def dataMRS_callback(self, data):
         msg = Float64MultiArray()
         msg.data = {data['multirobot.cmd_x'], data['multirobot.cmd_y'], data['multirobot.cmd_z'], float(data['multirobot.n'])}
+        msg.layout.data_offset = 0
+        msg.layout.dim.append(MultiArrayDimension())
+        msg.layout.dim[0].label = 'data'
+        msg.layout.dim[0].size = 4
+        msg.layout.dim[0].stride = 1
         self.publisher_mrs_data.publish(msg)
 
     def dataMotor_callback(self, data):
         msg = Float64MultiArray()
-        msg.data = {data['posCtl.targetVZ'], data['controller.cmd_thrust'], data['motor.m1'], data['motor.m2'], data['motor.m3'], data['motor.m4']}
+        msg.data = {data['controller.cmd_thrust'], data['motor.m1'], data['motor.m2'], data['motor.m3'], data['motor.m4']}
+        msg.layout.data_offset = 0
+        msg.layout.dim.append(MultiArrayDimension())
+        msg.layout.dim[0].label = 'data'
+        msg.layout.dim[0].size = 5
+        msg.layout.dim[0].stride = 1
         self.publisher_data_motor.publish(msg)
 
     def data_callback(self, data):
         msg = UInt16MultiArray()
         msg.data = {data['posEbCtl.Xcount'], data['posEbCtl.Ycount'], data['posEbCtl.Zcount']}
+        msg.layout.data_offset = 0
+        msg.layout.dim.append(MultiArrayDimension())
+        msg.layout.dim[0].label = 'data'
+        msg.layout.dim[0].size = 3
+        msg.layout.dim[0].stride = 1
         self.publisher_data.publish(msg)
 
     def order_callback(self, msg):
