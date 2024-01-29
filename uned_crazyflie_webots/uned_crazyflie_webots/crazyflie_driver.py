@@ -51,8 +51,8 @@ class Agent():
             if self.id == 'origin':
                 self.pose.position.x = 0.0
                 self.pose.position.y = 0.0
-                self.pose.position.z = 0.6
-                self.k = 2.0
+                self.pose.position.z = 0.8
+                self.k = 4.0
             self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
         if not self.parent.digital_twin:
             self.sub_d_ = self.parent.node.create_subscription(Float64, '/' + self.id + '/d', self.d_callback, 10)
@@ -212,6 +212,8 @@ class CrazyflieWebotsDriver:
         self.node = rclpy.create_node(self.name_value+'_driver')
 
         ## Intialize Variables
+        self.state = [10.0, 10.0, 10.0, 10.0, 10.0]
+        self.update_gain = True
         self.ready = False
         self.swarm_ready = False
         self.digital_twin = self.config['type'] == 'digital_twin'
@@ -407,7 +409,7 @@ class CrazyflieWebotsDriver:
         self.laser_publisher.publish(self.msg_laser)
 
     def dt_pose_callback(self, pose):
-        self.node.get_logger().info('TO-DO: DT Pose: X:%f Y:%f' % (pose.pose.position.x,pose.pose.position.y))
+        self.node.get_logger().debug('TO-DO: DT Pose: X:%f Y:%f' % (pose.pose.position.x,pose.pose.position.y))
         # self.robot.getSelf().getField("translation").setSFVec3f([pose.position.x, pose.position.y, pose.position.z])
         # self.robot.getSelf().getField("rotation").setSFVec3f([0.0, 0.0, 0.0])
 
@@ -473,7 +475,7 @@ class CrazyflieWebotsDriver:
 
     def take_land(self):
         self.node.get_logger().info('Take Land.')
-        self.target_pose.pose.position.z = 0.6
+        self.target_pose.pose.position.z = 0.8
         self.t_desc = Timer(2, self.stop)
         self.init_pose = False
 
@@ -567,9 +569,9 @@ class CrazyflieWebotsDriver:
                 error_z = self.pose.position.z - agent.pose.position.z
                 distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
 
-                dx += self.k * agent.k * (pow(agent.d,2) - distance) * error_x
-                dy += self.k * agent.k * (pow(agent.d,2) - distance) * error_y
-                dz += self.k * agent.k * (pow(agent.d,2) - distance) * error_z
+                dx += - self.k * agent.k * (distance - pow(agent.d,2)) * error_x
+                dy += - self.k * agent.k * (distance - pow(agent.d,2)) * error_y
+                dz += - self.k * agent.k * (distance - pow(agent.d,2)) * error_z
                 
                 if not self.digital_twin:
                     msg_data = Float64()
@@ -582,7 +584,7 @@ class CrazyflieWebotsDriver:
                     agent.last_iae = msg_data.data
                     msg_data.data = distance - pow(agent.d,2)
                     agent.publisher_error_.publish(msg_data)
-                    msg_error.data += msg_data.data # abs(agent.d - distance)
+                    msg_error.data += msg_data.data
                     self.node.get_logger().debug('Agent %s: D: %.2f dx: %.2f dy: %.2f dz: %.2f ' % (agent.id, msg_data.data, dx, dy, dz)) 
             
             if not self.continuous:
@@ -602,7 +604,7 @@ class CrazyflieWebotsDriver:
             msg.layout.dim[0].size = 4
             msg.layout.dim[0].stride = 1
             self.publisher_mrs_data.publish(msg)
-    
+
             if dx > self.ul:
                 dx = self.ul
             if dx < self.ll:
@@ -622,7 +624,19 @@ class CrazyflieWebotsDriver:
 
             delta=sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
             angles = tf_transformations.euler_from_quaternion((self.pose.orientation.x, self.pose.orientation.y, self.pose.orientation.z, self.pose.orientation.w))
-                    
+            mean = delta/len(self.state)
+            for i in range(0,len(self.state)-1):
+                self.state[i] = self.state[i+1]
+                mean += self.state[i]/len(self.state)
+            
+            self.state[len(self.state)-1] = delta 
+            if mean < 0.05 and self.update_gain:
+                self.node.get_logger().info('Agent %s: Gain updated' % (self.name_value)) 
+                self.update_gain = False
+                for agent in self.agent_list:
+                    if agent.id == 'origin':
+                        agent.k = 1.0
+
             if delta<0.05:
                 roll = angles[0]
                 pitch = angles[1]
@@ -643,8 +657,8 @@ class CrazyflieWebotsDriver:
             self.publisher_global_error_.publish(msg_error)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.6:
-                self.target_pose.pose.position.z = 0.6
+            if self.target_pose.pose.position.z < 0.8:
+                self.target_pose.pose.position.z = 0.8
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -725,8 +739,8 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.6:
-                self.target_pose.pose.position.z = 0.6
+            if self.target_pose.pose.position.z < 0.8:
+                self.target_pose.pose.position.z = 0.8
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -792,8 +806,8 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.6:
-                self.target_pose.pose.position.z = 0.6
+            if self.target_pose.pose.position.z < 0.8:
+                self.target_pose.pose.position.z = 0.8
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
@@ -865,8 +879,8 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.6:
-                self.target_pose.pose.position.z = 0.6
+            if self.target_pose.pose.position.z < 0.8:
+                self.target_pose.pose.position.z = 0.8
 
             if self.target_pose.pose.position.z > 2.0:
                 self.target_pose.pose.position.z = 2.0
