@@ -51,11 +51,11 @@ class Agent():
             if self.id == 'origin':
                 self.pose.position.x = 0.0
                 self.pose.position.y = 0.0
-                self.pose.position.z = 0.8
+                self.pose.position.z = 0.0
                 self.k = 4.0
             self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
         if not self.parent.digital_twin:
-            self.sub_d_ = self.parent.node.create_subscription(Float64, '/' + self.id + '/d', self.d_callback, 10)
+            self.sub_d_ = self.parent.node.create_subscription(Float64, self.parent.name_value + '/' + self.id + '/d', self.d_callback, 10)
             self.publisher_data_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/data', 10)
             self.publisher_error_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/error', 10)
             self.publisher_iae_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/iae', 10)
@@ -190,9 +190,9 @@ class PIDController():
         return False
 
 
-##############################
-## Virtual CF Logging Class ##
-##############################
+#####################################
+## Virtual Crazyflie Logging Class ##
+#####################################
 class CrazyflieWebotsDriver:
     def init(self, webots_node, properties):
         
@@ -217,25 +217,30 @@ class CrazyflieWebotsDriver:
         self.ready = False
         self.swarm_ready = False
         self.digital_twin = self.config['type'] == 'digital_twin'
+        self.past_time = self.robot.getTime()
+
         self.target_twist = Twist()
         self.target_pose = PoseStamped()
         self.target_pose.header.frame_id = "map"
+        self.target_pose.pose.position.x = 0.0
+        self.target_pose.pose.position.y = 0.0
         self.target_pose.pose.position.z = 0.0
-        self.past_x_global = 0
-        self.past_y_global = 0
-        self.past_z_global = 0
-        self.past_time = self.robot.getTime()
-        self._is_flying = False
-        self.init_pose = False
-        self.formation = False
-        self.distance_formation_bool_update = True
-        self.N = 1.0
         self.pose = Pose()
         self.home = Pose()
         self.path = Path()
         self.path.header.frame_id = "map"
         self.first_x_global = 0.0
         self.first_y_global = 0.0
+        self.past_x_global = 0
+        self.past_y_global = 0
+        self.past_z_global = 0
+        
+        self._is_flying = False
+        self.init_pose = False
+        self.formation = False
+        self.distance_formation_bool_update = True
+        self.N = 1.0
+        
         self.centroid_leader = False
         self.leader_cmd = PoseStamped()
         self.leader_cmd.header.frame_id = "map"
@@ -258,7 +263,7 @@ class CrazyflieWebotsDriver:
             self.controller_PID = True
         self.CONTROLLER_TYPE = self.config['controller']['type']
         self.node.get_logger().info('Crazyflie %s::Controller Type: %s!' % (self.name_value, self.CONTROLLER_TYPE))
-        self.communication = (self.config['communication']['type'] == 'Continuous')
+        self.communication = self.config['communication']['type'] == 'Continuous'
         if not self.communication:
             self.threshold = self.config['communication']['threshold']['co']
         else:
@@ -376,7 +381,8 @@ class CrazyflieWebotsDriver:
         self.msg_laser = LaserScan()
         self.node.create_timer(0.2, self.publish_laserscan_data)
 
-        self.load_formation_params()
+        if self.config['task']['enable'] or self.config['task']['Onboard']:
+            self.load_formation_params()
 
         self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.name_value)))     
         
@@ -418,6 +424,11 @@ class CrazyflieWebotsDriver:
 
     def goal_pose_callback(self, pose):
         self.target_pose = pose
+        if self.target_pose.pose.position.z < 0.8:
+            self.target_pose.pose.position.z = 0.8
+
+        if self.target_pose.pose.position.z > 2.0:
+            self.target_pose.pose.position.z = 2.0
 
     def order_callback(self, msg):
         self.node.get_logger().info('Order: "%s"' % msg.data)
@@ -486,69 +497,67 @@ class CrazyflieWebotsDriver:
     #    Tasks    #
     ###############
     def load_formation_params(self):
-        if self.config['task']['enable'] or self.config['task']['Onboard']:
-            self.node.destroy_subscription(self.sub_goalpose)
-            self.publisher_goalpose = self.node.create_publisher(PoseStamped, self.name_value + '/goal_pose', 10)
-            self.publisher_global_error_ = self.node.create_publisher(Float64, self.name_value + '/global_error', 10)
-            self.node.get_logger().info('Task %s by %s' % (self.config['task']['type'], self.config['task']['role']))
-            self.controller = self.config['task']['controller']
-            self.controller_type = self.controller['type']
-            self.k = self.controller['gain']
-            self.ul = self.controller['upperLimit']
-            self.ll = self.controller['lowerLimit']
-            self.continuous = self.controller['protocol'] == 'Continuous'
-            self.event_x = self.node.create_publisher(Bool, self.name_value + '/formation/event_x', 10)
-            self.event_y = self.node.create_publisher(Bool, self.name_value + '/formation/event_y', 10)
-            self.event_z = self.node.create_publisher(Bool, self.name_value + '/formation/event_z', 10)
+        self.node.destroy_subscription(self.sub_goalpose)
+        self.publisher_goalpose = self.node.create_publisher(PoseStamped, self.name_value + '/goal_pose', 10)
+        self.publisher_global_error_ = self.node.create_publisher(Float64, self.name_value + '/global_error', 10)
+        self.node.get_logger().info('Task %s by %s' % (self.config['task']['type'], self.config['task']['role']))
+        self.controller = self.config['task']['controller']
+        self.controller_type = self.controller['type']
+        self.k = self.controller['gain']
+        self.ul = self.controller['upperLimit']
+        self.ll = self.controller['lowerLimit']
+        self.continuous = self.controller['protocol'] == 'Continuous'
+        self.event_x = self.node.create_publisher(Bool, self.name_value + '/formation/event_x', 10)
+        self.event_y = self.node.create_publisher(Bool, self.name_value + '/formation/event_y', 10)
+        self.event_z = self.node.create_publisher(Bool, self.name_value + '/formation/event_z', 10)
 
-            if not self.continuous:
-                self.trigger_ai = self.controller['threshold']['ai']
-                self.trigger_co = self.controller['threshold']['co']
+        if not self.continuous:
+            self.trigger_ai = self.controller['threshold']['ai']
+            self.trigger_co = self.controller['threshold']['co']
+        if self.controller_type == 'pid':
+            self.formation_x_controller = PIDController(self.k, 0.0, 0.0, 0.0, 100, self.ul, self.ll, self.trigger_ai, self.trigger_co)
+            self.formation_y_controller = PIDController(self.k, 0.0, 0.0, 0.0, 100, self.ul, self.ll, self.trigger_ai, self.trigger_co)
+            self.formation_z_controller = PIDController(self.k, 0.0, 0.0, 0.0, 100, self.ul, self.ll, self.trigger_ai, self.trigger_co)
 
-            if self.controller_type == 'pid':
-                self.formation_x_controller = PIDController(self.k, 0.0, 0.0, 0.0, 100, self.ul, self.ll, self.trigger_ai, self.trigger_co)
-                self.formation_y_controller = PIDController(self.k, 0.0, 0.0, 0.0, 100, self.ul, self.ll, self.trigger_ai, self.trigger_co)
-                self.formation_z_controller = PIDController(self.k, 0.0, 0.0, 0.0, 100, self.ul, self.ll, self.trigger_ai, self.trigger_co)
+        self.agent_list = list()
+        aux = self.config['task']['relationship']
+        self.relationship = aux.split(', ')
+        if self.config['task']['type'] == 'distance':
+            if self.controller_type == 'gradient':
+                self.task_period = self.controller['period']
+                self.node.create_timer(self.task_period, self.distance_gradient_controller)
+            elif self.controller_type == 'pid':
+                self.node.create_timer(self.controller['period'], self.distance_pid_controller)
+            for rel in self.relationship:
+                self.N = self.N + 1.0
+                aux = rel.split('_')
+                id = aux[0]
 
-            self.agent_list = list()
-            aux = self.config['task']['relationship']
-            self.relationship = aux.split(', ')
-            if self.config['task']['type'] == 'distance':
-                if self.controller_type == 'gradient':
-                    self.task_period = self.controller['period']
-                    self.node.create_timer(self.task_period, self.distance_gradient_controller)
-                elif self.controller_type == 'pid':
-                    self.node.create_timer(self.controller['period'], self.distance_pid_controller)
-                for rel in self.relationship:
-                    self.N = self.N + 1.0
-                    aux = rel.split('_')
-                    id = aux[0]
-
-                    if not id.find("line") == -1:
-                        p = Point()
-                        p.x = float(aux[1])
-                        p.y = float(aux[2])
-                        p.z = float(aux[3])
-                        u = Vector3()
-                        u.x = float(aux[4])
-                        u.y = float(aux[5])
-                        u.z = float(aux[6])
-                        robot = Agent(self, id, point = p, vector = u)
-                        self.node.get_logger().info('Agent: %s: Neighbour: %s ::: Px: %s Py: %s Pz: %s' % (self.name_value, id, aux[1], aux[2], aux[3]))
-                    else:
-                        robot = Agent(self, aux[0], d = float(aux[1]))
-                        self.node.get_logger().info('Agent: %s: Neighbour: %s \td: %s' % (self.name_value, aux[0], aux[1]))
-                    self.agent_list.append(robot)
-            elif self.config['task']['type'] == 'pose':
-                if self.controller_type == 'gradient':
-                    self.node.create_timer(self.controller['period'], self.pose_gradient_controller)
-                elif self.controller_type == 'pid':
-                    self.node.create_timer(self.controller['period'], self.pose_pid_controller)
-                for rel in self.relationship:
-                    aux = rel.split('_')
-                    robot = Agent(self, aux[0], x = float(aux[1]), y = float(aux[2]), z = float(aux[3]))
-                    self.node.get_logger().info('Agent: %s. Neighbour %s :::x: %s \ty: %s \tz: %s' % (self.name_value, aux[0], aux[1], aux[2], aux[3]))
-                    self.agent_list.append(robot)
+                if not id.find("line") == -1:
+                    p = Point()
+                    p.x = float(aux[1])
+                    p.y = float(aux[2])
+                    p.z = float(aux[3])
+                    u = Vector3()
+                    u.x = float(aux[4])
+                    u.y = float(aux[5])
+                    u.z = float(aux[6])
+                    robot = Agent(self, id, point = p, vector = u)
+                    self.node.get_logger().info('Agent: %s: Neighbour: %s ::: Px: %s Py: %s Pz: %s' % (self.name_value, id, aux[1], aux[2], aux[3]))
+                else:
+                    robot = Agent(self, aux[0], d = float(aux[1]))
+                    self.node.get_logger().info('Agent: %s: Neighbour: %s \td: %s' % (self.name_value, aux[0], aux[1]))
+                self.agent_list.append(robot)
+        elif self.config['task']['type'] == 'pose':
+            if self.controller_type == 'gradient':
+                self.node.create_timer(self.controller['period'], self.pose_gradient_controller)
+            elif self.controller_type == 'pid':
+                self.node.create_timer(self.controller['period'], self.pose_pid_controller)
+            for rel in self.relationship:
+                aux = rel.split('_')
+                robot = Agent(self, aux[0], x = float(aux[1]), y = float(aux[2]), z = float(aux[3]))
+                self.node.get_logger().info('Agent: %s. Neighbour %s :::x: %s \ty: %s \tz: %s' % (self.name_value, aux[0], aux[1], aux[2], aux[3]))
+                self.agent_list.append(robot)
     
     def distance_gradient_controller(self):
         if self.formation:
@@ -917,6 +926,9 @@ class CrazyflieWebotsDriver:
 
         return False
     
+    ###################
+    #    Iteration    #
+    ###################
     def step(self):
         rclpy.spin_once(self.node, timeout_sec=0)
 
