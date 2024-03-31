@@ -17,103 +17,11 @@ import tf_transformations
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 
+from uned_crazyflie_driver.crazyflie_agent import Agent
+
 # Change this path to your crazyflie-firmware folder
 # sys.path.append('/home/kiko/Code/crazyflie-firmware')
 # import cffirmware
-
-class Agent():
-    def __init__(self, parent, id, x = None, y = None, z = None, d = None, point = None, vector = None):
-        self.id = id
-        self.distance = False
-        self.parent = parent
-        self.last_error = 0.0
-        self.last_iae = 0.0
-        self.k = 1.0
-        self.pose = Pose()
-        if not id.find("line") == -1:
-            self.distance_bool = True
-            self.d = 0
-            self.point = point
-            self.vector = vector
-            self.mod=pow(vector.x,2)+pow(vector.y,2)+pow(vector.z,2)
-            self.k = 4.0
-        else:
-            if d == None:
-                self.distance_bool = False
-                self.x = x
-                self.y = y
-                self.z = z
-                self.parent.node.get_logger().info('Agent: %s' % self.str_())
-            else:
-                self.distance_bool = True
-                self.d = d
-                self.parent.node.get_logger().info('Agent: %s' % self.str_distance_())
-            if self.id == 'origin':
-                self.pose.position.x = 0.0
-                self.pose.position.y = 0.0
-                self.pose.position.z = 0.0
-                self.k = 4.0
-            self.sub_pose = self.parent.node.create_subscription(PoseStamped, self.id + '/local_pose', self.gtpose_callback, 10)
-        if not self.parent.digital_twin:
-            self.sub_d_ = self.parent.node.create_subscription(Float64, self.parent.name_value + '/' + self.id + '/d', self.d_callback, 10)
-            self.publisher_data_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/data', 10)
-            self.publisher_error_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/error', 10)
-            self.publisher_iae_ = self.parent.node.create_publisher(Float64, self.parent.name_value + '/' + self.id + '/iae', 10)
-            self.publisher_marker_ = self.parent.node.create_publisher(Marker, self.parent.name_value + '/' + self.id + '/marker', 10)
-
-    def str_(self):
-        return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
-                ' Y: ' + str(self.y)+' Z: ' + str(self.z))
-    
-    def str_distance_(self):
-        return ('ID: ' + str(self.id) + ' Distance: ' + str(self.d))
-
-    def d_callback(self, msg):
-        self.d = msg.data
-
-    def gtpose_callback(self, msg):
-        self.pose = msg.pose
-        if not self.parent.digital_twin and self.parent.config['task']['enable']:
-            line = Marker()
-            p0 = Point()
-            p0.x = self.parent.pose.position.x
-            p0.y = self.parent.pose.position.y
-            p0.z = self.parent.pose.position.z
-
-            p1 = Point()
-            p1.x = self.pose.position.x
-            p1.y = self.pose.position.y
-            p1.z = self.pose.position.z
-
-            line.header.frame_id = 'map'
-            line.header.stamp = self.parent.node.get_clock().now().to_msg()
-            line.id = 1
-            line.type = 5
-            line.action = 0
-            line.scale.x = 0.01
-            line.scale.y = 0.01
-            line.scale.z = 0.01
-            
-            if self.distance_bool:
-                distance = sqrt(pow(p0.x-p1.x,2)+pow(p0.y-p1.y,2)+pow(p0.z-p1.z,2))
-                e = abs(distance - self.d)
-            else:
-                e = sqrt(pow(self.x-(p0.x-p1.x),2)+pow(self.y-(p0.y-p1.y),2)+pow(self.z-(p0.z-p1.z),2))
-
-            if e > 0.05:
-                line.color.r = 1.0
-            else:
-                if e > 0.025:
-                    line.color.r = 1.0
-                    line.color.g = 0.5
-                else:
-                    line.color.g = 1.0
-
-            line.color.a = 1.0
-            line.points.append(p1)
-            line.points.append(p0)
-
-            self.publisher_marker_.publish(line)
 
 
 class PIDController():
@@ -207,14 +115,15 @@ class CrazyflieWebotsDriver:
             if documents['Robots'][robot]['name'] == properties.get("name_id"):
                 self.config = documents['Robots'][robot]
         # Init ROS2 Node
-        self.name_value = self.config['name']
+        self.id = self.config['name']
         rclpy.init(args=None)
-        self.node = rclpy.create_node(self.name_value+'_driver')
+        self.node = rclpy.create_node(self.id+'_driver')
 
         ## Intialize Variables
         self.state = [10.0, 10.0, 10.0, 10.0, 10.0]
         self.update_gain = True
         self.ready = False
+        self.disconnect = False
         self.swarm_ready = False
         self.digital_twin = self.config['type'] == 'digital_twin'
         self.past_time = self.robot.getTime()
@@ -238,6 +147,7 @@ class CrazyflieWebotsDriver:
         self._is_flying = False
         self.init_pose = False
         self.formation = False
+        self.Fixed_z = False
         self.distance_formation_bool_update = True
         self.N = 1.0
         
@@ -249,7 +159,7 @@ class CrazyflieWebotsDriver:
         self.trigger_co = 0.1
         self.trigger_last_signal = 0.0
         self.CONTROL_MODE = self.config['control_mode']
-        self.node.get_logger().info('Crazyflie %s::Control Mode: %s!' % (self.name_value, self.CONTROL_MODE))
+        self.node.get_logger().info('Crazyflie %s::Control Mode: %s!' % (self.id, self.CONTROL_MODE))
         self.continuous = True
         if self.config['controller']['type'] == 'ipc':
             self.controller_IPC = True
@@ -262,7 +172,8 @@ class CrazyflieWebotsDriver:
             self.controller_IPC = False
             self.controller_PID = True
         self.CONTROLLER_TYPE = self.config['controller']['type']
-        self.node.get_logger().info('Crazyflie %s::Controller Type: %s!' % (self.name_value, self.CONTROLLER_TYPE))
+        self.node.get_logger().info('Crazyflie %s::Controller Type: %s!' % (self.id, self.CONTROLLER_TYPE))
+        self.physical = self.config['type'] == 'physical'
         self.communication = self.config['communication']['type'] == 'Continuous'
         if not self.communication:
             self.threshold = self.config['communication']['threshold']['co']
@@ -326,56 +237,56 @@ class CrazyflieWebotsDriver:
         self.initialize()
 
     def initialize(self):
-        self.node.get_logger().info('Connected to Webots -> Crazyflie %s' % self.name_value)
+        self.node.get_logger().info('Connected to Webots -> Crazyflie %s' % self.id)
 
         # POSE3D
         if self.config['local_pose']['enable']:
             self.path_enable = self.config['local_pose']['path']
             if self.path_enable:
-                self.path_publisher = self.node.create_publisher(Path, self.name_value+'/path', 10)
+                self.path_publisher = self.node.create_publisher(Path, self.id+'/path', 10)
             if self.digital_twin:
-                pose_name = self.name_value+'/dt_pose'
-                self.node.create_subscription(PoseStamped, self.name_value+'/pose_dt', self.dt_pose_callback, 1)
+                pose_name = self.id+'/dt_pose'
+                self.node.create_subscription(PoseStamped, self.id+'/pose_dt', self.dt_pose_callback, 1)
             else:
-                pose_name = self.name_value+'/local_pose'
+                pose_name = self.id+'/local_pose'
             self.pose_publisher = self.node.create_publisher(PoseStamped, pose_name, 10)
         # TWIST
         if self.config['local_twist']['enable']:
-            self.publisher_twist = self.node.create_publisher(Twist, self.name_value + '/local_twist', 10)
+            self.publisher_twist = self.node.create_publisher(Twist, self.id + '/local_twist', 10)
             
         # DATA ATTITUDE.
         if self.config['data_attitude']['enable']:
-            self.publisher_data_attitude = self.node.create_publisher(Float64MultiArray, self.name_value + '/data_attitude', 10)
+            self.publisher_data_attitude = self.node.create_publisher(Float64MultiArray, self.id + '/data_attitude', 10)
             
         # DATA RATE.
         if self.config['data_rate']['enable']:
-            self.publisher_data_rate = self.node.create_publisher(Float64MultiArray, self.name_value + '/data_rate', 10)
+            self.publisher_data_rate = self.node.create_publisher(Float64MultiArray, self.id + '/data_rate', 10)
             
         # DATA MOTOR.
         if self.config['data_motor']['enable']:
-            self.publisher_data_motor = self.node.create_publisher(Float64MultiArray, self.name_value + '/data_motor', 10)
+            self.publisher_data_motor = self.node.create_publisher(Float64MultiArray, self.id + '/data_motor', 10)
             
         # MULTIROBOT
         if self.config['mars_data']['enable']:
-            self.publisher_mrs_data = self.node.create_publisher(Float64MultiArray, self.name_value + '/mr_data', 10)
+            self.publisher_mrs_data = self.node.create_publisher(Float64MultiArray, self.id + '/mr_data', 10)
             
         # DATA.
         if self.config['data']['enable']:
-            self.publisher_data = self.node.create_publisher(UInt16MultiArray, self.name_value + '/data', 10)
+            self.publisher_data = self.node.create_publisher(UInt16MultiArray, self.id + '/data', 10)
         if not self.communication:
-            self.event_x_ = self.node.create_publisher(Bool, self.name_value+'/event_x', 10)
-            self.event_y_ = self.node.create_publisher(Bool, self.name_value+'/event_y', 10)
-            self.event_z_ = self.node.create_publisher(Bool, self.name_value+'/event_z', 10)
+            self.event_x_ = self.node.create_publisher(Bool, self.id+'/event_x', 10)
+            self.event_y_ = self.node.create_publisher(Bool, self.id+'/event_y', 10)
+            self.event_z_ = self.node.create_publisher(Bool, self.id+'/event_z', 10)
         # Subscription
-        self.node.create_subscription(Twist, self.name_value+'/cmd_vel', self.cmd_vel_callback, 1)
-        self.sub_goalpose = self.node.create_subscription(PoseStamped, self.name_value+'/goal_pose', self.goal_pose_callback, 1)
-        self.node.create_subscription(String, self.name_value+'/order', self.order_callback, 1)
+        self.node.create_subscription(Twist, self.id+'/cmd_vel', self.cmd_vel_callback, 1)
+        self.sub_goalpose = self.node.create_subscription(PoseStamped, self.id+'/goal_pose', self.goal_pose_callback, 1)
+        self.node.create_subscription(String, self.id+'/order', self.order_callback, 1)
         self.node.create_subscription(String, 'swarm/order', self.order_callback, 1)
         self.node.create_subscription(PoseStamped, 'swarm/goal_pose', self.swarm_goalpose_callback, 1)
         # Publisher
-        self.laser_publisher = self.node.create_publisher(LaserScan, self.name_value+'/scan', 10)
+        self.laser_publisher = self.node.create_publisher(LaserScan, self.id+'/scan', 10)
         self.swarm_status_publisher = self.node.create_publisher(String, 'swarm/status', 10)
-        self.odom_publisher = self.node.create_publisher(Odometry, self.name_value+'/odom', 10)
+        self.odom_publisher = self.node.create_publisher(Odometry, self.id+'/odom', 10)
         
         self.tfbr = TransformBroadcaster(self.node)
         self.msg_laser = LaserScan()
@@ -384,7 +295,7 @@ class CrazyflieWebotsDriver:
         if self.config['task']['enable'] or self.config['task']['Onboard']:
             self.load_formation_params()
 
-        self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.name_value)))     
+        self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(self.id)))     
         
     def publish_laserscan_data(self):
         front_range = self.range_front.getValue()/1000.0
@@ -405,7 +316,7 @@ class CrazyflieWebotsDriver:
 
         self.msg_laser = LaserScan()
         self.msg_laser.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
-        self.msg_laser.header.frame_id = self.name_value
+        self.msg_laser.header.frame_id = self.id
         self.msg_laser.range_min = 0.1
         self.msg_laser.range_max = max_range
         self.msg_laser.ranges = [back_range, left_range, front_range, right_range, back_range]
@@ -424,14 +335,14 @@ class CrazyflieWebotsDriver:
 
     def goal_pose_callback(self, pose):
         self.target_pose = pose
-        if self.target_pose.pose.position.z < 0.8:
-            self.target_pose.pose.position.z = 0.8
+        if self.target_pose.pose.position.z < 0.6:
+            self.target_pose.pose.position.z = 0.6
 
-        if self.target_pose.pose.position.z > 2.0:
-            self.target_pose.pose.position.z = 2.0
+        if self.target_pose.pose.position.z > 2.5:
+            self.target_pose.pose.position.z = 2.5
 
     def order_callback(self, msg):
-        self.node.get_logger().info('Order: "%s"' % msg.data)
+        self.node.get_logger().debug('Order: "%s"' % msg.data)
         if msg.data == 'take_off':
             if self._is_flying:
                 self.node.get_logger().warning('Already flying')
@@ -448,10 +359,20 @@ class CrazyflieWebotsDriver:
                 self.formation = True
         elif msg.data == 'formation_stop':
             self.formation = False
-        elif not msg.data.find("agent") == -1 and self.config['task']['enable']:
-            aux = msg.data.split('_')
-            if aux[1] == 'remove':
-                print(self.agent_list)
+        elif msg.data == 'disconnect':
+            self._disconnected()
+        elif msg.data == 'reconfiguration':
+            if self.pose.position.z<0.7:
+                self.Fixed_z = True
+            self.update_gain = True
+            self.state = [10.0, 10.0, 10.0, 10.0, 10.0]
+            for agent in self.agent_list:
+                if agent.id == 'origin':
+                    agent.k = 4.0
+        elif not msg.data.find("remove") == -1 and self.config['task']['enable']:
+            self.remove_agent(msg.data)
+        elif not msg.data.find("add") == -1 and self.config['task']['enable']:
+            self.add_agent(msg.data)
         else:
             self.node.get_logger().error('"%s": Unknown order' % (msg.data))
     
@@ -471,13 +392,13 @@ class CrazyflieWebotsDriver:
     def _ready(self):
         self.node.get_logger().info('Ready!!.')
         self.ready = True
-        if self.name_value == 'dron01':
+        if self.id == 'dron01':
             msg = String()
             msg.data = 'ready'
             self.swarm_status_publisher.publish(msg)
 
     def descent(self):
-        self.target_pose.pose.position.z = 0.8
+        self.target_pose.pose.position.z = 0.6
         self.node.get_logger().info('Descent...')
         self.t_desc = Timer(2, self.take_land)
         self._is_flying = False
@@ -486,30 +407,81 @@ class CrazyflieWebotsDriver:
 
     def take_land(self):
         self.node.get_logger().info('Take Land.')
-        self.target_pose.pose.position.z = 0.8
+        self.target_pose.pose.position.z = 0.1
         self.t_desc = Timer(2, self.stop)
         self.init_pose = False
 
     def stop(self):
         self.target_pose.pose.position.z = 0.0
 
+    def add_agent(self, data):
+        aux = data.split('_')
+        robot = Agent(self, self.node, aux[1], d = float(aux[2]))
+        self.agent_list.append(robot)
+    
+    def remove_agent(self, data):
+        aux = data.split('_')
+        j = 0
+        for agent in self.agent_list:
+            if agent.id == aux[1]:
+                agent.disconnect = True
+                line = Marker()
+                line.header.frame_id = 'map'
+                line.header.stamp = self.node.get_clock().now().to_msg()
+                line.id = 1
+                line.type = 5
+                line.action = 0
+                line.scale.x = 0.01
+                line.scale.y = 0.01
+                line.scale.z = 0.01
+                agent.publisher_marker_.publish(line)
+                agent.parent.node.destroy_publisher(agent.publisher_marker_)
+                self.agent_list.pop(j)
+            else:
+                j += 1
+
+    def _disconnected(self):
+        self.node.get_logger().info('TO-DO Disconnect.')
+        # self.descent()
+        self.target_pose.pose.position.x = self.target_pose.pose.position.x * 1.2
+        self.target_pose.pose.position.y = self.target_pose.pose.position.y * 1.2
+        self.target_pose.pose.position.z = self.target_pose.pose.position.z * 0.8
+        self.disconnect = True
+        self.node.destroy_publisher(self.pose_publisher)
+        for agent in self.agent_list:
+            agent.disconnect = True
+            line = Marker()
+            line.header.frame_id = 'map'
+            line.header.stamp = self.node.get_clock().now().to_msg()
+            line.id = 1
+            line.type = 5
+            line.action = 0
+            line.scale.x = 0.01
+            line.scale.y = 0.01
+            line.scale.z = 0.01
+            agent.publisher_marker_.publish(line)
+            agent.parent.node.destroy_publisher(agent.publisher_marker_)
+            msg = String()
+            msg.data = 'remove_'+self.id
+            agent.publisher_order_.publish(msg)
+
     ###############
     #    Tasks    #
     ###############
     def load_formation_params(self):
         self.node.destroy_subscription(self.sub_goalpose)
-        self.publisher_goalpose = self.node.create_publisher(PoseStamped, self.name_value + '/goal_pose', 10)
-        self.publisher_global_error_ = self.node.create_publisher(Float64, self.name_value + '/global_error', 10)
-        self.node.get_logger().info('Task %s by %s' % (self.config['task']['type'], self.config['task']['role']))
+        self.publisher_goalpose = self.node.create_publisher(PoseStamped, self.id + '/goal_pose', 10)
+        self.publisher_global_error_ = self.node.create_publisher(Float64, self.id + '/global_error', 10)
+        self.node.get_logger().debug('Task %s by %s' % (self.config['task']['type'], self.config['task']['role']))
         self.controller = self.config['task']['controller']
         self.controller_type = self.controller['type']
         self.k = self.controller['gain']
         self.ul = self.controller['upperLimit']
         self.ll = self.controller['lowerLimit']
         self.continuous = self.controller['protocol'] == 'Continuous'
-        self.event_x = self.node.create_publisher(Bool, self.name_value + '/formation/event_x', 10)
-        self.event_y = self.node.create_publisher(Bool, self.name_value + '/formation/event_y', 10)
-        self.event_z = self.node.create_publisher(Bool, self.name_value + '/formation/event_z', 10)
+        self.event_x = self.node.create_publisher(Bool, self.id + '/formation/event_x', 10)
+        self.event_y = self.node.create_publisher(Bool, self.id + '/formation/event_y', 10)
+        self.event_z = self.node.create_publisher(Bool, self.id + '/formation/event_z', 10)
 
         if not self.continuous:
             self.trigger_ai = self.controller['threshold']['ai']
@@ -526,8 +498,6 @@ class CrazyflieWebotsDriver:
             if self.controller_type == 'gradient':
                 self.task_period = self.controller['period']
                 self.node.create_timer(self.task_period, self.distance_gradient_controller)
-            elif self.controller_type == 'pid':
-                self.node.create_timer(self.controller['period'], self.distance_pid_controller)
             for rel in self.relationship:
                 self.N = self.N + 1.0
                 aux = rel.split('_')
@@ -542,25 +512,23 @@ class CrazyflieWebotsDriver:
                     u.x = float(aux[4])
                     u.y = float(aux[5])
                     u.z = float(aux[6])
-                    robot = Agent(self, id, point = p, vector = u)
-                    self.node.get_logger().info('Agent: %s: Neighbour: %s ::: Px: %s Py: %s Pz: %s' % (self.name_value, id, aux[1], aux[2], aux[3]))
+                    robot = Agent(self, self.node, id, point = p, vector = u)
+                    self.node.get_logger().debug('Agent: %s: Neighbour: %s ::: Px: %s Py: %s Pz: %s' % (self.id, id, aux[1], aux[2], aux[3]))
                 else:
-                    robot = Agent(self, aux[0], d = float(aux[1]))
-                    self.node.get_logger().info('Agent: %s: Neighbour: %s \td: %s' % (self.name_value, aux[0], aux[1]))
+                    robot = Agent(self, self.node, aux[0], d = float(aux[1]))
+                    self.node.get_logger().debug('Agent: %s: Neighbour: %s \td: %s' % (self.id, aux[0], aux[1]))
                 self.agent_list.append(robot)
         elif self.config['task']['type'] == 'pose':
             if self.controller_type == 'gradient':
                 self.node.create_timer(self.controller['period'], self.pose_gradient_controller)
-            elif self.controller_type == 'pid':
-                self.node.create_timer(self.controller['period'], self.pose_pid_controller)
             for rel in self.relationship:
                 aux = rel.split('_')
-                robot = Agent(self, aux[0], x = float(aux[1]), y = float(aux[2]), z = float(aux[3]))
-                self.node.get_logger().info('Agent: %s. Neighbour %s :::x: %s \ty: %s \tz: %s' % (self.name_value, aux[0], aux[1], aux[2], aux[3]))
+                robot = Agent(self, self.node, aux[0], x = float(aux[1]), y = float(aux[2]), z = float(aux[3]))
+                self.node.get_logger().debug('Agent: %s. Neighbour %s :::x: %s \ty: %s \tz: %s' % (self.id, aux[0], aux[1], aux[2], aux[3]))
                 self.agent_list.append(robot)
     
     def distance_gradient_controller(self):
-        if self.formation:
+        if self.formation and not self.disconnect:
             msg_error = Float64()
             msg_error.data = 0.0
             dx = dy = dz = 0
@@ -584,9 +552,10 @@ class CrazyflieWebotsDriver:
                 
                 if not self.digital_twin:
                     msg_data = Float64()
-                    msg_data.data = sqrt(distance)
+                    aux = sqrt(distance)
+                    msg_data.data = aux
                     agent.publisher_data_.publish(msg_data)
-                    error = abs(sqrt(distance) - agent.d)
+                    error = abs(aux - agent.d)
                     msg_data.data = agent.last_iae + (agent.last_error + error) * self.task_period /2
                     agent.last_error = error
                     agent.publisher_iae_.publish(msg_data)
@@ -594,8 +563,11 @@ class CrazyflieWebotsDriver:
                     msg_data.data = distance - pow(agent.d,2)
                     agent.publisher_error_.publish(msg_data)
                     msg_error.data += msg_data.data
-                    self.node.get_logger().debug('Agent %s: D: %.2f dx: %.2f dy: %.2f dz: %.2f ' % (agent.id, msg_data.data, dx, dy, dz)) 
-            
+                    # if not self.Fixed_z:
+                    #     self.node.get_logger().debug('Agent %s: d*: %.2f d: %.2f e^2: %.2f dx: %.2f dy: %.2f dz: %.2f ' % (agent.id, agent.d, aux, msg_data.data, delta_x, delta_y, delta_z)) 
+                    # else:
+                    #     self.node.get_logger().debug('Agent %s: e^2: %.2f dx: %.2f dy: %.2f dz: %.2f ' % (agent.id, msg_data.data, dx, dy, dz)) 
+
             if not self.continuous:
                 delta=sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
                 if not self.eval_threshold(0.0, delta):
@@ -630,6 +602,8 @@ class CrazyflieWebotsDriver:
             self.target_pose.pose.position.x = self.pose.position.x + dx
             self.target_pose.pose.position.y = self.pose.position.y + dy
             self.target_pose.pose.position.z = self.pose.position.z + dz
+            if self.Fixed_z:
+                self.target_pose.pose.position.z = 0.6
 
             delta=sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
             angles = tf_transformations.euler_from_quaternion((self.pose.orientation.x, self.pose.orientation.y, self.pose.orientation.z, self.pose.orientation.w))
@@ -640,7 +614,7 @@ class CrazyflieWebotsDriver:
             
             self.state[len(self.state)-1] = delta 
             if mean < 0.05 and self.update_gain:
-                self.node.get_logger().info('Agent %s: Gain updated' % (self.name_value)) 
+                self.node.get_logger().info('Agent %s: Gain updated' % (self.id)) 
                 self.update_gain = False
                 for agent in self.agent_list:
                     if agent.id == 'origin':
@@ -666,94 +640,12 @@ class CrazyflieWebotsDriver:
             self.publisher_global_error_.publish(msg_error)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.8:
-                self.target_pose.pose.position.z = 0.8
+            if self.target_pose.pose.position.z < 0.6:
+                self.target_pose.pose.position.z = 0.6
 
-            if self.target_pose.pose.position.z > 2.0:
-                self.target_pose.pose.position.z = 2.0
+            if self.target_pose.pose.position.z > 2.5:
+                self.target_pose.pose.position.z = 2.5
 
-    def distance_pid_controller(self):
-        if self.formation:
-            ex = ey = ez = 0
-            for agent in self.agent_list:
-                if not agent.id.find("line") == -1:
-                    nearest = PoseStamped()
-                    nearest.header.frame_id = "map"
-                    gamma = -np.dot([agent.point.x-self.pose.position.x, agent.point.y-self.pose.position.y, agent.point.z-self.pose.position.z],[agent.vector.x, agent.vector.y, agent.vector.z])/agent.mod
-                    nearest.pose.position.x = agent.point.x + gamma * agent.vector.x
-                    nearest.pose.position.y = agent.point.y + gamma * agent.vector.y
-                    nearest.pose.position.z = agent.point.z + gamma * agent.vector.z
-                    agent.gtpose_callback(nearest)
-                error_x = self.pose.position.x - agent.pose.position.x
-                error_y = self.pose.position.y - agent.pose.position.y
-                error_z = self.pose.position.z - agent.pose.position.z
-                distance = sqrt(pow(error_x,2)+pow(error_y,2)+pow(error_z,2))
-                e = agent.d - distance
-                if distance == 0:
-                    distance = 1.0
-                ex += agent.k * e * (error_x/distance)
-                ey += agent.k * e * (error_y/distance)
-                ez += agent.k * e * (error_z/distance)
-
-            aux = self.node.get_clock().now().to_msg()
-            time = aux.sec + aux.nanosec*1e-9
-                
-            if not (self.formation_x_controller.eval_threshold(0.0, ex) or self.formation_y_controller.eval_threshold(0.0, ey) or self.formation_z_controller.eval_threshold(0.0, ez) or self.continuous):
-                return
-            
-            msg = Bool()
-            msg.data = True
-            self.event_x.publish(msg)
-            # X Controller
-            self.formation_x_controller.error[0] = ex
-            dtx = time - self.formation_x_controller.past_time
-            dx = self.formation_x_controller.update(dtx)
-            self.formation_x_controller.past_time = time
-
-            # Y Controller
-            self.formation_y_controller.error[0] = ey
-            dty = time - self.formation_y_controller.past_time
-            dy = self.formation_y_controller.update(dty)
-            self.formation_y_controller.past_time = time
-
-            # Z Controller
-            self.formation_z_controller.error[0] = ez
-            dtz = time - self.formation_z_controller.past_time
-            dz = self.formation_z_controller.update(dtz)
-            self.formation_z_controller.past_time = time
-
-            self.target_pose.pose.position.x = self.pose.position.x + dx
-            self.target_pose.pose.position.y = self.pose.position.y + dy
-            self.target_pose.pose.position.z = self.pose.position.z + dz
-
-            delta=sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
-            angles = tf_transformations.euler_from_quaternion((self.pose.orientation.x, self.pose.orientation.y, self.pose.orientation.z, self.pose.orientation.w))
-                    
-            if delta<0.1:
-                roll = angles[0]
-                pitch = angles[1]
-                yaw = angles[2]
-            else:
-                h = sqrt(pow(dx,2)+pow(dy,2))
-                roll = 0.0
-                pitch = -atan2(dz,h)
-                yaw = atan2(dy,dx)
-
-            q = tf_transformations.quaternion_from_euler(roll, pitch, yaw)
-            self.target_pose.pose.orientation.x = q[0]
-            self.target_pose.pose.orientation.y = q[1]
-            self.target_pose.pose.orientation.z = q[2]
-            self.target_pose.pose.orientation.w = q[3]
-            self.target_pose.header.stamp = self.node.get_clock().now().to_msg()
-            self.publisher_goalpose.publish(self.target_pose)
-
-            self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.8:
-                self.target_pose.pose.position.z = 0.8
-
-            if self.target_pose.pose.position.z > 2.0:
-                self.target_pose.pose.position.z = 2.0
-    
     def pose_gradient_controller(self):
         if self.formation:
             dx = dy = dz = 0
@@ -815,84 +707,11 @@ class CrazyflieWebotsDriver:
             self.publisher_goalpose.publish(self.target_pose)
 
             self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.8:
-                self.target_pose.pose.position.z = 0.8
+            if self.target_pose.pose.position.z < 0.6:
+                self.target_pose.pose.position.z = 0.6
 
-            if self.target_pose.pose.position.z > 2.0:
-                self.target_pose.pose.position.z = 2.0
-
-    def pose_pid_controller(self):
-        if self.formation:
-            ex = ey = ez = 0
-            for agent in self.agent_list:
-                error_x = agent.x - (self.pose.position.x - agent.pose.position.x)
-                error_y = agent.y - (self.pose.position.y - agent.pose.position.y)
-                error_z = agent.z - (self.pose.position.z - agent.pose.position.z)
-                ex += agent.k * error_x
-                ey += agent.k * error_y
-                ez += agent.k * error_z
-
-            aux = self.node.get_clock().now().to_msg()
-            time = aux.sec + aux.nanosec*1e-9
-            
-            msg = Bool()
-            msg.data = True
-            dx = dy = dz = 0
-            # X Controller
-            if self.formation_x_controller.eval_threshold(0.0, ex) or self.continuous:
-                self.formation_x_controller.error[0] = ex
-                dtx = time - self.formation_x_controller.past_time
-                dx = self.formation_x_controller.update(dtx)
-                self.formation_x_controller.past_time = time
-                self.event_x.publish(msg)
-            
-            # Y Controller
-            if self.formation_y_controller.eval_threshold(0.0, ey) or self.continuous:
-                self.formation_y_controller.error[0] = ey
-                dty = time - self.formation_y_controller.past_time
-                dy = self.formation_y_controller.update(dty)
-                self.formation_y_controller.past_time = time
-                self.event_y.publish(msg)
-
-            # Z Controller
-            if self.formation_z_controller.eval_threshold(0.0, ez) or self.continuous:
-                self.formation_z_controller.error[0] = ez
-                dtz = time - self.formation_z_controller.past_time
-                dz = self.formation_z_controller.update(dtz)
-                self.formation_z_controller.past_time = time
-                self.event_z.publish(msg)
-
-            self.target_pose.pose.position.x = self.pose.position.x + dx
-            self.target_pose.pose.position.y = self.pose.position.y + dy
-            self.target_pose.pose.position.z = self.pose.position.z + dz
-
-            delta=sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
-            angles = tf_transformations.euler_from_quaternion((self.pose.orientation.x, self.pose.orientation.y, self.pose.orientation.z, self.pose.orientation.w))
-                    
-            if delta<0.05:
-                roll = angles[0]
-                pitch = angles[1]
-                yaw = angles[2]
-            else:
-                h = sqrt(pow(dx,2)+pow(dy,2))
-                roll = 0.0
-                pitch = -atan2(dz,h)
-                yaw = atan2(dy,dx)
-
-            q = tf_transformations.quaternion_from_euler(roll, pitch, yaw)
-            self.target_pose.pose.orientation.x = q[0]
-            self.target_pose.pose.orientation.y = q[1]
-            self.target_pose.pose.orientation.z = q[2]
-            self.target_pose.pose.orientation.w = q[3]
-            self.target_pose.header.stamp = self.node.get_clock().now().to_msg()
-            self.publisher_goalpose.publish(self.target_pose)
-
-            self.node.get_logger().debug('Formation: X: %.2f->%.2f Y: %.2f->%.2f Z: %.2f->%.2f' % (self.pose.position.x, self.target_pose.pose.position.x, self.pose.position.y, self.target_pose.pose.position.y, self.pose.position.z, self.target_pose.pose.position.z)) 
-            if self.target_pose.pose.position.z < 0.8:
-                self.target_pose.pose.position.z = 0.8
-
-            if self.target_pose.pose.position.z > 2.0:
-                self.target_pose.pose.position.z = 2.0
+            if self.target_pose.pose.position.z > 2.5:
+                self.target_pose.pose.position.z = 2.5
 
     def eval_threshold(self, signal, ref):
         '''
@@ -954,8 +773,9 @@ class CrazyflieWebotsDriver:
             init_pose = PoseStamped()
             init_pose.header.frame_id = "map"
             init_pose.pose = self.last_pose
-            init_pose.header.stamp = self.node.get_clock().now().to_msg()            
-            self.pose_publisher.publish(init_pose)
+            init_pose.header.stamp = self.node.get_clock().now().to_msg()
+            if not self.disconnect:
+                self.pose_publisher.publish(init_pose)
             self.z_controller.past_time = self.past_time
             self.w_controller.past_time = self.past_time
             # self.take_off()
@@ -988,9 +808,9 @@ class CrazyflieWebotsDriver:
         t_base.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
         t_base.header.frame_id = 'map'
         if self.digital_twin:
-            base_name = self.name_value+'_dt/base_link'
+            base_name = self.id+'_dt/base_link'
         else:
-            base_name = self.name_value+'/base_link'
+            base_name = self.id+'/base_link'
         t_base.child_frame_id = base_name
         t_base.transform.translation.x = x_global
         t_base.transform.translation.y = y_global
@@ -1000,10 +820,10 @@ class CrazyflieWebotsDriver:
         t_base.transform.rotation.z = q[2]
         t_base.transform.rotation.w = q[3]
         self.tfbr.sendTransform(t_base)
-        
+            
         delta = np.array([self.pose.position.x-self.last_pose.position.x,self.pose.position.y-self.last_pose.position.y,self.pose.position.z-self.last_pose.position.z])
-  
-        if self.communication or np.linalg.norm(delta)>0.01:
+    
+        if (self.communication or np.linalg.norm(delta)>0.01) and not self.disconnect:
             PoseStamp = PoseStamped()
             PoseStamp.pose.position.x = self.pose.position.x
             PoseStamp.pose.position.y = self.pose.position.y
@@ -1113,7 +933,7 @@ class CrazyflieWebotsDriver:
             else:
                 self.target_twist.linear.y = self.y_controller.last_value
             self.node.get_logger().debug('Y: R: %.2f P: %.2f C: %.2f' % (self.target_pose.pose.position.y, y_global, self.target_twist.linear.y))
-        
+            
         # dX-dY Controller
         if self.u_controller.eval_threshold(vx_global, self.target_twist.linear.x) or self.continuous:
             self.u_controller.error[0] =  (self.target_twist.linear.x - vx_global)*cos(yaw) + (self.target_twist.linear.y - vy_global)*sin(yaw)
@@ -1126,7 +946,7 @@ class CrazyflieWebotsDriver:
         dtv = self.robot.getTime() - self.v_controller.past_time
         roll_ref = self.v_controller.update(dtv)
         self.v_controller.past_time = self.robot.getTime()
-        
+            
         ## Attitude Controller
         # Pitch Controller
         self.pitch_controller.error[0] = pitch_ref - degrees(pitch)
@@ -1152,7 +972,7 @@ class CrazyflieWebotsDriver:
         delta_roll = self.droll_controller.update(dt)
         self.dyaw_controller.error[0] = dyaw_ref - degrees(yaw_rate)
         delta_yaw = self.dyaw_controller.update(dt)
-        
+            
         self.node.get_logger().debug('IPC:: V: %.4f W: %.4f' % (self.target_twist.linear.x, dyaw_ref))
 
         ## Motor mixing Controller
