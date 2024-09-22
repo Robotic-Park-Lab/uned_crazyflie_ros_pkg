@@ -17,7 +17,7 @@ import tf_transformations
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 
-from uned_crazyflie_driver.crazyflie_agent import Agent
+from uned_crazyflie_driver.crazyflie_agent import Agent, Crazyflie_ROS2
 
 # Change this path to your crazyflie-firmware folder
 # sys.path.append('/home/kiko/Code/crazyflie-firmware')
@@ -119,6 +119,8 @@ class CrazyflieWebotsDriver:
         rclpy.init(args=None)
         self.node = rclpy.create_node(self.id+'_driver')
 
+        # self.crazyflie = Crazyflie_ROS2(self, self.node, self.id, self.id, self.config, webots_node=webots_node)
+        
         ## Intialize Variables
         self.state = [10.0, 10.0, 10.0, 10.0, 10.0]
         self.update_gain = True
@@ -235,6 +237,7 @@ class CrazyflieWebotsDriver:
         # cffirmware.controllerPidInit()
 
         self.initialize()
+        
 
     def initialize(self):
         self.node.get_logger().info('Connected to Webots -> Crazyflie %s' % self.id)

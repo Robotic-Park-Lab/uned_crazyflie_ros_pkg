@@ -491,7 +491,7 @@ class Crazyflie_ROS2_TEST():
 
     def iterate(self):
         msg = Float64()
-        self.parent.get_logger().info('CF:::SP_Pitch: %.2f, Pitch: %.2f' % (self.cmd_motion_.pitch, self.pitch))
+        # self.parent.get_logger().info('CF:::SP_Pitch: %.2f, Pitch: %.2f' % (self.cmd_motion_.pitch, self.pitch))
         if self.gimbal:
             # self.parent.get_logger().info('SetPoint:::Roll: %.2f, Pitch: %.2f, Yaw: %.2f, Thrust: %d' % (self.cmd_motion_.roll, self.cmd_motion_.pitch, self.cmd_motion_.yaw, self.cmd_motion_.thrust))
             self.pitch_controller.error[0] = self.sp_pitch - self.pitch
@@ -783,7 +783,7 @@ class Crazyflie_ROS2_TEST():
             self.scf.cf.param.set_value('stabilizer.estimator', '1')
             self.scf.cf.param.set_value('kalman.resetEstimation', '1')
             self.scf.cf.param.set_value('kalman.resetEstimation', '0')
-            
+            '''
             self.scf.cf.param.set_value('flightmode.stabModeRoll', '1')
             self.scf.cf.param.set_value('pid_attitude.roll_kp', 0.0)
             self.scf.cf.param.set_value('pid_attitude.roll_ki', 0.0)
@@ -800,8 +800,12 @@ class Crazyflie_ROS2_TEST():
             self.scf.cf.param.set_value('pid_attitude.yaw_kd', 0.0)
 
             self.scf.cf.commander.send_setpoint(0, 0, 0, 0)
-
+            '''
             self.cmd_motion_.thrust = 1001
+        elif msg.data == 'sd_start':
+            self.scf.cf.param.set_value('usd.logging', '1')
+        elif msg.data == 'sd_stop':
+            self.scf.cf.param.set_value('usd.logging', '0')
         elif msg.data == 'disconnect':
             self.disconnected()
         elif msg.data == 'reconfiguration':
