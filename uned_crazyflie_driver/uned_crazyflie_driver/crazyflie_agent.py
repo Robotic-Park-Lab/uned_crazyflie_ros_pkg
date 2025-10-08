@@ -17,6 +17,7 @@ from builtin_interfaces.msg import Time
 from math import cos, sin, degrees, radians, pi, sqrt
 from nav_msgs.msg import Odometry, Path
 import cflib.crtp
+from cflib.utils.power_switch import PowerSwitch
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.swarm import CachedCfFactory, Swarm
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
@@ -125,7 +126,7 @@ class Agent():
         self.disconnect = False
         self.last_error = 0.0
         self.last_iae = 0.0
-        self.k = 1.0 * self.parent.k
+        self.k = 1.0 # * self.parent.k
         self.pose = Pose()
         if not id.find("line") == -1:
             self.distance_bool = True
@@ -147,7 +148,7 @@ class Agent():
             if self.id == 'origin':
                 self.pose.position.x = 0.0
                 self.pose.position.y = 0.0
-                self.pose.position.z = 0.0
+                self.pose.position.z = 0.7
                 self.k = self.k * 4.0
             self.sub_pose_ = self.node.create_subscription(PoseStamped, '/' + self.id + '/local_pose', self.gtpose_callback, 10)
             if self.parent.config['task']['Onboard'] and self.parent.physical:
@@ -157,7 +158,7 @@ class Agent():
             self.publisher_data_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/data', 10)
             self.publisher_order_ = self.node.create_publisher(String, '/' + self.id + '/order', 10)
             self.publisher_error_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/error', 10)
-            self.publisher_iae_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/iae', 10)
+            # self.publisher_iae_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/iae', 10)
             self.publisher_marker_ = self.node.create_publisher(Marker, self.parent.id + '/' + self.id + '/marker', 10)
 
     def str_(self):
@@ -175,7 +176,7 @@ class Agent():
 
     def gtpose_callback(self, msg):
         self.pose = msg.pose
-        if self.parent.config['task']['Onboard']: #  and not self.disconnect and self.parent.formation and self.parent.physical:
+        if self.parent.config['task']['Onboard'] and self.parent.config['type'] != 'virtual': #  and not self.disconnect and self.parent.formation and self.parent.physical:
             self.parent.scf.cf.high_level_commander.update_neighbour(self.idn, self.pose.position.x, self.pose.position.y, self.pose.position.z)
         if not self.disconnect and not self.parent.digital_twin:
             self.node.get_logger().debug('Agent: X: %.2f Y: %.2f Z: %.2f' % (msg.pose.position.x, msg.pose.position.y, msg.pose.position.z))
@@ -286,8 +287,8 @@ class CMD_Motion():
     def send_offboard_setpoint_(self, cf):
         self.logger.debug('Command: %.3f %.3f' % (self.roll, self.pitch))
         # cf.commander.send_setpoint(self.roll, -self.pitch, 0.0, self.thrust)
-        cf.high_level_commander.update_attitud_cmd(self.roll, self.pitch, self.yaw, self.thrust)
-        # cf.high_level_commander.update_attituderate_cmd(self.roll, self.pitch, 0.0, self.thrust)
+        # cf.high_level_commander.update_attitud_cmd(self.roll, self.pitch, self.yaw, self.thrust)
+        cf.high_level_commander.update_attituderate_cmd(self.roll, self.pitch, self.yaw, self.thrust)
 
     def take_off(self, cf):
         self.logger.info('Take off ... ')
@@ -303,6 +304,7 @@ class Crazyflie_ROS2():
         if scf is not None:
             self.scf = scf
             self.scf.uri = link_uri
+            self.powerswitch = PowerSwitch(link_uri)
             self.scf.cf.connected.add_callback(self._connected)
             self.scf.cf.disconnected.add_callback(self._disconnected)
             self.scf.cf.connection_failed.add_callback(self._connection_failed)
@@ -807,6 +809,9 @@ class Crazyflie_ROS2():
                     self.cmd_motion_.y = msg.pose.position.y
                     self.cmd_motion_.z = msg.pose.position.z
                     self.node.get_logger().info('CF%s::Home pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
+                    msg = String()
+                    msg.data = 'init'
+                    self.swarm_status_publisher.publish(msg)
             except:
                 pass
 
@@ -1194,11 +1199,49 @@ class Crazyflie_ROS2():
             self.add_agent(msg.data)
         elif msg.data == 'rele':
             self.scf.cf.high_level_commander.enable_relay()
+        elif msg.data == 'poweroff':
+            self.powerswitch.platform_power_down()
         elif msg.data == 'gimbal':
             self.cmd_motion_.roll = 0.0
             self.cmd_motion_.pitch = 0.0
             self.cmd_motion_.yaw = 0.0
             self.gimbal = True
+            # level {0 = Rate; 1 = Attitude}, angle {0 = Roll; 1 = Pitch}, cmd, threshold
+            # self.scf.cf.high_level_commander.update_relay_params(0, 0, 3000.0, 3.0)   # Roll Rate
+            # self.scf.cf.high_level_commander.update_relay_params(1, 0, 5.0, 0.4)      # Roll
+            # self.scf.cf.high_level_commander.update_relay_params(0, 1, 8000.0, 6.0)   # Pitch Rate
+            self.scf.cf.high_level_commander.update_relay_params(1, 1, 5.0, 0.20)        # Pitch 
+            ## Roll Rate
+            # self.scf.cf.high_level_commander.update_controller_params(0, 0, 300.0, 100.0, 0.0, 0.0) # Manual
+            self.scf.cf.high_level_commander.update_controller_params(0, 0, 250.0, 500.0, 2.5, 0.0) # Serie
+            # self.scf.cf.high_level_commander.update_controller_params(0, 0, 0.0, 0.0, 0.0, 0.0) # TEST
+            # self.scf.cf.high_level_commander.update_controller_params(0, 0, 166.430, 259.312, 0.0, 0.0) # AMIGO
+            # self.scf.cf.high_level_commander.update_controller_params(0, 0, 202.07, 465.37, 0.0, 0.0) # AMIGO init
+            # self.scf.cf.high_level_commander.update_controller_params(0, 0, 213.9816, 558.4472, 5.1245, 0.5) # AMIGO PID
+            # self.scf.cf.high_level_commander.update_controller_params(0, 0, 232.648, 594.118, 0.0, 0.5) # SIMC
+            ## Roll
+            # self.scf.cf.high_level_commander.update_controller_params(1, 0, 6.0, 3.0, 0.0, 0.0) # Serie
+            # self.scf.cf.high_level_commander.update_controller_params(1, 0, 2.0, 0.0, 0.0, 0.0) # Manual
+            # self.scf.cf.high_level_commander.update_controller_params(1, 0, 5.1293, 5.6379, 0.0, 0.1) # AMIGO
+            # self.scf.cf.high_level_commander.update_controller_params(1, 0, 6.5948, 12.1417, 0.2239, 0.1) # AMIGO PID
+            self.scf.cf.high_level_commander.update_controller_params(1, 0, 5.2053, 7.1637, 0.2364, 0.0) # AMIGO PID
+            # self.scf.cf.high_level_commander.update_controller_params(1, 0, 3.7142, 3.4661, 0.0, 0.0) # SIMC
+            
+            # Pitch Rate
+            # self.scf.cf.high_level_commander.update_controller_params(0, 1, 250.0, 500.0, 2.5, 0.0) # Serie
+            # self.scf.cf.high_level_commander.update_controller_params(0, 1, 100.0, 300.0, 0.0, 0.0) # Manual
+            self.scf.cf.high_level_commander.update_controller_params(0, 1, 276.9316, 188.0486, 0.0, 2.0) # AMIGO PI // OK
+            # self.scf.cf.high_level_commander.update_controller_params(0, 1, 356.0549, 404.9760, 19.5652, 0.0) # AMIGO PID
+            # self.scf.cf.high_level_commander.update_controller_params(0, 1, 280.5954, 226.3597, 0.0, 0.0) # SIMC
+            
+            # Pitch
+            self.scf.cf.high_level_commander.update_controller_params(1, 1, 1.5, 0.0, 0.0, 0.0) # Manual
+            # self.scf.cf.high_level_commander.update_controller_params(1, 1, 6.0, 3.0, 0.0, 0.0) # Serie
+            # self.scf.cf.high_level_commander.update_controller_params(1, 1, 1.3295, 0.5088, 0.0, 0.0) # AMIGO PI
+            # self.scf.cf.high_level_commander.update_controller_params(1, 1, 1.7094, 1.0958, 0.1667, 0.0) # AMIGO PID
+            # self.scf.cf.high_level_commander.update_controller_params(1, 1, 1.8753, 1.1869, 0.0, 0.0) # SIMC
+
+            # self.node.get_logger().warn('Relay:: cmd:10000  th:1')
             self.scf.cf.param.set_value('stabilizer.estimator', '1')
             self.scf.cf.param.set_value('kalman.resetEstimation', '1')
             self.scf.cf.param.set_value('kalman.resetEstimation', '0')
@@ -1208,21 +1251,16 @@ class Crazyflie_ROS2():
             self.scf.cf.param.set_value('flightmode.stabModePitch', '1')
             self.scf.cf.param.set_value('flightmode.stabModeYaw', '1')
             
-
-            # self.scf.cf.param.set_value('pid_rate.roll_kp', 200.0)
-            # self.scf.cf.param.set_value('pid_rate.roll_ki', 400.0)
-            # self.scf.cf.param.set_value('pid_rate.roll_kd', 0.0)
-            # self.scf.cf.param.set_value('pid_attitude.roll_kp', 1.0)
-            # self.scf.cf.param.set_value('pid_attitude.roll_ki', 0.0)
-            # self.scf.cf.param.set_value('pid_attitude.roll_kd', 0.0)
-
-
-            # self.scf.cf.param.set_value('pid_rate.pitch_kp', 0.0)
-            # self.scf.cf.param.set_value('pid_rate.pitch_ki', 0.0)
+            # AMIGO
+            # self.scf.cf.param.set_value('pid_rate.pitch_kp', 581.9545)
+            # self.scf.cf.param.set_value('pid_rate.pitch_ki', 634.1221)
+            # SIMC
+            # self.scf.cf.param.set_value('pid_rate.pitch_kp', 424.1390)
+            # self.scf.cf.param.set_value('pid_rate.pitch_ki', 394.9337)
+            # Z-N
+            # self.scf.cf.param.set_value('pid_rate.pitch_kp', 1044.7)
+            # self.scf.cf.param.set_value('pid_rate.pitch_ki', 4766.9)
             # self.scf.cf.param.set_value('pid_rate.pitch_kd', 0.0)
-            self.scf.cf.param.set_value('pid_attitude.pitch_kp', 2.5)
-            self.scf.cf.param.set_value('pid_attitude.pitch_ki', 0.0)
-            self.scf.cf.param.set_value('pid_attitude.pitch_kd', 0.0)
 
             # self.scf.cf.param.set_value('pid_rate.yaw_kp', 0.0)
             # self.scf.cf.param.set_value('pid_rate.yaw_ki', 0.0)
