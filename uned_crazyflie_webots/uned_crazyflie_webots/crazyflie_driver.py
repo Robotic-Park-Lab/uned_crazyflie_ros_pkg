@@ -18,6 +18,7 @@ from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 
 from uned_crazyflie_driver.crazyflie_agent import Agent, Crazyflie_ROS2
+from multi_agent_pkg.lagrange_multipliers import Sphere, Cone, Ellipsoid
 
 # Change this path to your crazyflie-firmware folder
 # sys.path.append('/home/kiko/Code/crazyflie-firmware')
@@ -134,6 +135,7 @@ class CrazyflieWebotsDriver:
         self.publisher_data_motor_enable = False
         self.publisher_mrs_data_enable = False
         self.publisher_data_enable = False
+        self.controller_type = 'gradient'
         # Rele
         self.rele_p = False
         self.rele_s = False
@@ -346,7 +348,6 @@ class CrazyflieWebotsDriver:
 
         self.initialize()
         
-
     def initialize(self):
         self.node.get_logger().info('Connected to Webots -> Crazyflie %s' % self.id)
 
@@ -456,8 +457,8 @@ class CrazyflieWebotsDriver:
         if self.target_pose.pose.position.z < 0.6:
             self.target_pose.pose.position.z = 0.6
 
-        if self.target_pose.pose.position.z > 2.5:
-            self.target_pose.pose.position.z = 2.5
+        if self.target_pose.pose.position.z > 3.0:
+            self.target_pose.pose.position.z = 3.0
 
     def order_callback(self, msg):
         self.node.get_logger().info('Order: "%s"' % msg.data)
@@ -516,6 +517,13 @@ class CrazyflieWebotsDriver:
             self.formation = False
         elif msg.data == 'disconnect':
             self._disconnected()
+        elif not msg.data.find("ellipsoid_") == -1:
+            aux = msg.data.split('_')
+            auxa = aux[1]
+            auxb = auxa.split('-')
+            self.geometry.a = float(auxb[0])
+            self.geometry.b = float(auxb[1])
+            self.geometry.c = float(auxb[2])
         elif msg.data == 'reconfiguration':
             if self.pose.position.z<0.7:
                 self.Fixed_z = True
@@ -539,7 +547,7 @@ class CrazyflieWebotsDriver:
         
     def take_off(self):
         self.node.get_logger().info('Take Off...')
-        self.target_pose.pose.position.z = 1.0
+        self.target_pose.pose.position.z = 1.1
         self._is_flying = True
         self.t_ready = Timer(4, self._ready)
         self.t_ready.start()
@@ -643,13 +651,13 @@ class CrazyflieWebotsDriver:
         else:
             self.k = 0.1
         if "upperLimit" in self.controller:
-            self.ul = self.controller['upperLimit']
+            self.ul = sqrt(pow(self.controller['upperLimit'],2)+pow(self.controller['upperLimit'],2)+pow(self.controller['upperLimit'],2))
         else:
-            self.ul = 0.3
+            self.ul = sqrt(pow(0.3,2)+pow(0.3,2)+pow(0.3,2))
         if "lowerLimit" in self.controller:
-            self.ll = self.controller['lowerLimit']
+            self.ll = -sqrt(pow(self.controller['lowerLimit'],2)+pow(self.controller['lowerLimit'],2)+pow(self.controller['lowerLimit'],2))
         else:
-            self.ll = -0.3
+            self.ll = -sqrt(pow(0.3,2)+pow(0.3,2)+pow(0.3,2))
         if "protocol" in self.controller:
             self.continuous = self.controller['protocol'] == 'Continuous'
         else:
@@ -699,9 +707,42 @@ class CrazyflieWebotsDriver:
                     robot = Agent(self, self.node, id, point = p, vector = u)
                     self.node.get_logger().debug('Agent: %s: Neighbour: %s ::: Px: %s Py: %s Pz: %s' % (self.id, id, aux[1], aux[2], aux[3]))
                 else:
-                    if aux[0] == 'origin':
-                        self.R = float(aux[1])
-                    robot = Agent(self, self.node, aux[0], d = float(aux[1]))
+                    if aux[0] == 'origin' or aux[0] == 'sphere':
+                        auxa = aux[1]
+                        auxb = auxa.split('-')
+                        origin = Point()
+                        origin.x = float(auxb[1])
+                        origin.y = float(auxb[2])
+                        origin.z = float(auxb[3])
+                        self.R = float(auxb[0])
+                        self.geometry = Sphere(self.R, origin)
+                        robot = Agent(self, self.node, aux[0], d = float(auxb[0]), point = origin)
+                    elif aux[0] == 'cone':
+                        auxa = aux[1]
+                        auxb = auxa.split('-')
+                        origin = Point()
+                        origin.x = float(auxb[2])
+                        origin.y = float(auxb[3])
+                        origin.z = float(auxb[4])
+                        self.geometry = Cone(float(auxb[0]), float(auxb[1]), origin)
+                        self.node.get_logger().info('Agent: %s: Cono: a %s \tc: %s' % (self.id, auxb[0], auxb[1]))
+                        robot = Agent(self, self.node, aux[0], d = float(auxb[0]),point = origin)
+                    elif aux[0] == 'ellipsoid':
+                        auxa = aux[1]
+                        auxb = auxa.split('-')
+                        origin = Point()
+                        origin.x = float(auxb[0])
+                        origin.y = float(auxb[1])
+                        origin.z = float(auxb[2])
+                        auxa = aux[2]
+                        auxb = auxa.split('-')
+                        a = float(auxb[0])
+                        b = float(auxb[1])
+                        c = float(auxb[2])
+                        self.geometry = Ellipsoid(a = a, b = b, c = c, origin = origin)
+                        robot = Agent(self, self.node, aux[0], a = a, b = b, c = c, point = origin, d = 0.0)
+                    else:
+                        robot = Agent(self, self.node, aux[0], d = float(aux[1]))
                     self.node.get_logger().debug('Agent: %s: Neighbour: %s \td: %s' % (self.id, aux[0], aux[1]))
                 self.agent_list.append(robot)
         elif task_type == 'pose':
@@ -718,6 +759,49 @@ class CrazyflieWebotsDriver:
             msg_error = Float64()
             msg_error.data = 0.0
             dx = dy = dz = 0
+            if 'ML2' in self.controller_type:
+                projection = self.geometry.projection(self.pose.position)
+                m_gain = self.geometry.R/sqrt(pow(self.pose.position.x-self.geometry.origin.x,2)+pow(self.pose.position.y-self.geometry.origin.y,2)+pow(self.pose.position.z-self.geometry.origin.z,2))
+                pxx = m_gain*(1-pow(projection.x,2)/pow(self.geometry.R,2))
+                pxy = m_gain*(-projection.x*projection.y/pow(self.geometry.R,2))
+                pxz = m_gain*(-projection.x*(self.pose.position.z-self.geometry.origin.z)/pow(self.geometry.R,2))
+                pyy = m_gain*(1-pow(projection.y,2)/pow(self.geometry.R,2))
+                pyz = m_gain*(-projection.y*(self.pose.position.z-self.geometry.origin.z)/pow(self.geometry.R,2))
+                pzz = m_gain*(1-pow(self.pose.position.z-self.geometry.origin.z,2)/pow(self.geometry.R,2))
+                '''
+                projection = self.geometry.projection(self.pose.position)
+                fpi = self.geometry.value1(projection)
+                # P = I - p_i*p_i^T/self.geometry.value
+                pxx = 1-(pow(projection.x,2)/pow(self.geometry.a,4))/fpi
+                pxy = (-projection.x*projection.y/pow(self.geometry.a,4))/fpi
+                pxz = (projection.x*(projection.z-self.geometry.c)/(pow(self.geometry.a,2)*pow(self.geometry.c,2)))/fpi
+                pyy = 1-(pow(projection.y,2)/pow(self.geometry.a,4))/fpi
+                pyz = (projection.y*(projection.z-self.geometry.c)/(pow(self.geometry.a,2)*pow(self.geometry.c,2)))/fpi
+                pzz = 1-(pow(projection.z-self.geometry.c,2)/pow(self.geometry.c,4))/fpi
+                '''
+                '''
+                if agent.id == 'sphere':
+                    # P = I - (pi*pi^T)/R²
+                    # px      1 - pix*pix   -pix*piy     -pix*piz
+                     # py = (    -piy*pix   1 - piy*piy   -piy*piz  )/R²
+                    # pz        -piz*pix    -piz*piy    1 -piz*piz
+                    m_gain = self.geometry.R/sqrt(pow(self.pose.position.x-self.geometry.origin.x,2)+pow(self.pose.position.y-self.geometry.origin.y,2)+pow(self.pose.position.z-self.geometry.origin.z,2))
+                    pxx = m_gain*(1-pow(projection.x,2)/pow(self.geometry.R,2))
+                    pxy = m_gain*(-projection.x*projection.y/pow(self.geometry.R,2))
+                    pxz = m_gain*(-projection.x*(self.pose.position.z-self.geometry.origin.z)/pow(self.geometry.R,2))
+                    pyy = m_gain*(1-pow(projection.y,2)/pow(self.geometry.R,2))
+                    pyz = m_gain*(-projection.y*(self.pose.position.z-self.geometry.origin.z)/pow(self.geometry.R,2))
+                    pzz = m_gain*(1-pow(self.pose.position.z-self.geometry.origin.z,2)/pow(self.geometry.R,2))
+                if agent.id == 'cone':
+                    fpi = self.geometry.value1(projection)
+                    # P = I - p_i*p_i^T/self.geometry.value
+                    pxx = 1-(pow(projection.x,2)/pow(self.geometry.a,4))/fpi
+                    pxy = (-projection.x*projection.y/pow(self.geometry.a,4))/fpi
+                    pxz = (projection.x*(projection.z-self.geometry.c)/(pow(self.geometry.a,2)*pow(self.geometry,c,2)))/fpi
+                    pyy = 1-(pow(projection.y,2)/pow(self.geometry.a,4))/fpi
+                    pyz = (projection.y*(projection.z-self.geometry.c)/(pow(self.geometry.a,2)*pow(self.geometry,c,2)))/fpi
+                    pzz = 1-(pow(projection.z-self.c,2)/pow(self.geometry.c,4))/fpi
+                '''
             for agent in self.agent_list:
                 if not agent.id.find("line") == -1:
                     nearest = PoseStamped()
@@ -727,58 +811,67 @@ class CrazyflieWebotsDriver:
                     nearest.pose.position.y = agent.point.y + gamma * agent.vector.y
                     nearest.pose.position.z = agent.point.z + gamma * agent.vector.z
                     agent.gtpose_callback(nearest)
-                if agent.id == 'origin':
-                    # Original
-                    error_x = self.pose.position.x - agent.pose.position.x
-                    error_y = self.pose.position.y - agent.pose.position.y
-                    error_z = self.pose.position.z - agent.pose.position.z
+                
+                error_x = self.pose.position.x - agent.pose.position.x
+                error_y = self.pose.position.y - agent.pose.position.y
+                error_z = self.pose.position.z - agent.pose.position.z
+                if agent.id == 'origin' or agent.id == 'sphere':
                     distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
+                    # Gradiente & ML para proyectar el resultado de la ley de control
                     if 'gradient' in self.controller_type or 'ML3'in self.controller_type:
                         dx += - self.k * agent.k * (distance - pow(agent.d,2)) * error_x
                         dy += - self.k * agent.k * (distance - pow(agent.d,2)) * error_y
                         dz += - self.k * agent.k * (distance - pow(agent.d,2)) * error_z
                     # ML como término adicional & ML en consenso + Proyección
-                    if 'ML1' in self.controller_type or 'ML2' in self.controller_type:
-                        mod_p = sqrt(distance)
-                        px = (error_x/mod_p)*self.R
-                        py = (error_y/mod_p)*self.R
-                        pz = (error_z/mod_p)*self.R
-                        d1 = sqrt(pow(self.pose.position.x-px,2)+pow(self.pose.position.y-py,2)+pow(self.pose.position.z-pz,2))
-                        d2 = sqrt(pow(self.pose.position.x+px,2)+pow(self.pose.position.y+py,2)+pow(self.pose.position.z+pz,2))
-                        if d1<d2:
-                            c = 1.0
-                        else:
-                            c = -1.0
-                        dx += - self.k * agent.k * (self.pose.position.x-(c*px+agent.pose.position.x))
-                        dy += - self.k * agent.k * (self.pose.position.y-(c*py+agent.pose.position.y))
-                        dz += - self.k * agent.k * (self.pose.position.z-(c*pz+agent.pose.position.z))
+                    if 'ML1' in self.controller_type  or 'ML2' in self.controller_type:
+                        projection = self.geometry.projection(self.pose.position)
+                        dx += - self.k * agent.k * (self.pose.position.x-projection.x)
+                        dy += - self.k * agent.k * (self.pose.position.y-projection.y)
+                        dz += - self.k * agent.k * (self.pose.position.z-projection.z)
                 else:
-                    # Original
-                    error_x = self.pose.position.x - agent.pose.position.x
-                    error_y = self.pose.position.y - agent.pose.position.y
-                    error_z = self.pose.position.z - agent.pose.position.z
-                    # ML en consenso + Proyección
-                    if 'ML2' in self.controller_type:
-                        pz = self.pose.position.z - 0.6
-                        mod_p = sqrt(pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(pz,2))
-                        px = (self.pose.position.x/mod_p)*self.R
-                        py = (self.pose.position.y/mod_p)*self.R
-                        pz = (pz/mod_p)*self.R+0.6
-                        d1 = sqrt(pow(self.pose.position.x-px,2)+pow(self.pose.position.y-py,2)+pow(self.pose.position.z-pz,2))
-                        d2 = sqrt(pow(self.pose.position.x+px,2)+pow(self.pose.position.y+py,2)+pow(self.pose.position.z+pz,2))
-                        if d1<d2:
-                            c = 1.0
+                    if agent.id == 'cone':
+                        if 'gradient' in self.controller_type:
+                            fpi = self.geometry.value(self.pose.position)                    
+                            k = 0.25
+                            dx +=  - k*self.k * agent.k * fpi * (error_x/pow(self.geometry.a,2))
+                            dy +=  - k*self.k * agent.k * fpi * (error_y/pow(self.geometry.a,2))
+                            dz +=    k*self.k * agent.k * fpi * ((error_z-self.geometry.c)/pow(self.geometry.c,2))
+                        # ML como término adicional & ML en consenso + Proyección
+                        if 'ML1' in self.controller_type  or 'ML2' in self.controller_type:
+                            projection = self.geometry.projection(self.pose.position)
+                            dx += - self.k * agent.k * (self.pose.position.x-projection.x)
+                            dy += - self.k * agent.k * (self.pose.position.y-projection.y)
+                            dz += - self.k * agent.k * (self.pose.position.z-projection.z)
+                    else:
+                        if agent.id == 'ellipsoid':
+                            fpi = self.geometry.value(self.pose.position)
+                            dx +=  - self.k * agent.k * fpi * (error_x/pow(self.geometry.a,2))
+                            dy +=  - self.k * agent.k * fpi * (error_y/pow(self.geometry.b,2))
+                            dz +=  - self.k * agent.k * fpi * (error_z/pow(self.geometry.c,2))
                         else:
-                            c = -1.0
-                        error_x = c*px - agent.pose.position.x
-                        error_y = c*py - agent.pose.position.y
-                        error_z = c*pz - agent.pose.position.z
+                            # ML en consenso + Proyección
+                            if 'ML2' in self.controller_type:
+                                error_x = projection.x - agent.pose.position.x
+                                error_y = projection.y - agent.pose.position.y
+                                error_z = projection.z - agent.pose.position.z
 
-                    # COMUN
-                    distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
-                    dx += - self.k * agent.k * (distance - pow(agent.d,2)) * error_x
-                    dy += - self.k * agent.k * (distance - pow(agent.d,2)) * error_y
-                    dz += - self.k * agent.k * (distance - pow(agent.d,2)) * error_z
+                                distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
+                                x = - self.k * agent.k * (distance - pow(agent.d,2)) * error_x
+                                y = - self.k * agent.k * (distance - pow(agent.d,2)) * error_y
+                                z = - self.k * agent.k * (distance - pow(agent.d,2)) * error_z
+
+                                dx1  = pxx*x + pxy*y + pxz*z
+                                dy1  = pxy*x + pyy*y + pyz*z
+                                dz1  = pxz*x + pyz*y + pzz*z
+                                dx  += dx1
+                                dy  += dy1
+                                dz  += dz1
+                            else:
+                                # COMUN
+                                distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
+                                dx += - self.k * agent.k * (distance - pow(agent.d,2)) * error_x
+                                dy += - self.k * agent.k * (distance - pow(agent.d,2)) * error_y
+                                dz += - self.k * agent.k * (distance - pow(agent.d,2)) * error_z
 
                 if not self.digital_twin:
                     msg_data = Float64()
@@ -841,26 +934,18 @@ class CrazyflieWebotsDriver:
             msg.layout.dim[0].stride = 1
             self.publisher_mrs_data.publish(msg)
             msg_data = Float64()
-            msg_data.data = sqrt(pow(dx,2)+pow(dy,2)+pow(dx,2))
+            msg_data.data = sqrt(pow(dx,2)+pow(dy,2)+pow(dz,2))
             self.publisher_mrs_data_mod.publish(msg_data)
-
-            if dx > self.ul:
-                dx = self.ul
-            if dx < self.ll:
-                dx = self.ll
-            if dy > self.ul:
-                dy = self.ul
-            if dy < self.ll:
-                dy = self.ll
-            if dz > self.ul:
-                dz = self.ul
-            if dz < self.ll:
-                dz = self.ll
+            
+            if abs(msg_data.data) > self.ul:
+                dx = (dx/msg_data.data)*self.ul
+                dy = (dy/msg_data.data)*self.ul
+                dz = (dz/msg_data.data)*self.ul
 
             if self.pose.position.z < 0.6 and dz<0.0 and '_v' in self.controller_type:
                 dz = 0.0
 
-            if self.pose.position.z > 2.5 and dz>0.0 and '_v' in self.controller_type:
+            if self.pose.position.z > 3.0 and dz>0.0 and '_v' in self.controller_type:
                 dz = 0.0
             
             msg.data = [round(dx,3), round(dy,3), round(dz,3), self.N]
@@ -901,7 +986,7 @@ class CrazyflieWebotsDriver:
                     if agent.id == 'origin':
                         agent.k = 1.0
             '''
-            if delta<0.05:
+            if delta<0.01:
                 roll = angles[0]
                 pitch = angles[1]
                 yaw = angles[2]
@@ -924,8 +1009,8 @@ class CrazyflieWebotsDriver:
             if self.target_pose.pose.position.z < 0.6:
                 self.target_pose.pose.position.z = 0.6
 
-            if self.target_pose.pose.position.z > 2.5:
-                self.target_pose.pose.position.z = 2.5
+            if self.target_pose.pose.position.z > 3.0:
+                self.target_pose.pose.position.z = 3.0
 
     def pose_gradient_controller(self):
         if self.formation:
@@ -1177,21 +1262,7 @@ class CrazyflieWebotsDriver:
                 self.path_publisher.publish(self.path)
             self.pose_publisher_gt.publish(PoseStamp)
             if 'ML2' in self.controller_type:
-                pz = self.pose.position.z - 0.6
-                mod_p = sqrt(pow(self.pose.position.x,2)+pow(self.pose.position.y,2)+pow(pz,2))
-                px = (self.pose.position.x/mod_p)*self.R
-                py = (self.pose.position.y/mod_p)*self.R
-                pz = (pz/mod_p)*self.R+0.6
-                d1 = sqrt(pow(self.pose.position.x-px,2)+pow(self.pose.position.y-py,2)+pow(self.pose.position.z-pz,2))
-                d2 = sqrt(pow(self.pose.position.x+px,2)+pow(self.pose.position.y+py,2)+pow(self.pose.position.z+pz,2))
-                if d1<d2:
-                    c = 1.0
-                else:
-                    c = -1.0
-
-                PoseStamp.pose.position.x = c*px
-                PoseStamp.pose.position.y = c*py
-                PoseStamp.pose.position.z = c*pz
+                PoseStamp.pose.position = self.geometry.projection(self.pose.position)
                 self.pose_publisher.publish(PoseStamp)
             else:
                 self.pose_publisher.publish(PoseStamp)

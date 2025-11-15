@@ -22,6 +22,8 @@ from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.swarm import CachedCfFactory, Swarm
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
+from multi_agent_pkg.lagrange_multipliers import Sphere
+
 # List of URIs, comment the one you do not want to fly
 uris = set()
 dron = list()
@@ -117,7 +119,7 @@ class PIDController():
 
 
 class Agent():
-    def __init__(self, parent, node, id, x = None, y = None, z = None, d = None, k=None, point = None, vector = None):
+    def __init__(self, parent, node, id, x = None, y = None, z = None, d = None, k=None, point = None, vector = None, a = None, b = None, c = None):
         self.id = id
         self.idn = float(len(parent.agent_list))
         self.distance = False
@@ -128,6 +130,7 @@ class Agent():
         self.last_iae = 0.0
         self.k = 1.0 # * self.parent.k
         self.pose = Pose()
+
         if not id.find("line") == -1:
             self.distance_bool = True
             self.d = 0
@@ -145,11 +148,9 @@ class Agent():
                 self.d = d
                 self.distance = True
                 self.node.get_logger().info('Agent: %d %s' % (self.idn, self.str_distance_()))
-            if self.id == 'origin':
-                self.pose.position.x = 0.0
-                self.pose.position.y = 0.0
-                self.pose.position.z = 0.7
-                self.k = self.k * 4.0
+            if self.id == 'origin' or self.id == 'sphere' or self.id == 'cone' or self.id == 'ellipsoid':
+                self.pose.position = point
+                self.k = self.k
             self.sub_pose_ = self.node.create_subscription(PoseStamped, '/' + self.id + '/local_pose', self.gtpose_callback, 10)
             if self.parent.config['task']['Onboard'] and self.parent.physical:
                 parent.scf.cf.high_level_commander.new_neighbour(self.idn, self.d, self.k)
