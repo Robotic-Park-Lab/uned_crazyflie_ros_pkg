@@ -2,6 +2,8 @@
 
 Esta rama (`doc`) no contiene código: solo explica para qué sirve cada rama del repositorio y cómo contribuir.
 
+📋 **[AUDIT.md](AUDIT.md)** — checklist de la auditoría de `humble-dev` (2026-08-21), de lo más simple a lo más complejo. Se va tachando conforme se resuelve.
+
 ## Ramas de este repositorio
 
 | Rama | Propósito |
