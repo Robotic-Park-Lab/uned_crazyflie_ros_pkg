@@ -5,7 +5,26 @@
   <version>0.0.0</version>
   <description>Paquete para el manejo de los nanodrones crazyflie 2.1</description>
   <maintainer email="fjmanas@dia.uned.es">Francisco José Mañas Álvarez</maintainer>
-  <license>TODO: License declaration</license>
+  <license>BSD-3-Clause</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf_transformations</depend>
+  <depend>ament_index_python</depend>
+  <depend>uned_crazyflie_config</depend>
+  <!-- Paquetes de otros repos del laboratorio, sin clave rosdep: hay que
+       tenerlos ya compilados en el mismo workspace (ver README). -->
+  <depend>multi_agent_pkg</depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <!-- cflib (Crazyflie Python library) no tiene clave rosdep: se instala
+       aparte, ver la sección "Dependencias" del README. -->
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

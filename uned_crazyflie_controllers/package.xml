@@ -3,9 +3,9 @@
 <package format="3">
   <name>uned_crazyflie_controllers</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Controladores en C++ para el crazyflie 2.1: PID periódico (posición y velocidad angular), PID basado en eventos, predictivo generalizado y de trayectoria</description>
   <maintainer email="fjmanas@dia.uned.es">Francisco José Mañas Álvarez</maintainer>
-  <license>TODO: License declaration</license>
+  <license>BSD-3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
@@ -13,6 +13,7 @@
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>eigen3_cmake_module</depend>
   <depend>uned_crazyflie_config</depend>
 
   <test_depend>ament_lint_auto</test_depend>

@@ -13,10 +13,11 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='kiko',
+    maintainer='Francisco José Mañas Álvarez',
     maintainer_email='fjmanas@dia.uned.es',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Nodos de tarea multi-agente para el crazyflie 2.1: leader-follower, formación'
+                 ' basada en forma, y formación en Webots',
+    license='BSD-3-Clause',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
