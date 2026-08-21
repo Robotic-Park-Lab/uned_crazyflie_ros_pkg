@@ -1,15 +1,39 @@
-from dis import dis
-import logging
-import time
+# Copyright 2026 Robotic Park Lab
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#    * Neither the name of the Robotic Park Lab nor the names of its
+#      contributors may be used to endorse or promote products derived from
+#      this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+
 import rclpy
 from threading import Timer
-import numpy as np
-from math import atan2, cos, sin, sqrt
+from math import sqrt
 
 from rclpy.node import Node
-from std_msgs.msg import String, Float64MultiArray, UInt16, UInt16MultiArray, Float64
-from geometry_msgs.msg import Pose, Twist, PointStamped, Point
-from visualization_msgs.msg import Marker
+from std_msgs.msg import String, Float64
+from geometry_msgs.msg import Pose
 
 
 # List of URIs, comment the one you do not want to fly
@@ -18,8 +42,10 @@ dron = list()
 publisher = set()
 
 ############################
-## CF Swarm Logging Class ##
+# CF Swarm Logging Class ##
 ############################
+
+
 class WebotsAgent:
     def __init__(self, parent, link_uri, ctrl_mode, ctrl_type, role):
         self.role = role
@@ -38,9 +64,11 @@ class WebotsAgent:
         self.parent.get_logger().info('%s role: %s!' % (self.id, self.role))
         self._connected()
         self.CONTROL_MODE = ctrl_mode
-        self.parent.get_logger().info('CF%s::Control Mode: %s!' % (self.id[-2:], self.CONTROL_MODE))
+        self.parent.get_logger().info('CF%s::Control Mode: %s!' %
+                                      (self.id[-2:], self.CONTROL_MODE))
         self.CONTROLLER_TYPE = ctrl_type
-        self.parent.get_logger().info('CF%s::Controller Type: %s!' % (self.id[-2:], self.CONTROLLER_TYPE))
+        self.parent.get_logger().info('CF%s::Controller Type: %s!' %
+                                      (self.id[-2:], self.CONTROLLER_TYPE))
 
     def _connected(self):
         self.parent.get_logger().info('Connected to %s -> Crazyflie %s' % (self.id, self.id[-2:]))
@@ -49,8 +77,9 @@ class WebotsAgent:
         self.publisher_pose = self.parent.create_publisher(Pose, self.id + '/goal_pose', 10)
         self.publisher_order = self.parent.create_publisher(String, self.id + '/order', 10)
         # Subscription
-        self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
-        
+        self.sub_pose = self.parent.create_subscription(
+            Pose, self.id + '/pose', self.newpose_callback, 10)
+
         self._is_flying = False
         self.init_pose = False
 
@@ -71,11 +100,15 @@ class WebotsAgent:
 
     def goalpose_callback(self, msg):
         self.publisher_pose.publish(msg)
-        self.parent.get_logger().debug('CF%s::New Goal pose: X: %.2f, Y: %.2f, Z: %.2f' % (self.id[-2:], msg.position.x, msg.position.y, msg.position.z))
+        self.parent.get_logger().debug(
+            'CF%s::New Goal pose: X: %.2f, Y: %.2f, Z: %.2f' %
+            (self.id[-2:], msg.position.x, msg.position.y, msg.position.z))
 
 #####################
-## CF Swarm Class  ##
+# CF Swarm Class  ##
 #####################
+
+
 class CFSwarmWebotsDriver(Node):
     def __init__(self):
         super().__init__('swarm_driver')
@@ -87,10 +120,12 @@ class CFSwarmWebotsDriver(Node):
         self.declare_parameter('cf_constrains_mode', 'vector_distance')
         self.declare_parameter('cf_role', 'leader, follower')
 
-        self.publisher_status = self.create_publisher(String,'swarm/status', 10)
+        self.publisher_status = self.create_publisher(String, 'swarm/status', 10)
         # Subscription
-        self.sub_order = self.create_subscription(String, 'swarm/cf_order', self.order_callback, 10)
-        self.sub_goal_pose = self.create_subscription(Pose, 'swarm/goal_pose', self.goalpose_callback, 10)
+        self.sub_order = self.create_subscription(
+            String, 'swarm/cf_order', self.order_callback, 10)
+        self.sub_goal_pose = self.create_subscription(
+            Pose, 'swarm/goal_pose', self.goalpose_callback, 10)
 
         self.timer_task = self.create_timer(0.02, self.task_manager)
         self.initialize()
@@ -106,18 +141,23 @@ class CFSwarmWebotsDriver(Node):
         controller_type = aux.split(', ')
         aux = self.get_parameter('cf_role').get_parameter_value().string_value
         roles = aux.split(', ')
-        self.constrains = self.get_parameter('cf_constrains_mode').get_parameter_value().string_value
+        self.constrains = self.get_parameter(
+            'cf_constrains_mode').get_parameter_value().string_value
 
         # Define crazyflie URIs
         id_address = dron_id[-10:]
         id_base = dron_id[:16]
         id_address_int = int(id_address, 16)
-        for i in range(int(n),0,-1):
-            cf_str = id_base + hex(id_address_int+i-1)[-10:].upper()
+        for i in range(int(n), 0, -1):
+            cf_str = id_base + hex(id_address_int + i - 1)[-10:].upper()
             uris.add(cf_str)
             self.get_logger().warn('Crazyflie %d URI: %s!' % (i, cf_str))
-            
-            cf = WebotsAgent(self, cf_str, control_mode[i-1], controller_type[i-1], roles[i-1])
+
+            cf = WebotsAgent(self,
+                             cf_str,
+                             control_mode[i - 1],
+                             controller_type[i - 1],
+                             roles[i - 1])
 
             dron.append(cf)
         self.get_logger().info('Formation Control::inicialized.')
@@ -154,12 +194,14 @@ class CFSwarmWebotsDriver(Node):
             self.cmd_motion_.flight_time = max(delta)/self.max_vel
             cf.cmd_motion_.send_pose_data_(cf.scf.cf)
 
-        self.get_logger().info('SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' % (msg.position.x, msg.position.y, msg.position.z))
+        self.get_logger().info(
+            'SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' %
+            (msg.position.x, msg.position.y, msg.position.z))
         '''
 
     def task_manager(self):
         for cf in dron:
-            if cf.ready and len(cf.agent_list)>0 and False:
+            if cf.ready and len(cf.agent_list) > 0 and False:
                 msg = Pose()
                 msg.position.x = cf.pose.position.x
                 msg.position.y = cf.pose.position.y
@@ -172,31 +214,32 @@ class CFSwarmWebotsDriver(Node):
                     if self.constrains == 'distance_hover':
                         # alfa = atan2(error_y, error_x)
                         # beta = atan2(error_z, error_x)
-                        distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
-                        dx += (pow(agent.d,2) - distance) * error_x
-                        dy += (pow(agent.d,2) - distance) * error_y
-                        dz += (pow(agent.d,2) - distance) * error_z
+                        distance = pow(error_x, 2) + pow(error_y, 2) + pow(error_z, 2)
+                        dx += (pow(agent.d, 2) - distance) * error_x
+                        dy += (pow(agent.d, 2) - distance) * error_y
+                        dz += (pow(agent.d, 2) - distance) * error_z
                         msg_data = Float64()
                         msg_data.data = agent.d - sqrt(distance)
                         agent.publisher_data.publish(msg_data)
-                        # self.get_logger().warn('Main: %s ID: %s D: %.3f dx: %.2f dy: %.2f dz: %.2f' % (cf.id, agent.id, distance, dx, dy, dz))
+                        # self.get_logger().warn('Main: %s ID: %s D: %.3f dx: %.2f dy: %.2f dz:
+                        # %.2f' % (cf.id, agent.id, distance, dx, dy, dz))
                     else:
                         dx += agent.x - error_x
                         dy += agent.y - error_y
                         dz += agent.z - error_z
-                msg.position.x += (dx/4)
-                msg.position.y += (dy/4)
-                msg.position.z += (dz/4)
-                
+                msg.position.x += (dx / 4)
+                msg.position.y += (dy / 4)
+                msg.position.z += (dz / 4)
+
                 if msg.position.z < 0.5:
                     msg.position.z = 0.5
 
                 if msg.position.z > 1.2:
                     msg.position.z = 1.2
 
-                
                 # self.get_logger().info('dx: %f dy: %f dz: %f' % (dx, dy, dz))
-                # self.get_logger().error('DX: %f DY: %f DZ: %f' % (msg.position.x, msg.position.y, msg.position.z))
+                # self.get_logger().error('DX: %f DY: %f DZ: %f' % (msg.position.x, msg.position.y,
+                # msg.position.z))
 
                 # TO-DO: Integral Term
                 # cf.integral_x += (1/(len(cf.agent_list)*1.0))*cf.x_error*0.02
@@ -210,8 +253,6 @@ class CFSwarmWebotsDriver(Node):
                 # cf.z_error = dz
 
                 cf.goalpose_callback(msg)
-
-                
 
 
 def main(args=None):

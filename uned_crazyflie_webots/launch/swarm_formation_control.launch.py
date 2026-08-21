@@ -1,3 +1,32 @@
+# Copyright 2026 Robotic Park Lab
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#    * Neither the name of the Robotic Park Lab nor the names of its
+#      contributors may be used to endorse or promote products derived from
+#      this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+
 import os
 import pathlib
 import launch
@@ -6,20 +35,26 @@ from yaml.loader import SafeLoader
 from launch_ros.actions import Node
 from launch import LaunchDescription
 from ament_index_python.packages import get_package_share_directory
-from launch.substitutions import EnvironmentVariable, LaunchConfiguration
-from launch.actions import SetEnvironmentVariable
+from launch.substitutions import LaunchConfiguration
 from webots_ros2_driver.webots_launcher import WebotsLauncher, Ros2SupervisorLauncher
 from webots_ros2_driver.utils import controller_url_prefix
 
 
 def generate_launch_description():
     general_package_dir = get_package_share_directory('uned_crazyflie_config')
-    config_path = os.path.join(general_package_dir, 'resources', 'demo_swarm_formation_distance_four.yaml')
+    config_path = os.path.join(
+        general_package_dir,
+        'resources',
+        'demo_swarm_formation_distance_four.yaml')
     rviz_config_path = os.path.join(general_package_dir, 'rviz', 'demo_swarm_formation.rviz')
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
 
     dron_package_dir = get_package_share_directory('uned_crazyflie_webots')
-    robot_description = pathlib.Path(os.path.join(dron_package_dir, 'resources', 'crazyflie.urdf')).read_text()
+    robot_description = pathlib.Path(
+        os.path.join(
+            dron_package_dir,
+            'resources',
+            'crazyflie.urdf')).read_text()
     webots = WebotsLauncher(
         world=os.path.join(dron_package_dir, 'worlds', 'RoboticPark_4cf.wbt')
     )
@@ -31,28 +66,31 @@ def generate_launch_description():
     with open(config_path) as f:
         data = yaml.load(f, Loader=SafeLoader)
         for key, robot in data.items():
-            print("###  "+robot['name']+"  ###")
-            
-            individual_config_path = os.path.join(general_package_dir, 'resources', robot['config_path'])
+            print("###  " + robot['name'] + "  ###")
 
+            individual_config_path = os.path.join(
+                general_package_dir, 'resources', robot['config_path'])
 
             if robot['type'] == 'virtual' or robot['type'] == 'digital_twin':
-                robot_node_list.append(Node(package='webots_ros2_driver', 
-                                            executable='driver', 
-                                            output='screen',
-                                            name=robot['name'],
-                                            additional_env={'WEBOTS_ROBOT_NAME': robot['name'],
-                                                            'WEBOTS_CONTROLLER_URL': controller_url_prefix() + robot['name'],
-                                                            'WEBOTS_ROBOT_CONFIG_FILE': individual_config_path,
-                                                            'WEBOTS_ROBOT_ROLE': robot['type']},
-                                            parameters=[{   'robot_description': robot_description,
-                                                            'use_sim_time': use_sim_time,
-                                                            'set_robot_state_publisher': True},
-                                            ]
-                                        )
-                )
+                robot_node_list.append(
+                    Node(
+                        package='webots_ros2_driver',
+                        executable='driver',
+                        output='screen',
+                        name=robot['name'],
+                        additional_env={
+                            'WEBOTS_ROBOT_NAME': robot['name'],
+                            'WEBOTS_CONTROLLER_URL': controller_url_prefix() + robot['name'],
+                            'WEBOTS_ROBOT_CONFIG_FILE': individual_config_path,
+                            'WEBOTS_ROBOT_ROLE': robot['type']},
+                        parameters=[
+                            {
+                                'robot_description': robot_description,
+                                'use_sim_time': use_sim_time,
+                                'set_robot_state_publisher': True},
+                        ]))
             if robot['type'] == 'physical' or robot['type'] == 'digital_twin':
-                physical_agent_list += ', '+robot['name']
+                physical_agent_list += ', ' + robot['name']
 
     robot_state_publisher = Node(
         package='robot_state_publisher',
@@ -84,11 +122,11 @@ def generate_launch_description():
     )
 
     vicon_node = Node(
-        package='uned_vicon_sim', 
+        package='uned_vicon_sim',
         executable='vicon_webots',
         name='vicon_webots',
         output='screen',
-        #arguments=['--ros-args', '--log-level', 'info'],
+        # arguments=['--ros-args', '--log-level', 'info'],
         parameters=[
             {'use_sim_time': use_sim_time},
             {"agents": 'dron01, dron02, dron03, dron04, dron05'},
@@ -96,10 +134,10 @@ def generate_launch_description():
     )
 
     ros2_close = launch.actions.RegisterEventHandler(
-                    event_handler=launch.event_handlers.OnProcessExit(
-                    target_action=webots,
-                    on_exit=[launch.actions.EmitEvent(event=launch.events.Shutdown())],
-                    )
+        event_handler=launch.event_handlers.OnProcessExit(
+            target_action=webots,
+            on_exit=[launch.actions.EmitEvent(event=launch.events.Shutdown())],
+        )
     )
 
     ld = LaunchDescription()
@@ -111,7 +149,7 @@ def generate_launch_description():
     ld.add_action(vicon_node)
     for robot in robot_node_list:
         ld.add_action(robot)
-        
+
     ld.add_action(ros2_close)
 
     return ld

@@ -19,5 +19,15 @@ import pytest
 @pytest.mark.copyright
 @pytest.mark.linter
 def test_copyright():
-    rc = main(argv=['.', 'test'])
+    # controllers/: scripts de Webots derivados de sus plantillas de
+    # ejemplo, no se lintan igual que código propio.
+    rc = main(argv=[
+        '.', 'test', '--exclude',
+        './controllers/crazyflie_controller_py/crazyflie_controller_py.py',
+        './controllers/crazyflie_controller_py_firmware_pid/'
+        'crazyflie_controller_py_firmware_pid.py',
+        './controllers/setup.py',
+        './controllers/crazyflie_controller/crazyflie_controller.c',
+        './controllers/crazyflie_controller/crazyflie_controller.h',
+        './controllers/pid_controller.c', './controllers/pid_controller.h'])
     assert rc == 0, 'Found errors'

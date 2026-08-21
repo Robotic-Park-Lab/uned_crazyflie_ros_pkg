@@ -19,5 +19,12 @@ import pytest
 @pytest.mark.linter
 @pytest.mark.pep257
 def test_pep257():
-    rc = main(argv=['.', 'test'])
+    # controllers/: scripts de Webots derivados de sus plantillas de
+    # ejemplo, no se lintan igual que código propio.
+    rc = main(argv=[
+        '.', 'test', '--exclude',
+        './controllers/crazyflie_controller_py/crazyflie_controller_py.py',
+        './controllers/crazyflie_controller_py_firmware_pid/'
+        'crazyflie_controller_py_firmware_pid.py',
+        './controllers/setup.py'])
     assert rc == 0, 'Found code style errors / warnings'

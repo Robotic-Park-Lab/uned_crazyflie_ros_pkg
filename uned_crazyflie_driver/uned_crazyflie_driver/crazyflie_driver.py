@@ -1,3 +1,32 @@
+# Copyright 2026 Robotic Park Lab
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#    * Neither the name of the Robotic Park Lab nor the names of its
+#      contributors may be used to endorse or promote products derived from
+#      this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+
 import logging
 import time
 import rclpy
@@ -6,13 +35,10 @@ import numpy as np
 
 from rclpy.node import Node
 from std_msgs.msg import String
-from std_msgs.msg import UInt16
 from std_msgs.msg import UInt16MultiArray
-from std_msgs.msg import Float64
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Twist
-from uned_crazyflie_config.msg import StateEstimate
 from uned_crazyflie_config.msg import Pidcontroller
 
 import cflib.crtp
@@ -64,11 +90,11 @@ class CMD_Motion():
 
     def str_(self):
         return ('Thrust: ' + str(self.thrust) + ' Roll: ' + str(self.roll) +
-                ' Pitch: ' + str(self.pitch)+' Yaw: ' + str(self.yaw))
+                ' Pitch: ' + str(self.pitch) + ' Yaw: ' + str(self.yaw))
 
     def pose_str_(self):
         return ('X: ' + str(self.x) + ' Y: ' + str(self.y) +
-                ' Z: ' + str(self.z)+' Yaw: ' + str(self.yaw))
+                ' Z: ' + str(self.z) + ' Yaw: ' + str(self.yaw))
 
     def send_pose_data_(self, cf):
         # self.logger.info('Goal Pose: %s' % self.pose_str_())
@@ -148,7 +174,7 @@ class Logging:
             self._lg_stab_data.start()
         except KeyError as e:
             self.parent.get_logger().info('Could not start log configuration,'
-                  '{} not found in TOC'.format(str(e)))
+                                          '{} not found in TOC'.format(str(e)))
         except AttributeError:
             self.parent.get_logger().error('Could not add some log config, bad configuration.')
 
@@ -156,18 +182,18 @@ class Logging:
         self.parent.get_logger().error('Error when logging %s: %s' % (logconf.name, msg))
 
     def _stab_log_data(self, timestamp, data, logconf):
-        if(logconf.name == "Pose"):
+        if (logconf.name == "Pose"):
             self.parent.pose_callback(data)
-        elif(logconf.name == "Twist"):
+        elif (logconf.name == "Twist"):
             self.parent.twist_callback(data)
-        elif(logconf.name == "Data"):
+        elif (logconf.name == "Data"):
             self.parent.data_callback(data)
             # print('[%d][%s]: %s' % (timestamp, logconf.name, data))
         else:
             self.parent.get_logger().error('Error: %s: not valid logconf' % logconf.name)
 
     def param_stab_est_callback(self, name, value):
-        self.parent.get_logger().info('Parameter %s: %s' %(name, value))
+        self.parent.get_logger().info('Parameter %s: %s' % (name, value))
 
     def _connection_failed(self, link_uri, msg):
         self.parent.get_logger().error('Connection to %s failed: %s' % (link_uri, msg))
@@ -207,9 +233,12 @@ class CFDriver(Node):
         # Subscription
         self.sub_order = self.create_subscription(String, 'cf_order', self.order_callback, 10)
         self.sub_pose = self.create_subscription(Pose, 'pose', self.newpose_callback, 10)
-        self.sub_goal_pose = self.create_subscription(Pose, 'goal_pose', self.goalpose_callback, 10)
-        self.sub_cmd = self.create_subscription(Float64MultiArray, 'onboard_cmd', self.cmd_control_callback, 10)
-        self.sub_controller = self.create_subscription(Pidcontroller, 'controllers_params', self.controllers_params_callback, 10)
+        self.sub_goal_pose = self.create_subscription(
+            Pose, 'goal_pose', self.goalpose_callback, 10)
+        self.sub_cmd = self.create_subscription(
+            Float64MultiArray, 'onboard_cmd', self.cmd_control_callback, 10)
+        self.sub_controller = self.create_subscription(
+            Pidcontroller, 'controllers_params', self.controllers_params_callback, 10)
 
         timer_period = 0.01  # seconds
         self.iterate_loop = self.create_timer(timer_period, self.iterate)
@@ -220,15 +249,19 @@ class CFDriver(Node):
         # Read & Check ROS Parameters
         dron_id = self.get_parameter('cf_uri').get_parameter_value().string_value
         self.get_logger().info('Crazyflie ID: %s!' % dron_id)
-        self.CONTROL_MODE = self.get_parameter('cf_control_mode').get_parameter_value().string_value
+        self.CONTROL_MODE = self.get_parameter(
+            'cf_control_mode').get_parameter_value().string_value
         self.get_logger().info('Crazyflie Control Mode: %s!' % self.CONTROL_MODE)
-        self.CONTROLLER_TYPE = self.get_parameter('cf_controller_type').get_parameter_value().string_value
+        self.CONTROLLER_TYPE = self.get_parameter(
+            'cf_controller_type').get_parameter_value().string_value
         self.get_logger().info('Crazyflie Controller Type: %s!' % self.CONTROLLER_TYPE)
         # Connection
         cflib.crtp.init_drivers()
         available = cflib.crtp.scan_interfaces()
         for i in available:
-            self.get_logger().info("Interface with URI [%s] found and name/comment [%s]" % (i[0], i[1]))
+            self.get_logger().info(
+                "Interface with URI [%s] found and name/comment [%s]" %
+                (i[0], i[1]))
         self.scf = Logging(dron_id, self)
         # Init Variables
         self.scf.init_pose = False
@@ -295,10 +328,14 @@ class CFDriver(Node):
         roll = data['stabilizer.roll']
         pitch = data['stabilizer.pitch']
         yaw = data['stabilizer.yaw']
-        msg.orientation.x = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-        msg.orientation.y = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
-        msg.orientation.z = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
-        msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+        msg.orientation.x = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - \
+            np.cos(roll / 2) * np.sin(pitch / 2) * np.sin(yaw / 2)
+        msg.orientation.y = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + \
+            np.sin(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2)
+        msg.orientation.z = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - \
+            np.sin(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2)
+        msg.orientation.w = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + \
+            np.sin(roll / 2) * np.sin(pitch / 2) * np.sin(yaw / 2)
         self.publisher_pose.publish(msg)
 
     def twist_callback(self, data):
@@ -412,7 +449,9 @@ class CFDriver(Node):
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kp', msg.kp)
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
-            self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
+            self.get_logger().info(
+                'Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' %
+                (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
         elif (self.CONTROLLER_TYPE == 'EventBased'):
             if msg.id == 'x':
                 groupstr = 'posEbCtlPid'
@@ -489,7 +528,9 @@ class CFDriver(Node):
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kp', msg.kp)
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
                 self.scf._cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
-            self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
+            self.get_logger().info(
+                'Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' %
+                (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
 
     def newpose_callback(self, msg):
         self.scf._cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
@@ -499,7 +540,8 @@ class CFDriver(Node):
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
             self.get_logger().info('Init pose: %s' % self.cmd_motion_.pose_str_())
-        if ((abs(msg.position.x)>xy_lim) or (abs(msg.position.y)>xy_lim) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
+        if ((abs(msg.position.x) > xy_lim) or (abs(msg.position.y) > xy_lim) or (
+                abs(msg.position.z) > 2.0)) and self.CONTROL_MODE != 'HighLevel':
             self.CONTROL_MODE = 'HighLevel'
             self.scf._is_flying = True
             self.get_logger().error('CrazyflieDriver::Out.')

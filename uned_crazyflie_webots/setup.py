@@ -1,14 +1,14 @@
 import os
-from glob import glob
 from setuptools import setup
 
 package_name = 'uned_crazyflie_webots'
 
-data_files=[
-        ('share/ament_index/resource_index/packages',
-            ['resources/' + package_name]),
-        ('share/' + package_name, ['package.xml']),
-    ]
+data_files = [
+    ('share/ament_index/resource_index/packages',
+     ['resource/' + package_name]),
+    ('share/' + package_name, ['package.xml']),
+]
+
 
 def package_files(data_files, directory_list):
     paths_dict = {}
@@ -26,6 +26,7 @@ def package_files(data_files, directory_list):
         data_files.append((key, paths_dict[key]))
 
     return data_files
+
 
 setup(
     name=package_name,
