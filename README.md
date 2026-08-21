@@ -7,6 +7,7 @@ Repositorio con los paquetes de ROS2 y ficheros de configuración para la teleop
 - **doc**. Contiene un fichero _.tex_ que aborda más en detalle toda la información relacionada con el repositorio: esquemas de ROS, búsquedas bibliográficas, enlaces de interés, etc.
 - **scripts**. Contiene aquellos ficheros auxiliares que no forman parte de ningún paquete de ROS. Por ejemplo, ficheros _.sh_ para automatizar procesos repetitivos como la conversión de los ficheros _.bag_ a txt o los scripts de Matlab para representar datasets.
 - **uned_crazyfldie_config**. Paquete de ROS2. Contiene aquellos elementos auxiliares para la configuración del entorno, así como los _.launch.py_ para la ejecución en bloque de las diferentes estructuras del sistema.a
+- **uned_crazyflie_common**. Paquete de ROS2. Código Python compartido entre _uned_crazyflie_driver_, _uned_crazyflie_webots_ y _uned_crazyflie_task_ (controlador PID y aplicación de parámetros PID del Crazyflie), para no duplicarlo en cada paquete.
 - **uned_crazyflie_controllers**. Paquete de ROS2. Contiene los nodos de control en función de las diferentes arquitecturas de control: _PID Periódico_ y _PID Basado en Eventos_.
 - **uned_crazyflie_driver**. Paquete de ROS2. Contiene los nodos para la comunicación con los crazyflies a través de la librería cflib: _crazyflie_driver_ y _swarm_driver_.
 - **uned_crazyflie_gui**. Paquete de ROS2. Contiene la interfaz de gráfica para el manejo del robot individual. _En desarrollo_
