@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'interface_node = uned_crazyflie_gui.interface_node:main'
+            'interface_node = uned_crazyflie_gui.interface_gui:main'
         ],
     },
 )

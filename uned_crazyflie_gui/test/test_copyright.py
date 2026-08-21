@@ -19,10 +19,8 @@ import pytest
 @pytest.mark.copyright
 @pytest.mark.linter
 def test_copyright():
-    # main_ui.py/logo_rc.py: generados por pyuic5/pyrcc5. interface_gui.py:
-    # pendiente de decidir (ver AUDIT.md en la rama doc, punto complejo #7).
+    # main_ui.py/logo_rc.py: generados por pyuic5/pyrcc5.
     rc = main(argv=[
         '.', 'test', '--exclude',
-        './uned_crazyflie_gui/main_ui.py', './uned_crazyflie_gui/logo_rc.py',
-        './uned_crazyflie_gui/interface_gui.py'])
+        './uned_crazyflie_gui/main_ui.py', './uned_crazyflie_gui/logo_rc.py'])
     assert rc == 0, 'Found errors'

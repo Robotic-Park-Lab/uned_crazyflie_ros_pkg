@@ -15,12 +15,8 @@
 from ament_flake8.main import main_with_errors
 import pytest
 
-# main_ui.py y logo_rc.py son generados por pyuic5/pyrcc5. interface_gui.py
-# es una implementación alternativa sin conectar a ningún entry point,
-# rota (import absoluto a un módulo inexistente) y pendiente de decidir si
-# se arregla o se retira -- ver AUDIT.md en la rama doc, punto complejo #7.
-GENERATED_OR_PENDING = [
-    '--exclude', 'main_ui.py', 'logo_rc.py', 'interface_gui.py']
+# main_ui.py y logo_rc.py son generados por pyuic5/pyrcc5.
+GENERATED_OR_PENDING = ['--exclude', 'main_ui.py', 'logo_rc.py']
 
 
 @pytest.mark.flake8
