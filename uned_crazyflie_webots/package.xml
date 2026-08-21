@@ -17,6 +17,7 @@
   <depend>tf_transformations</depend>
   <depend>webots_ros2_driver</depend>
   <depend>uned_crazyflie_driver</depend>
+  <depend>uned_crazyflie_common</depend>
   <!-- Paquete de otro repo del laboratorio (RoboticPark), sin clave
        rosdep: hay que tenerlo ya compilado en el mismo workspace. -->
   <depend>multi_agent_pkg</depend>

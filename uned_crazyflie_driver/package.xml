@@ -18,6 +18,7 @@
   <depend>tf_transformations</depend>
   <depend>ament_index_python</depend>
   <depend>uned_crazyflie_config</depend>
+  <depend>uned_crazyflie_common</depend>
   <!-- Paquetes de otros repos del laboratorio, sin clave rosdep: hay que
        tenerlos ya compilados en el mismo workspace (ver README). -->
   <depend>multi_agent_pkg</depend>
