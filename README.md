@@ -7,7 +7,7 @@ Esta rama (`doc`) no contiene código: solo explica para qué sirve cada rama de
 | Rama | Propósito |
 |---|---|
 | `humble-dev` | Desarrollo activo, sobre ROS 2 Humble. Rama por defecto del repo. Usa `cflib` (`crazyflie-lib-python`) directamente. |
-| `benchmark` | **No se modifica ni se renombra.** Respalda un capítulo de libro sobre control publicado por Francisco Mañas. Cualquier actualización se reproduce reinstalando desde `RoboticPark/install.sh`, nunca con push directo. |
+| `benchmark` | **No se modifica ni se renombra.** Bloqueada en GitHub (`lock_branch`) incluso para administradores. Respalda un capítulo de libro sobre control publicado por Francisco Mañas. Cualquier actualización se reproduce reinstalando desde `RoboticPark/install.sh`, nunca con push directo. |
 | `ros2-galactic-AGJ` | Controlador fuzzy de posición desarrollado en el Trabajo Fin de Máster de un alumno (iniciales AGJ). Se conserva tal cual: no se fusiona con `humble-dev` ni se elimina. |
 | `ros-noetic` | Compatibilidad con ROS 1 Noetic. Incluye el submódulo `whoenig/crazyflie_ros`, que **no** se usa en `humble-dev` (ahí el driver ROS 2 habla directamente con `cflib`). |
 | `doc` (esta) | Documentación de ramas y guía de contribución, común a todo el laboratorio. |
