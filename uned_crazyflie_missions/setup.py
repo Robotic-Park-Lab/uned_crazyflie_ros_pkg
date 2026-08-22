@@ -15,18 +15,17 @@ setup(
     zip_safe=True,
     maintainer='Francisco José Mañas Álvarez',
     maintainer_email='fjmanas@dia.uned.es',
-    description='Nodos de misión de alto nivel para el crazyflie 2.1, indiferentes a si el dron'
-    ' es físico o virtual: formaciones (leader-follower, basada en forma, en Webots) y'
-    ' recorrido de waypoints tipo TSP',
+    description='High-level mission nodes for the crazyflie 2.1: each one talks only over'
+    ' topics (never to cflib/Webots directly), so the same node works with a physical or'
+    ' virtual drone -- formation control, waypoint touring, and generic topic sequencing,'
+    ' all configured from a .yaml, not hardcoded',
     license='BSD-3-Clause',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'leader_follower = uned_crazyflie_missions.leader_follower:main',
-            'shape_based_formation_control ='
-            ' uned_crazyflie_missions.shape_based_formation_control:main',
-            'formation_control_webots = uned_crazyflie_missions.formation_control_webots:main',
-            'tsp_waypoints = uned_crazyflie_missions.tsp_waypoints:main',
+            'formation = uned_crazyflie_missions.formation:main',
+            'waypoints = uned_crazyflie_missions.waypoints:main',
+            'sequencer = uned_crazyflie_missions.sequencer:main',
         ],
     },
 )

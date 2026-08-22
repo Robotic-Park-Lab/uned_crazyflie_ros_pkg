@@ -1,32 +1,49 @@
 # uned_crazyflie_missions
 
-`ament_python` package (formerly `uned_crazyflie_task`) with **high-level mission** nodes for one or several Crazyflies: formations and waypoint tours. All of them are agnostic to whether the drone is physical or virtual (Webots) — they talk to the driver over topics, not directly to `cflib` or Webots (except `leader_follower.py`/`shape_based_formation_control.py`, see below).
+`ament_python` package with **high-level mission** nodes for one or several Crazyflies. Every node here talks **only over topics** — never directly to `cflib` or Webots — so the same node works unchanged with a physical or a virtual drone, and never needs to import anything from `uned_crazyflie_driver`. Each node is configured from a `.yaml` (see `uned_crazyflie_config/resources/`), not from hardcoded values or a pile of ROS parameters, so a new experience only needs a new config file, not new code.
+
+This is a from-scratch redesign (2026-08-22): the previous version of this package (`leader_follower.py`, `shape_based_formation_control.py`, `formation_control_webots.py`, plus their `agent.py`/`cmd_motion.py` support classes) connected **directly** to `cflib.crazyflie.swarm.Swarm` — three separate, duplicate, obsolete driver implementations living inside what was supposed to be a driver-agnostic package, predating `uned_crazyflie_driver`'s `swarm_driver`/`webots_driver` consolidation. All of that is gone; the real formation-control law from `shape_based_formation_control.py` was extracted into `formation.py` below, everything else was dead weight.
 
 ## Nodes
 
-- **`tsp_waypoints`**: visits a set of waypoints, solving the visiting order as a traveling salesman problem (TSP) with a nearest-neighbor + 2-opt heuristic (`tsp.py`, tested in `test/test_tsp.py` with no ROS dependency). Works the same with a physical or virtual Crazyflie: it only uses `<robot_id>/order` (`take_off`/`land`) and `<robot_id>/goal_pose` as commands, reading `<robot_id>/local_pose` as feedback — the same topic contract already exposed by `uned_crazyflie_driver`/`uned_crazyflie_webots`. Parameters: `robot_id` (drone namespace, default `dron01`), `waypoints` (flat list `[x1,y1,z1, x2,y2,z2, ...]`), `tolerance` (meters to consider a waypoint reached), `loop` (repeat the tour).
+- **`formation`** (`formation.py`): one instance per robot. Subscribes to its own pose and its neighbours' poses, publishes its own absolute goal pose, using a distance/offset consensus law (mean neighbour error + integral term — see the module docstring for the exact math and where it came from). Config:
+  ```yaml
+  config:
+    output: '/dron01/goal_pose'
+    input: '/dron01/local_pose'
+    period: 0.02
+  neighbours:
+    N0: {id: dron02, topic: '/dron02/local_pose', dx: 0.25, dy: 0.25, dz: 0.1}
+  gains:
+    integral_divisor_xy: 1.0
+    integral_divisor_z: 5.0
   ```
-  ros2 run uned_crazyflie_missions tsp_waypoints --ros-args \
-    -p robot_id:=dron01 \
-    -p waypoints:="[0.0,0.0,1.0, 2.0,0.0,1.0, 2.0,2.0,1.0, 0.0,2.0,1.0]"
+  **This config schema is this package's own proposal** — Francisco described the node's behaviour ("subscribe to robot positions, publish goal_pose") but didn't hand over a reference `.yaml` for it the way he did for the two nodes below, so there's no example file to point at yet. Flagging for review, not silently assumed.
   ```
-- **`formation_control_webots`**: formation control purely over topics (`<id>/goal_pose`, `<id>/pose`), with no `cflib` dependency — the most "driver-agnostic" of the three formation nodes.
-- **`leader_follower`** / **`shape_based_formation_control`**: leader-follower formation and shape-based formation. Unlike the two nodes above, these two connect **directly** to `cflib.crazyflie.swarm.Swarm` (physical hardware only) instead of talking to the driver over topics — a different architecture within the same package, inherited from the original code; not touched in this pass.
+  ros2 run uned_crazyflie_missions formation --ros-args -p config:=/path/to/formation.yaml
+  ```
+
+- **`waypoints`** (`waypoints.py`): drives one robot through a sequence of points read from a config file — `take_off`, visit every point (in the declared order, or TSP-optimized, see `shape`), `land`. Matches `uned_crazyflie_config/resources/demo_individual_waypoints.yaml` exactly (see that file for the full schema: `output`/`input` topics and types, `range` tolerance, `shape` (`polygon` or `tsp`), `repeat`, `period`, and a `points` dict with per-point `x`/`y`/`z` and an optional `t` timeout). Ordering and the pure TSP heuristic (`nearest_neighbor` + `two_opt`) still live in `tsp.py`, unchanged.
+  ```
+  ros2 run uned_crazyflie_missions waypoints --ros-args -p config:=/path/to/demo_individual_waypoints.yaml
+  ```
+
+- **`sequencer`** (`sequencer.py`): publishes a scripted sequence of values to arbitrary topics, each step gated by a fixed delay or by waiting for a specific value on a subscribed topic. Matches `uned_crazyflie_config/resources/demo_individual_waypoints_topics.yaml` exactly (declare `publisher`/`subscription` topics + types, then `cmd00`, `cmd01`, ... in order, each with a `topic`/`type`/`value` and a `trigger`). Only `std_msgs/String` is implemented today, since it's the only type used in the reference config — not a silent limitation, `SUPPORTED_TYPES` in the module makes it explicit and it raises a clear error otherwise.
+  ```
+  ros2 run uned_crazyflie_missions sequencer --ros-args -p config:=/path/to/demo_individual_waypoints_topics.yaml
+  ```
 
 ## Adding a new mission
 
-Follow the same pattern as `tsp_waypoints`: a node that publishes `<robot_id>/order`/`<robot_id>/goal_pose` and subscribes to `<robot_id>/local_pose`, without talking directly to `cflib`/Webots, so that it works the same with a physical or virtual drone. Register it as a `console_script` in `setup.py`.
-
-## Ideas for future missions (not implemented)
-
-Autonomous navigation and exploration, also mentioned as a goal for this package, have not been implemented in this pass — unlike the TSP case (which Francisco explicitly requested over "a set of points"), there is no concrete specification of which algorithm/sensor to use, and adding an empty node just to check a box would not add anything real.
+Same pattern as the three nodes above: a node that takes a single `config` parameter (path to a `.yaml`), talks only over the topics named in that config, and never imports from `uned_crazyflie_driver` or `cflib`. Register it as a `console_script` in `setup.py`.
 
 ## Tests
 
-Beyond the standard lint tests (`ament_copyright`, `ament_flake8`, `ament_pep257`), this package has real unit tests for the logic that is pure enough to test without a running ROS graph:
+Beyond the standard lint tests (`ament_copyright`, `ament_flake8`, `ament_pep257`), every node's pure logic is unit-tested without a running ROS graph:
 
-- **`test_tsp.py`** (4 tests) exercises `tsp.py` directly: `nearest_neighbor` visits every point exactly once, `two_opt` never makes a tour worse, `solve_tsp` finds the true optimum on a 4-point square (the perimeter, not a diagonal crossing), and the 2-point edge case is handled.
-- **`test_cmd_motion.py`** (8 tests) exercises `CMD_Motion.ckeck_pose()` (position saturation) with a fake logger: positions inside `xy_warn` are left untouched, positions between `xy_warn` and `xy_lim` only warn, positions beyond `xy_lim` get clamped to 95% of `xy_warn` with the correct sign, and X/Y are clamped independently. It also exercises `send_pose_data_`/`send_offboard_setpoint_` with a fake Crazyflie object recording calls, including the `relative_pose` branch introduced when `leader_follower.py` and `shape_based_formation_control.py` were deduplicated (see git history) — the default call is asserted to reproduce the exact pre-refactor `leader_follower.py` behaviour.
-- **`test_agent.py`** (4 tests) exercises `Agent` with a minimal fake `parent` object (duck-typed `get_logger()`/`create_subscription()`, no real ROS node needed): the constructor stores id/position and subscribes to the right `<id>/pose` topic, `str_()` includes the id and coordinates, and `gtpose_callback` stores the received pose.
+- **`test_tsp.py`** (4 tests): `nearest_neighbor` visits every point once, `two_opt` never worsens a tour, `solve_tsp` finds the true optimum on a 4-point square (perimeter, not a diagonal crossing), and the 2-point edge case.
+- **`test_waypoints.py`** (4 tests): `load_points` preserves yaml declaration order and defaults a missing `t` to 0; `order_for_shape('polygon', ...)` is the declared order; `order_for_shape('tsp', ...)` finds the real optimum (same square as above, checked with an actual path-length comparison, not just "some permutation"); a single-point edge case.
+- **`test_formation.py`** (4 tests): `compute_correction` is zero with no neighbours, zero when already at the desired offset, pulls toward the desired offset when too far, and is the *mean* of several neighbours' errors (checked with values chosen so the mean has to actually cancel, not just "any non-crashing number").
+- **`test_sequencer.py`** (4 tests): `sorted_cmd_keys` orders `cmd00`/`cmd01`/... correctly (including two-digit numbers) and ignores unrelated keys; `trigger_satisfied` for both `time` and `topic` triggers, plus an unknown trigger type.
 
-**Deliberately not unit-tested**: `tsp_waypoints.py`'s `TSPWaypointsNode`, `formation_control_webots.py`, `leader_follower.py`, and `shape_based_formation_control.py` are full ROS nodes (or, for the latter two, also talk directly to `cflib.crazyflie.swarm.Swarm`) — wiring a meaningful unit test for them would need a running ROS graph or a real/mocked Crazyflie swarm, which is out of scope for this pass. `tsp_waypoints.py`'s state machine was instead checked with a live `ros2 run` integration test against a harness node during development (see `AUDIT.md` on the `doc` branch for that verification).
+**Deliberately not unit-tested**: the `Node` subclasses themselves (`FormationNode`, `WaypointsNode`, `SequencerNode`) — wiring a meaningful test for them needs a running ROS graph, which is out of scope for a unit test here. `waypoints.py`'s state machine was checked with a live `ros2 run` integration test against a harness node during the original TSP-only version's development (see `AUDIT.md` on the `doc` branch); that harness test needs re-running against the new config-driven interface, not done in this pass.

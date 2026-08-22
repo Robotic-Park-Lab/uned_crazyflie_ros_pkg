@@ -3,22 +3,14 @@
 <package format="3">
   <name>uned_crazyflie_missions</name>
   <version>0.0.0</version>
-  <description>Nodos de misión de alto nivel para el crazyflie 2.1, indiferentes a si el dron es físico o virtual: formaciones (leader-follower, basada en forma, en Webots) y recorrido de waypoints tipo TSP</description>
+  <description>High-level mission nodes for the crazyflie 2.1, topic-only (formation control, waypoint touring, generic topic sequencing), config-driven from a .yaml, driver-agnostic (physical or virtual)</description>
   <maintainer email="fjmanas@dia.uned.es">Francisco José Mañas Álvarez</maintainer>
   <license>BSD-3-Clause</license>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
-  <depend>visualization_msgs</depend>
-  <depend>uned_crazyflie_config</depend>
-  <depend>uned_crazyflie_driver</depend>
-  <!-- Paquete de otro repo del laboratorio (ros2-vicon-receiver), sin
-       clave rosdep: hay que tenerlo ya compilado en el mismo workspace. -->
-  <depend>vicon_receiver</depend>
-  <exec_depend>python3-numpy</exec_depend>
-  <!-- cflib (Crazyflie Python library) no tiene clave rosdep: se instala
-       aparte, ver la sección "Dependencias" del README. -->
+  <exec_depend>python3-yaml</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
