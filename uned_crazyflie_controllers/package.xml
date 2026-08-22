@@ -3,7 +3,7 @@
 <package format="3">
   <name>uned_crazyflie_controllers</name>
   <version>0.0.0</version>
-  <description>Controladores en C++ para el crazyflie 2.1: PID periódico (posición y velocidad angular), PID basado en eventos, predictivo generalizado y de trayectoria</description>
+  <description>Controladores en C++ para el crazyflie 2.1, pensados para docencia: PID periódico (posición y velocidad angular), PID basado en eventos y predictivo generalizado (GPC). Base para que trabajos de alumnos añadan nuevas técnicas de control.</description>
   <maintainer email="fjmanas@dia.uned.es">Francisco José Mañas Álvarez</maintainer>
   <license>BSD-3-Clause</license>
 
