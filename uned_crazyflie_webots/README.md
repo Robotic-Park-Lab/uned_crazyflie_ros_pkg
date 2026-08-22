@@ -16,7 +16,7 @@ Ambos comparten con `uned_crazyflie_driver` la inicialización de motores/sensor
 - **`resources/`**: URDF/modelos del robot para Webots.
 - **`worlds/`**: mundos `.wbt` de simulación (1 a 4 Crazyflies, formación esférica) y sus mallas.
 - **`controllers/`**: controladores C/Python nativos de Webots (plantillas del propio simulador/Bitcraze), excluidos del lint por ser código generado.
-- **`launch/`**: 6 `.launch.py` de demo, parcialmente duplicados con los de `uned_crazyflie_config` — se consolidarán con el launch único de la tarea 8 (ver `AUDIT.md`).
+- **`launch/`**: 6 `.launch.py` de demo, parcialmente duplicados con los de `uned_crazyflie_config`. El launch único (`uned_crazyflie_config/launch/experience.launch.py`) ya cubre este caso — pendiente de revisión manual por Francisco decidir cuáles de estos 6 se retiran (ver `AUDIT.md`, punto 8 de la Fase 2).
 
 ## Dependencias de otros repos del laboratorio
 
