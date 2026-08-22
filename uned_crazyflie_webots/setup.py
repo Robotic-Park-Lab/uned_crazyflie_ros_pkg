@@ -1,14 +1,14 @@
 import os
-from glob import glob
 from setuptools import setup
 
 package_name = 'uned_crazyflie_webots'
 
-data_files=[
-        ('share/ament_index/resource_index/packages',
-            ['resources/' + package_name]),
-        ('share/' + package_name, ['package.xml']),
-    ]
+data_files = [
+    ('share/ament_index/resource_index/packages',
+     ['resource/' + package_name]),
+    ('share/' + package_name, ['package.xml']),
+]
+
 
 def package_files(data_files, directory_list):
     paths_dict = {}
@@ -27,6 +27,7 @@ def package_files(data_files, directory_list):
 
     return data_files
 
+
 setup(
     name=package_name,
     version='0.0.0',
@@ -34,10 +35,10 @@ setup(
     data_files=package_files(data_files, ['resources/', 'launch/', 'worlds/']),
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='kiko',
+    maintainer='Francisco José Mañas Álvarez',
     maintainer_email='fjmanas@dia.uned.es',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Driver y controlador ROS 2 para simular el crazyflie 2.1 en Webots',
+    license='BSD-3-Clause',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

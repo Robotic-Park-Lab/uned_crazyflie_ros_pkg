@@ -1,4 +1,6 @@
 # uned_crazyflie_ros_pkg
+
+> 📖 Para entender las ramas de este repo y la guía de contribución, consulta la rama [`doc`](https://github.com/Robotic-Park-Lab/uned_crazyflie_ros_pkg/tree/doc).
 Repositorio con los paquetes de ROS2 y ficheros de configuración para la teleoperación y simulación del dron crazyflie 2.1 en ROS2, Gazebo y Matlab. La finalidad es obtener una herramienta Hardware-in-the-Loop que sea facilmente escalable y mantenible.
 
 #### Estructura 

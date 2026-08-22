@@ -1,25 +1,46 @@
-import logging
+# Copyright 2026 Robotic Park Lab
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#    * Neither the name of the Robotic Park Lab nor the names of its
+#      contributors may be used to endorse or promote products derived from
+#      this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+
 import time
 import rclpy
 from threading import Timer
 import numpy as np
-import math
 
 from rclpy.node import Node
 from std_msgs.msg import String
-from std_msgs.msg import UInt16
 from std_msgs.msg import UInt16MultiArray
-from std_msgs.msg import Float64
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Twist
-from uned_crazyflie_config.msg import StateEstimate
 from uned_crazyflie_config.msg import Pidcontroller
-from uned_crazyflie_config.srv import AddTwoInts
-from vicon_receiver.msg import Position
 
 import cflib.crtp
-from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.swarm import Swarm
@@ -30,6 +51,7 @@ dron = list()
 publisher = set()
 xy_warn = 1.3
 xy_lim = 1.5
+
 
 class CMD_Motion():
     def __init__(self, logger):
@@ -69,26 +91,28 @@ class CMD_Motion():
 
     def str_(self):
         return ('Thrust: ' + str(self.thrust) + ' Roll: ' + str(self.roll) +
-                ' Pitch: ' + str(self.pitch)+' Yaw: ' + str(self.yaw))
+                ' Pitch: ' + str(self.pitch) + ' Yaw: ' + str(self.yaw))
 
     def pose_str_(self):
         return ('X: ' + str(self.x) + ' Y: ' + str(self.y) +
-                ' Z: ' + str(self.z)+' Yaw: ' + str(self.yaw))
+                ' Z: ' + str(self.z) + ' Yaw: ' + str(self.yaw))
 
     def send_pose_data_(self, cf, relative_pose=False):
-        if(relative_pose):
-            # cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.5, relative=relative_pose)
+        if (relative_pose):
+            # cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.5,
+            # relative=relative_pose)
             self.logger.info('Goal Pose: %s' % (self.pose_str_()))
             cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.1)
         else:
             self.logger.info('Goal Pose: %s' % (self.pose_str_()))
             # cf.commander.send_position_setpoint(self.x, self.y, self.z, self.yaw)
             cf.high_level_commander.go_to(self.x, self.y, self.z, self.yaw, 0.5)
-    
+
     def send_offboard_setpoint_(self, cf):
         self.logger.info('Command: %s' % self.str_())
         cf.commander.send_setpoint(self.roll, self.pitch, self.yaw,
                                    self.thrust)
+
 
 class Agent():
     def __init__(self, parent, x, y, z, id):
@@ -99,18 +123,21 @@ class Agent():
         self.pose = Pose()
         self.parent = parent
         self.parent.get_logger().info('Agent: %s' % self.str_())
-        self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.gtpose_callback, 10)
+        self.sub_pose = self.parent.create_subscription(
+            Pose, self.id + '/pose', self.gtpose_callback, 10)
 
     def str_(self):
         return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
-                ' Y: ' + str(self.y)+' Z: ' + str(self.z))
+                ' Y: ' + str(self.y) + ' Z: ' + str(self.z))
 
     def gtpose_callback(self, msg):
         self.pose = msg
 
 ############################
-## CF Swarm Logging Class ##
+# CF Swarm Logging Class ##
 ############################
+
+
 class CFLogging:
     def __init__(self, scf, parent, link_uri, ctrl_mode, ctrl_type, role):
         self.role = role
@@ -135,23 +162,32 @@ class CFLogging:
         self.scf.cf.connection_lost.add_callback(self._connection_lost)
         self.scf.cf.open_link(link_uri)
         self.CONTROL_MODE = ctrl_mode
-        self.parent.get_logger().info('CF%s::Control Mode: %s!' % (self.scf.cf.link_uri[-2:], self.CONTROL_MODE))
+        self.parent.get_logger().info('CF%s::Control Mode: %s!' %
+                                      (self.scf.cf.link_uri[-2:], self.CONTROL_MODE))
         self.scf.CONTROLLER_TYPE = ctrl_type
-        self.parent.get_logger().info('CF%s::Controller Type: %s!' % (self.scf.cf.link_uri[-2:], self.scf.CONTROLLER_TYPE))
+        self.parent.get_logger().info('CF%s::Controller Type: %s!' %
+                                      (self.scf.cf.link_uri[-2:], self.scf.CONTROLLER_TYPE))
 
     def _connected(self, link_uri):
-        self.parent.get_logger().info('Connected to %s -> Crazyflie %s' % (link_uri, self.scf.cf.link_uri[-2:]))
+        self.parent.get_logger().info('Connected to %s -> Crazyflie %s' %
+                                      (link_uri, self.scf.cf.link_uri[-2:]))
         # ROS
         # Publisher
         self.publisher_pose = self.parent.create_publisher(Pose, self.id + '/cf_pose', 10)
         self.publisher_twist = self.parent.create_publisher(Twist, self.id + '/cf_twist', 10)
-        self.publisher_data = self.parent.create_publisher(UInt16MultiArray, self.id + '/cf_data', 10)
+        self.publisher_data = self.parent.create_publisher(
+            UInt16MultiArray, self.id + '/cf_data', 10)
         # Subscription
-        self.sub_order = self.parent.create_subscription(String, self.id + '/cf_order', self.order_callback, 10)
-        self.sub_pose = self.parent.create_subscription(Pose, self.id + '/pose', self.newpose_callback, 10)
-        self.sub_goal_pose = self.parent.create_subscription(Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
-        self.sub_cmd = self.parent.create_subscription(Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
-        self.sub_controller = self.parent.create_subscription(Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
+        self.sub_order = self.parent.create_subscription(
+            String, self.id + '/cf_order', self.order_callback, 10)
+        self.sub_pose = self.parent.create_subscription(
+            Pose, self.id + '/pose', self.newpose_callback, 10)
+        self.sub_goal_pose = self.parent.create_subscription(
+            Pose, self.id + '/goal_pose', self.goalpose_callback, 10)
+        self.sub_cmd = self.parent.create_subscription(
+            Float64MultiArray, self.id + '/onboard_cmd', self.cmd_control_callback, 10)
+        self.sub_controller = self.parent.create_subscription(
+            Pidcontroller, self.id + '/controllers_params', self.controllers_params_callback, 10)
         # POSE3D
         self._lg_stab_pose = LogConfig(name='Pose', period_in_ms=50)
         self._lg_stab_pose.add_variable('stateEstimate.x', 'float')
@@ -182,7 +218,8 @@ class CFLogging:
         self.scf.cf.param.add_update_callback(group='velCtlPid', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='posEbCtlPid', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='velEbCtlPid', cb=self.param_stab_est_callback)
-        self.scf.cf.param.add_update_callback(group='pid_attitude', cb=self.param_stab_est_callback)
+        self.scf.cf.param.add_update_callback(
+            group='pid_attitude', cb=self.param_stab_est_callback)
         self.scf.cf.param.add_update_callback(group='pid_rate', cb=self.param_stab_est_callback)
         '''
         self.scf.cf.param.add_update_callback(group='deck', cb=self.param_stab_est_callback)
@@ -207,9 +244,11 @@ class CFLogging:
             # self._lg_stab_data.start()
         except KeyError as e:
             self.parent.get_logger().info('Could not start log configuration,'
-                  '{} not found in TOC'.format(str(e)))
+                                          '{} not found in TOC'.format(str(e)))
         except AttributeError:
-            self.parent.get_logger().error('Crazyflie %s. Could not add Stabilizer log config, bad configuration.' % self.scf.cf.link_uri[-2:])
+            self.parent.get_logger().error(
+                'Crazyflie %s. Could not add Stabilizer log config, bad configuration.' %
+                self.scf.cf.link_uri[-2:])
 
         self._is_flying = False
         self.init_pose = False
@@ -217,31 +256,38 @@ class CFLogging:
         self.scf.cf.commander.set_client_xmode(True)
 
     def _stab_log_error(self, logconf, msg):
-        self.parent.get_logger().error('Crazyflie %s. Error when logging %s: %s' % (self.scf.cf.link_uri[-2:], logconf.name, msg))
+        self.parent.get_logger().error('Crazyflie %s. Error when logging %s: %s' %
+                                       (self.scf.cf.link_uri[-2:], logconf.name, msg))
 
     def _stab_log_data(self, timestamp, data, logconf):
-        if(logconf.name == "Pose"):
+        if (logconf.name == "Pose"):
             self.pose_callback(data)
-        elif(logconf.name == "Twist"):
+        elif (logconf.name == "Twist"):
             self.twist_callback(data)
-        elif(logconf.name == "Data"):
+        elif (logconf.name == "Data"):
             self.data_callback(data)
-            #print('[%d]CF%s[%s]: %s' % (timestamp, self.scf.cf.link_uri[-2:], logconf.name, data))
+            # print('[%d]CF%s[%s]: %s' % (timestamp, self.scf.cf.link_uri[-2:], logconf.name,
+            # data))
         else:
-            self.parent.get_logger().error('CF%s. Error: %s: not valid logconf' % (self.scf.cf.link_uri[-2:], logconf.name))
+            self.parent.get_logger().error('CF%s. Error: %s: not valid logconf' %
+                                           (self.scf.cf.link_uri[-2:], logconf.name))
 
     def param_stab_est_callback(self, name, value):
-        self.parent.get_logger().info('CF%s. Parameter %s: %s' %(self.scf.cf.link_uri[-2:], name, value))
+        self.parent.get_logger().info('CF%s. Parameter %s: %s' %
+                                      (self.scf.cf.link_uri[-2:], name, value))
 
     def _connection_failed(self, link_uri, msg):
-        self.parent.get_logger().error('Crazyflie %s. Connection to %s failed: %s' % (self.scf.cf.link_uri[-2:], link_uri, msg))
+        self.parent.get_logger().error('Crazyflie %s. Connection to %s failed: %s' %
+                                       (self.scf.cf.link_uri[-2:], link_uri, msg))
         self.is_connected = False
 
     def _connection_lost(self, link_uri, msg):
-        self.parent.get_logger().error('Crazyflie %s. Connection to %s lost: %s' % (self.scf.cf.link_uri[-2:], link_uri, msg))
+        self.parent.get_logger().error('Crazyflie %s. Connection to %s lost: %s' %
+                                       (self.scf.cf.link_uri[-2:], link_uri, msg))
 
     def _disconnected(self, link_uri):
-        self.parent.get_logger().warning('Crazyflie %s. Disconnected from %s' % (self.scf.cf.link_uri[-2:], link_uri))
+        self.parent.get_logger().warning('Crazyflie %s. Disconnected from %s' %
+                                         (self.scf.cf.link_uri[-2:], link_uri))
         self.is_connected = False
 
     def take_off(self):
@@ -288,11 +334,15 @@ class CFLogging:
             roll = data['stabilizer.roll']
             pitch = data['stabilizer.pitch']
             yaw = data['stabilizer.yaw']
-            msg.orientation.x = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-            msg.orientation.y = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
-            msg.orientation.z = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
-            msg.orientation.w = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-            
+            msg.orientation.x = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - \
+                np.cos(roll / 2) * np.sin(pitch / 2) * np.sin(yaw / 2)
+            msg.orientation.y = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + \
+                np.sin(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2)
+            msg.orientation.z = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - \
+                np.sin(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2)
+            msg.orientation.w = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + \
+                np.sin(roll / 2) * np.sin(pitch / 2) * np.sin(yaw / 2)
+
             self.pose = msg
             self.last_pose = msg
             self.publisher_pose.publish(msg)
@@ -317,7 +367,8 @@ class CFLogging:
         self.parent.get_logger().info('CF%s::Order: "%s"' % (self.scf.cf.link_uri[-2:], msg.data))
         if msg.data == 'take_off':
             if self._is_flying:
-                self.parent.get_logger().warning('CF%s::Already flying' % self.scf.cf.link_uri[-2:])
+                self.parent.get_logger().warning('CF%s::Already flying' %
+                                                 self.scf.cf.link_uri[-2:])
             else:
                 self.take_off()
         elif msg.data == 'land':
@@ -331,7 +382,8 @@ class CFLogging:
             else:
                 self.parent.get_logger().warning('CF%s::In land' % self.scf.cf.link_uri[-2:])
         else:
-            self.parent.get_logger().error('CF%s::"%s": Unknown order' % (self.scf.cf.link_uri[-2:], msg.data))
+            self.parent.get_logger().error('CF%s::"%s": Unknown order' %
+                                           (self.scf.cf.link_uri[-2:], msg.data))
 
     def cmd_control_callback(self, msg):
         if self.CONTROL_MODE == 'OffBoard':
@@ -339,12 +391,16 @@ class CFLogging:
             self.cmd_motion_.pitch = msg.data[2]
             self.cmd_motion_.yaw = msg.data[3]
             self.cmd_motion_.thrust = int(msg.data[0])
-            self.parent.get_logger().debug('CF%s::Command: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.str_()))
+            self.parent.get_logger().debug('CF%s::Command: %s' %
+                                           (self.scf.cf.link_uri[-2:], self.cmd_motion_.str_()))
         else:
-            self.parent.get_logger().warning('CF%s::New command control order. Offboard control disabled' % self.scf.cf.link_uri[-2:])
+            self.parent.get_logger().warning(
+                'CF%s::New command control order. Offboard control disabled' %
+                self.scf.cf.link_uri[-2:])
 
     def controllers_params_callback(self, msg):
-        self.parent.get_logger().info('CF%s: New %s controller parameters' % (self.scf.cf.link_uri[-2:], msg.id))
+        self.parent.get_logger().info('CF%s: New %s controller parameters' %
+                                      (self.scf.cf.link_uri[-2:], msg.id))
         if (self.scf.CONTROLLER_TYPE == 'Continuous'):
             if msg.id == 'x':
                 groupstr = 'posCtlPid'
@@ -409,7 +465,9 @@ class CFLogging:
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_kp', msg.kp)
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
-            self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
+            self.get_logger().info(
+                'Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' %
+                (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
         elif (self.scf.CONTROLLER_TYPE == 'EventBased'):
             if msg.id == 'x':
                 groupstr = 'posEbCtlPid'
@@ -486,7 +544,9 @@ class CFLogging:
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_kp', msg.kp)
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_ki', msg.ki)
                 self.scf.cf.param.set_value(groupstr + '.' + 'yaw_kd', msg.kd)
-            self.get_logger().info('Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' % (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
+            self.get_logger().info(
+                'Kp: %0.2f \t Ki: %0.2f \t Kd: %0.2f \t N: %0.2f \t UL: %0.2f \t LL: %0.2f' %
+                (msg.kp, msg.ki, msg.kd, msg.nd, msg.upperlimit, msg.lowerlimit))
 
     def newpose_callback(self, msg):
         if not self.init_pose:
@@ -497,11 +557,16 @@ class CFLogging:
             self.cmd_motion_.x = msg.position.x
             self.cmd_motion_.y = msg.position.y
             self.cmd_motion_.z = msg.position.z
-            self.parent.get_logger().info('CF%s::Init pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
-        x = np.array([self.last_pose.position.x-msg.position.x,self.last_pose.position.y-msg.position.y,self.last_pose.position.z-msg.position.z])
-        if (np.linalg.norm(x)>0.01 and np.linalg.norm(x)>0.05):
+            self.parent.get_logger().info('CF%s::Init pose: %s' %
+                                          (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_(
+                                              )))
+        x = np.array([self.last_pose.position.x - msg.position.x,
+                      self.last_pose.position.y - msg.position.y,
+                      self.last_pose.position.z - msg.position.z])
+        if (np.linalg.norm(x) > 0.01 and np.linalg.norm(x) > 0.05):
             self.scf.cf.extpos.send_extpos(msg.position.x, msg.position.y, msg.position.z)
-        if ((abs(msg.position.x)>xy_lim) or (abs(msg.position.y)>xy_lim) or (abs(msg.position.z)>2.0)) and self.CONTROL_MODE != 'HighLevel':
+        if ((abs(msg.position.x) > xy_lim) or (abs(msg.position.y) > xy_lim) or (
+                abs(msg.position.z) > 2.0)) and self.CONTROL_MODE != 'HighLevel':
             self.CONTROL_MODE = 'HighLevel'
             self._is_flying = True
             self.parent.get_logger().error('CF%s::Out.' % self.scf.cf.link_uri[-2:])
@@ -516,11 +581,15 @@ class CFLogging:
             self.cmd_motion_.z = msg.position.z
             self.cmd_motion_.ckeck_pose()
             self.cmd_motion_.send_pose_data_(self.scf.cf)
-            self.parent.get_logger().info('CF%s::New Goal pose: %s' % (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_()))
+            self.parent.get_logger().info('CF%s::New Goal pose: %s' %
+                                          (self.scf.cf.link_uri[-2:], self.cmd_motion_.pose_str_(
+                                              )))
 
 #####################
-## CF Swarm Class  ##
+# CF Swarm Class  ##
 #####################
+
+
 class CFSwarmDriver(Node):
     def __init__(self):
         super().__init__('swarm_driver')
@@ -542,12 +611,14 @@ class CFSwarmDriver(Node):
         Continuous: Continuous PID
         EventBased: Event Based PID
         """
-        self.publisher_status = self.create_publisher(String,'swarm/status', 10)
+        self.publisher_status = self.create_publisher(String, 'swarm/status', 10)
 
         # Subscription
-        self.sub_order = self.create_subscription(String, 'swarm/cf_order', self.order_callback, 10)
+        self.sub_order = self.create_subscription(
+            String, 'swarm/cf_order', self.order_callback, 10)
         # self.sub_pose = self.create_subscription(Pose, 'swarm/pose', self.newpose_callback, 10)
-        self.sub_goal_pose = self.create_subscription(Pose, 'swarm/goal_pose', self.goalpose_callback, 10)
+        self.sub_goal_pose = self.create_subscription(
+            Pose, 'swarm/goal_pose', self.goalpose_callback, 10)
 
         self.timer_task = self.create_timer(0.02, self.task_manager)
 
@@ -571,8 +642,8 @@ class CFSwarmDriver(Node):
         id_address = dron_id[-10:]
         id_base = dron_id[:16]
         id_address_int = int(id_address, 16)
-        for i in range(int(n),0,-1):
-            cf_str = id_base + hex(id_address_int+i-1)[-10:].upper()
+        for i in range(int(n), 0, -1):
+            cf_str = id_base + hex(id_address_int + i - 1)[-10:].upper()
             uris.add(cf_str)
             self.get_logger().info('Crazyflie %d URI: %s!' % (i, cf_str))
 
@@ -582,21 +653,31 @@ class CFSwarmDriver(Node):
         self.cf_swarm = Swarm(uris, factory=factory)
         i = 0
         for uri in uris:
-            if(uri == 'radio://0/80/2M/E7E7E7E701'):
+            if (uri == 'radio://0/80/2M/E7E7E7E701'):
                 roles[i] = 'consensus'
-            if(uri == 'radio://0/80/2M/E7E7E7E702'):
+            if (uri == 'radio://0/80/2M/E7E7E7E702'):
                 roles[i] = 'consensus'
-            if(uri == 'radio://0/80/2M/E7E7E7E703'):
+            if (uri == 'radio://0/80/2M/E7E7E7E703'):
                 roles[i] = 'consensus'
-            
-            cf = CFLogging(self.cf_swarm._cfs[uri], self, uri, control_mode[i], controller_type[i], roles[i])
+
+            cf = CFLogging(
+                self.cf_swarm._cfs[uri],
+                self,
+                uri,
+                control_mode[i],
+                controller_type[i],
+                roles[i])
             for rel in self.relationship:
-                if(rel.find(cf.id) == 0):
+                if (rel.find(cf.id) == 0):
                     aux = rel.split('_')
-                    aux_str = aux[1]
                     rel_pose = aux[2].split('/')
-                    robot = Agent(self, float(rel_pose[0]), float(rel_pose[1]), float(rel_pose[2]), aux[1])
-                    print('CF: %s: Agent: %s \tx: %s \ty: %s \tz: %s' % (aux[0], aux[1], rel_pose[0], rel_pose[1], rel_pose[2]))
+                    robot = Agent(
+                        self, float(
+                            rel_pose[0]), float(
+                            rel_pose[1]), float(
+                            rel_pose[2]), aux[1])
+                    print('CF: %s: Agent: %s \tx: %s \ty: %s \tz: %s' %
+                          (aux[0], aux[1], rel_pose[0], rel_pose[1], rel_pose[2]))
                     cf.agent_list.append(robot)
 
             dron.append(cf)
@@ -650,10 +731,12 @@ class CFSwarmDriver(Node):
             cf.cmd_motion_.z = cf.cmd_motion_.z + msg.position.z
             cf.cmd_motion_.ckeck_pose()
             delta = [abs(msg.position.x), abs(msg.position.y), abs(msg.position.z)]
-            self.cmd_motion_.flight_time = max(delta)/self.max_vel
+            self.cmd_motion_.flight_time = max(delta) / self.max_vel
             cf.cmd_motion_.send_pose_data_(cf.scf.cf)
 
-        self.get_logger().info('SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' % (msg.position.x, msg.position.y, msg.position.z))
+        self.get_logger().info(
+            'SWARM::New Goal pose: X:%0.2f \tY:%0.2f \tZ:%0.2f' %
+            (msg.position.x, msg.position.y, msg.position.z))
 
     def task_manager(self):
         for cf in dron:
@@ -669,18 +752,18 @@ class CFSwarmDriver(Node):
                     dx += agent.x - (cf.pose.position.x - agent.pose.position.x)
                     dy += agent.y - (cf.pose.position.y - agent.pose.position.y)
                     dz += agent.z - (cf.pose.position.z - agent.pose.position.z)
-                cf.integral_x += (1/(len(cf.agent_list)*1.0))*cf.x_error*0.02
-                cf.integral_y += (1/(len(cf.agent_list)*1.0))*cf.y_error*0.02
-                cf.integral_z += (1/(len(cf.agent_list)*5.0))*cf.z_error*0.02
-                msg.position.x += (dx/len(cf.agent_list)) + cf.integral_x
-                msg.position.y += (dy/len(cf.agent_list)) + cf.integral_y
-                msg.position.z += (dz/len(cf.agent_list)) + cf.integral_z
+                cf.integral_x += (1 / (len(cf.agent_list) * 1.0)) * cf.x_error * 0.02
+                cf.integral_y += (1 / (len(cf.agent_list) * 1.0)) * cf.y_error * 0.02
+                cf.integral_z += (1 / (len(cf.agent_list) * 5.0)) * cf.z_error * 0.02
+                msg.position.x += (dx / len(cf.agent_list)) + cf.integral_x
+                msg.position.y += (dy / len(cf.agent_list)) + cf.integral_y
+                msg.position.z += (dz / len(cf.agent_list)) + cf.integral_z
                 cf.x_error = dx
                 cf.y_error = dy
                 cf.z_error = dz
 
                 print('Z: %s' % str(msg.position.z))
-                print('dz: %s' % str(dz/len(cf.agent_list)))
+                print('dz: %s' % str(dz / len(cf.agent_list)))
                 print('zdebug: %s' % str(cf.pose.position.z - agent.pose.position.z))
                 cf.cmd_motion_.x = msg.position.x
                 cf.cmd_motion_.y = msg.position.y

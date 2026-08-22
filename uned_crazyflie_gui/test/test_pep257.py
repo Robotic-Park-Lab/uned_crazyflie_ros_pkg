@@ -19,5 +19,8 @@ import pytest
 @pytest.mark.linter
 @pytest.mark.pep257
 def test_pep257():
-    rc = main(argv=['.', 'test'])
+    # main_ui.py/logo_rc.py: generados por pyuic5/pyrcc5.
+    rc = main(argv=[
+        '.', 'test', '--exclude',
+        './uned_crazyflie_gui/main_ui.py', './uned_crazyflie_gui/logo_rc.py'])
     assert rc == 0, 'Found code style errors / warnings'

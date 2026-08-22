@@ -16,13 +16,12 @@ setup(
     maintainer='Francisco José Mañas Álvarez',
     maintainer_email='fjmanas@dia.uned.es',
     description='Paquete para el manejo de los nanodrones crazyflie 2.1',
-    license='TODO: License declaration',
+    license='BSD-3-Clause',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'crazyflie_driver = uned_crazyflie_driver.crazyflie_driver:main',
             'swarm_driver = uned_crazyflie_driver.swarm_driver:main',
-            'positioning_system = uned_crazyflie_driver.positioning_system:main'
         ],
     },
 )

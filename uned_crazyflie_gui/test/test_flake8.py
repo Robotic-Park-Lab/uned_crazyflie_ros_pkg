@@ -15,11 +15,14 @@
 from ament_flake8.main import main_with_errors
 import pytest
 
+# main_ui.py y logo_rc.py son generados por pyuic5/pyrcc5.
+GENERATED_OR_PENDING = ['--exclude', 'main_ui.py', 'logo_rc.py']
+
 
 @pytest.mark.flake8
 @pytest.mark.linter
 def test_flake8():
-    rc, errors = main_with_errors(argv=[])
+    rc, errors = main_with_errors(argv=GENERATED_OR_PENDING)
     assert rc == 0, \
         'Found %d code style errors / warnings:\n' % len(errors) + \
         '\n'.join(errors)

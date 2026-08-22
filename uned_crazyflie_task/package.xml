@@ -3,9 +3,21 @@
 <package format="3">
   <name>uned_crazyflie_task</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="fjmanas@dia.uned.es">kiko</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Nodos de tarea multi-agente para el crazyflie 2.1: leader-follower, formación basada en forma, y formación en Webots</description>
+  <maintainer email="fjmanas@dia.uned.es">Francisco José Mañas Álvarez</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>uned_crazyflie_config</depend>
+  <!-- Paquete de otro repo del laboratorio (ros2-vicon-receiver), sin
+       clave rosdep: hay que tenerlo ya compilado en el mismo workspace. -->
+  <depend>vicon_receiver</depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <!-- cflib (Crazyflie Python library) no tiene clave rosdep: se instala
+       aparte, ver la sección "Dependencias" del README. -->
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

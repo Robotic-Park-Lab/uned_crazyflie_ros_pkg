@@ -1,139 +1,97 @@
-#!/usr/bin/python3
-## ^^^^^^^^^^^^^^^^^^^^^
-## Libs
-## ^^^^^^^^^^^^^^^^^^^^^
-import sys
+# Copyright 2026 Robotic Park Lab
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#    * Neither the name of the Robotic Park Lab nor the names of its
+#      contributors may be used to endorse or promote products derived from
+#      this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+
+"""
+Interfaz gráfica de escritorio para el crazyflie 2.X.
+
+Versión básica y conectada como entry point real (`interface_node`):
+muestra la ventana diseñada en Qt Designer (`main.ui`) tal cual, sin
+paneles embebidos de rqt_plot/rqt_graph -- ver la rama `doc`
+(FUTURO_interface_gui.md) para el alcance completo pendiente.
+"""
 import os
-import subprocess
-import time
-import yaml
+import sys
+
 import rclpy
-from subprocess import check_output
 
-from main_ui import *
-import matplotlib.pyplot as plt
-import numpy as np
-from qt_gui.settings import Settings
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
+from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from PyQt5 import uic
-from rqt_gui_py.plugin import Plugin
-from rqt_plot.plot import Plot
-from rqt_plot.plot_widget import PlotWidget
-from shell_cmd import ShellCmd
 
-
-## ^^^^^^^^^^^^^^^^^^^^^
-## RQT Classes
-## ^^^^^^^^^^^^^^^^^^^^^
-# Implementación extraida de rqt_embed_window
-class RQT_Panel( QWidget ):
-	def __init__(self, plugin):
-		QWidget.__init__(self)
-		self._command = plugin
-		self._window_name = None
-		self._external_window_widget = None
-		self._process = None
-		self._timeout_to_window_discovery = 10.0
-
-		# Add widget to the user interface
-		self.add_external_window_widget()
-
-	def add_external_window_widget(self):
-        # The command is prepended with exec so it becomes the shell executing it
-        # So it effectively has the PID we will look for the window ID
-		self._process = subprocess.Popen([self._command])
-		window_id = self.wait_for_window_id()
-
-		# Get window ID from PID, we must wait for it to appear
-		# self.window_id = self.wait_for_window_id(pid=self._process.get_pid(), window_name=self._window_name, timeout=self._timeout_to_window_discovery)
-		if window_id is None:
-			self._process.kill()
-			return
-
-        # Create a the window that will contain the program
-		window = QWindow.fromWinId(window_id)
-        # FramelessWindowHint is necessary for the window to effectively get embedded
-		window.setFlags(Qt.FramelessWindowHint)
-		widget = QWidget.createWindowContainer(window)
-
-        # Store it for later
-		self._external_window_widget = widget
-
-		layout = QVBoxLayout()
-		layout.addWidget(self._external_window_widget)
-		self.setLayout(layout)
-
-	def close(self):
-		self._process.kill()
-
-	def wait_for_window_id(self):
-		pid=self._process.pid
-		window_id = None
-		ini_t = time.time()
-		now = time.time()
-		while window_id is None and (now - ini_t) < self._timeout_to_window_discovery:
-			if pid is not None:
-				window_id = self.get_window_id_by_pid(pid)
-			else:
-				raise RuntimeError("No PID or window_name provided to look for a window on wait_for_window_id")
-			time.sleep(0.2)
-			now = time.time()
-		return window_id
-
-	def get_window_id_by_pid(self, pid):
-		p = subprocess.Popen(["xdotool", "search", "--pid", str(pid)], stdout=subprocess.PIPE)
-		out = p.communicate()[0]
-		output = out.decode("ascii").strip()
-		line = output.splitlines()
-		p.kill()
-		if len(line) >= 2:
-			return int(line[1])
-		return None
+from uned_crazyflie_gui import logo_rc  # noqa: F401  (recursos Qt: iconos/logo)
 
 
 class MainWindow(QMainWindow):
-	def __init__(self, node):
-		#Qt Stuff..
-		super(MainWindow, self).__init__()
-		# Load the .ui file made from Qt designer
-		uic.loadUi('main.ui', self)
 
-		self.setWindowIcon(QtGui.QIcon(":/figs/LogoRoboticPark.png"))
-		self.setWindowTitle("Robotic Park. Crazyflie 2.X")
+    def __init__(self, node):
+        super(MainWindow, self).__init__()
+        self.node = node
+        # Load the .ui file made from Qt designer
+        ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'main.ui')
+        uic.loadUi(ui_path, self)
 
-		self.rqt = RQT_Panel("rqt")
-		self.rqtgraph = RQT_Panel("rqt_graph")
-		self.GraphsWidget.addTab(self.rqt, "Plots")
-		self.GraphsWidget.addTab(self.rqtgraph, "Graph")
+        self.setWindowIcon(QIcon(':/logo/figs/LogoRoboticPark.png'))
+        self.setWindowTitle('Robotic Park. Crazyflie 2.X')
 
-		node.get_logger().warn("Development in progress ...")
-		self.Close_action.triggered.connect(self.cerrar)
-		self.Close_action.setShortcut("Ctrl+W")
+        # Los paneles de rqt_plot/rqt_graph de la versión original no se
+        # han conectado en esta versión básica (dependían de embeber
+        # ventanas X11 externas vía xdotool, poco fiable). Placeholder
+        # informativo en su lugar -- ver FUTURO_interface_gui.md.
+        placeholder = QLabel(
+            "Gráficas en tiempo real: pendiente (ver rama doc,\n"
+            "FUTURO_interface_gui.md).")
+        placeholder.setAlignment(Qt.AlignCenter)
+        self.GraphsWidget.addTab(placeholder, 'Plots')
 
-	def cerrar(self):
-		rclpy.shutdown()
-		self.rqt.close()
-		self.rqtgraph.close()
-		time.sleep(1)
-		p = subprocess.run(["killall","rqt"])
-		QApplication.quit()
+        self.Close_action.triggered.connect(self.cerrar)
+        self.Close_action.setShortcut('Ctrl+W')
+
+        self.node.get_logger().info('MainWindow::inicialize() ok.')
+
+    def cerrar(self):
+        QApplication.quit()
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = rclpy.create_node('uned_cf_interface')
+
+    app = QApplication(sys.argv)
+    window = MainWindow(node)
+    window.show()
+    exit_code = app.exec_()
+
+    node.destroy_node()
+    rclpy.shutdown()
+    sys.exit(exit_code)
+
 
 if __name__ == '__main__':
-    # Init ROS2
-	rclpy.init()
-	p = subprocess.Popen('ros2 node list', shell=True,stdout=subprocess.PIPE)
-	out = p.communicate()[0]
-	output = out.decode("ascii").split()
-	str_match = [s for s in output if "uned_cf_interface" in s]
-	if not str_match:
-		interface_node = rclpy.create_node('uned_cf_interface')
-	else:
-		node_name = "uned_cf_interface_aux"+str(len(str_match))
-		interface_node = rclpy.create_node(node_name)
-	p.kill()
-	app = QApplication(sys.argv)
-	interfaz = MainWindow(interface_node)
-	interfaz.show()
-	sys.exit(app.exec_())
+    main()

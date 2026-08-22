@@ -1,7 +1,35 @@
-from cv2 import sqrt
+# Copyright 2026 Robotic Park Lab
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#    * Neither the name of the Robotic Park Lab nor the names of its
+#      contributors may be used to endorse or promote products derived from
+#      this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+
+import cffirmware
 import rclpy
 import os
-from rclpy.node import Node
 from rclpy.time import Time
 
 from geometry_msgs.msg import Twist, Pose
@@ -10,13 +38,12 @@ from nav_msgs.msg import Odometry
 
 from math import cos, sin, degrees, radians, pi
 import sys
-import tf_transformations
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 
 # Change this path to your crazyflie-firmware folder
 sys.path.append('/home/kiko/Code/crazyflie-firmware')
-import cffirmware
+
 
 class PIDController():
     def __init__(self, Kp, Ki, Kd, Td, Nd, UpperLimit, LowerLimit):
@@ -33,28 +60,29 @@ class PIDController():
 
     def update(self, dt):
         P = self.Kp * self.error[0]
-        self.integral = self.integral + self.Ki*self.error[1]*dt
-        self.derivative = (self.Td/(self.Td+self.Nd+dt))*self.derivative+(self.Kd*self.Nd/(self.Td+self.Nd*dt))*(self.error[0]-self.error[1])
+        self.integral = self.integral + self.Ki * self.error[1] * dt
+        self.derivative = (self.Td / (self.Td + self.Nd + dt)) * self.derivative + \
+            (self.Kd * self.Nd / (self.Td + self.Nd * dt)) * (self.error[0] - self.error[1])
         out = P + self.integral + self.derivative
-        
-        if not self.UpperLimit==0.0:
-            if out>self.UpperLimit:
+
+        if not self.UpperLimit == 0.0:
+            if out > self.UpperLimit:
                 out = self.UpperLimit
-            if out<self.LowerLimit:
+            if out < self.LowerLimit:
                 out = self.LowerLimit
 
             # self.integral = self.integral - (out-out_i) * sqrt(self.Kp/self.Ki)
 
         return out
 
-        
+
 class CrazyflieWebotsDriver:
     def init(self, webots_node, properties):
-        
+
         self.robot = webots_node.robot
         timestep = int(self.robot.getBasicTimeStep())
 
-        ## Initialize motors
+        # Initialize motors
         self.m1_motor = self.robot.getDevice("m1_motor")
         self.m1_motor.setPosition(float('inf'))
         self.m1_motor.setVelocity(-1)
@@ -72,7 +100,7 @@ class CrazyflieWebotsDriver:
         self.target_pose = Pose()
         self.target_pose.position.z = 1.0
 
-        ## Initialize Sensors
+        # Initialize Sensors
         self.imu = self.robot.getDevice("inertial unit")
         self.imu.enable(timestep)
         self.gps = self.robot.getDevice("gps")
@@ -88,7 +116,7 @@ class CrazyflieWebotsDriver:
         self.range_right = self.robot.getDevice("range_right")
         self.range_right.enable(timestep)
 
-        ## Intialize Variables
+        # Intialize Variables
         self.past_x_global = 0
         self.past_y_global = 0
         self.past_z_global = 0
@@ -98,7 +126,7 @@ class CrazyflieWebotsDriver:
         self.first_x_global = 0.0
         self.first_y_global = 0.0
 
-        ## Intialize Controllers
+        # Intialize Controllers
         # Position
         self.z = PIDController(2.0, 0.5, 0.0, 0.0, 100, 0.0, 0.0)
         self.x = PIDController(2.0, 0.0, 0.0, 0.0, 100, 0.0, 0.0)
@@ -108,30 +136,29 @@ class CrazyflieWebotsDriver:
         self.u = PIDController(15.0, 0.5, 0.0, 0.0, 100, 0.0, 0.0)
         self.v = PIDController(-15.0, 0.5, 0.0, 0.0, 100, 0.0, 0.0)
 
-
         cffirmware.controllerPidInit()
 
         name_value = os.environ['WEBOTS_ROBOT_NAME']
         rclpy.init(args=None)
-        self.node = rclpy.create_node(name_value+'_driver')
+        self.node = rclpy.create_node(name_value + '_driver')
         self.node.get_logger().info('Webots_Node::inicialize() ok. %s' % (str(name_value)))
-        self.node.create_subscription(Twist, name_value+'/cmd_vel', self.cmd_vel_callback, 1)
-        self.node.create_subscription(Pose, name_value+'/goal_pose', self.goal_pose_callback, 1)
-        self.laser_publisher = self.node.create_publisher(LaserScan, name_value+'/scan', 10)
-        self.odom_publisher = self.node.create_publisher(Odometry, name_value+'/odom', 10)
+        self.node.create_subscription(Twist, name_value + '/cmd_vel', self.cmd_vel_callback, 1)
+        self.node.create_subscription(Pose, name_value + '/goal_pose', self.goal_pose_callback, 1)
+        self.laser_publisher = self.node.create_publisher(LaserScan, name_value + '/scan', 10)
+        self.odom_publisher = self.node.create_publisher(Odometry, name_value + '/odom', 10)
 
         self.tfbr = TransformBroadcaster(self.node)
 
         self.msg_laser = LaserScan()
-        self.node.create_timer(1.0/30.0, self.publish_laserscan_data)
-        
+        self.node.create_timer(1.0 / 30.0, self.publish_laserscan_data)
+
     def publish_laserscan_data(self):
 
-        front_range = self.range_front.getValue()/1000.0
+        front_range = self.range_front.getValue() / 1000.0
 
-        back_range = self.range_back.getValue()/1000.0
-        left_range = self.range_left.getValue()/1000.0
-        right_range = self.range_right.getValue()/1000.0
+        back_range = self.range_back.getValue() / 1000.0
+        left_range = self.range_left.getValue() / 1000.0
+        right_range = self.range_right.getValue() / 1000.0
         max_range = 3.49
         if front_range > max_range:
             front_range = float("inf")
@@ -140,7 +167,7 @@ class CrazyflieWebotsDriver:
         if right_range > max_range:
             right_range = float("inf")
         if back_range > max_range:
-            back_range = float("inf")  
+            back_range = float("inf")
 
         self.msg_laser = LaserScan()
         self.msg_laser.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
@@ -148,9 +175,9 @@ class CrazyflieWebotsDriver:
         self.msg_laser.range_min = 0.1
         self.msg_laser.range_max = max_range
         self.msg_laser.ranges = [back_range, left_range, front_range, right_range, back_range]
-        self.msg_laser.angle_min = 0.5 * 2*pi
-        self.msg_laser.angle_max =  -0.5 * 2*pi
-        self.msg_laser.angle_increment = -1.0*pi/2
+        self.msg_laser.angle_min = 0.5 * 2 * pi
+        self.msg_laser.angle_max = -0.5 * 2 * pi
+        self.msg_laser.angle_increment = -1.0 * pi / 2
         self.laser_publisher.publish(self.msg_laser)
 
     def cmd_vel_callback(self, twist):
@@ -159,7 +186,6 @@ class CrazyflieWebotsDriver:
     def goal_pose_callback(self, pose):
         self.target_pose = pose
 
-    
     def step(self):
         rclpy.spin_once(self.node, timeout_sec=0)
 
@@ -171,23 +197,22 @@ class CrazyflieWebotsDriver:
             self.past_y_global = self.gps.getValues()[1]
             self.first_pos = False
 
-        ## Get measurements
+        # Get measurements
         roll = self.imu.getRollPitchYaw()[0]
         pitch = self.imu.getRollPitchYaw()[1]
         yaw = self.imu.getRollPitchYaw()[2]
         roll_rate = self.gyro.getValues()[0]
         pitch_rate = self.gyro.getValues()[1]
         yaw_rate = self.gyro.getValues()[2]
-        x_global = self.gps.getValues()[0] # - self.first_x_global
-        vx_global = (x_global - self.past_x_global)/dt
-        y_global = self.gps.getValues()[1] # - self.first_y_global
-        vy_global = (y_global - self.past_y_global)/dt
+        x_global = self.gps.getValues()[0]  # - self.first_x_global
+        vx_global = (x_global - self.past_x_global) / dt
+        y_global = self.gps.getValues()[1]  # - self.first_y_global
+        vy_global = (y_global - self.past_y_global) / dt
         z_global = self.gps.getValues()[2]
-        vz_global = (z_global - self.past_z_global)/dt
+        vz_global = (z_global - self.past_z_global) / dt
 
         # self.target_twist.linear.x = 1.0 * (self.target_pose.position.x-x_global)
 
-        q_base = tf_transformations.quaternion_from_euler(0, 0, yaw)
         odom = Odometry()
         odom.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
         odom.header.frame_id = 'odom'
@@ -196,10 +221,10 @@ class CrazyflieWebotsDriver:
         odom.pose.pose.position.y = y_global
         odom.pose.pose.position.z = 0.0
 
-        #odom.pose.pose.orientation.x = q_base[0]
-        #odom.pose.pose.orientation.y = q_base[1]
-        #odom.pose.pose.orientation.z = q_base[2]
-        #odom.pose.pose.orientation.w = q_base[3]
+        # odom.pose.pose.orientation.x = q_base[0]
+        # odom.pose.pose.orientation.y = q_base[1]
+        # odom.pose.pose.orientation.z = q_base[2]
+        # odom.pose.pose.orientation.w = q_base[3]
         odom.pose.pose.orientation.z = sin(yaw / 2)
         odom.pose.pose.orientation.w = cos(yaw / 2)
 
@@ -212,15 +237,15 @@ class CrazyflieWebotsDriver:
         t_base.transform.translation.x = x_global
         t_base.transform.translation.y = y_global
         t_base.transform.translation.z = 0.0
-        #t_base.transform.rotation.x = q_base[0]
-        #t_base.transform.rotation.y = q_base[1]
-        #t_base.transform.rotation.z = q_base[2]
-        #t_base.transform.rotation.w = q_base[3]
+        # t_base.transform.rotation.x = q_base[0]
+        # t_base.transform.rotation.y = q_base[1]
+        # t_base.transform.rotation.z = q_base[2]
+        # t_base.transform.rotation.w = q_base[3]
         t_base.transform.rotation.z = sin(yaw / 2)
         t_base.transform.rotation.w = cos(yaw / 2)
         self.tfbr.sendTransform(t_base)
 
-        ## Put measurement in state estimate
+        # Put measurement in state estimate
         # TODO replace these with a EKF python binding
         state = cffirmware.state_t()
         state.attitude.roll = degrees(roll)
@@ -233,22 +258,19 @@ class CrazyflieWebotsDriver:
         state.velocity.y = vy_global
         state.velocity.z = vz_global
 
-
-        
         # Put gyro in sensor data
         sensors = cffirmware.sensorData_t()
         sensors.gyro.x = degrees(roll_rate)
         sensors.gyro.y = degrees(pitch_rate)
         sensors.gyro.z = degrees(yaw_rate)
-        yawDesired=0
 
-        ## Fill in Setpoints
+        # Fill in Setpoints
         setpoint = cffirmware.setpoint_t()
-        setpoint.mode.z = cffirmware.modeAbs # 
+        setpoint.mode.z = cffirmware.modeAbs
         setpoint.position.z = self.target_pose.position.z
         setpoint.mode.yaw = cffirmware.modeVelocity
         # TODO: find out why this multipication is necessary...
-        setpoint.attitudeRate.yaw = degrees(self.target_twist.angular.z)*5
+        setpoint.attitudeRate.yaw = degrees(self.target_twist.angular.z) * 5
         setpoint.mode.x = cffirmware.modeVelocity
         setpoint.mode.y = cffirmware.modeVelocity
         # setpoint.position.x = self.target_pose.position.x
@@ -257,28 +279,30 @@ class CrazyflieWebotsDriver:
         setpoint.velocity.y = self.target_twist.linear.y
         setpoint.velocity_body = True
 
-        ## Firmware PID bindings
+        # Firmware PID bindings
         control = cffirmware.control_t()
-        tick = 100 #this value makes sure that the position controller and attitude controller are always always initiated
-        cffirmware.controllerPid(control, setpoint,sensors,state,tick)
+        # this value makes sure that the position controller and attitude
+        # controller are always initiated
+        tick = 100
+        cffirmware.controllerPid(control, setpoint, sensors, state, tick)
 
-        ## 
+        ##
         cmd_roll = radians(control.roll)
         cmd_pitch = radians(control.pitch)
         cmd_yaw = -radians(control.yaw)
         cmd_thrust = control.thrust
 
-        ## Motor mixing
-        motorPower_m1 =  cmd_thrust - cmd_roll + cmd_pitch + cmd_yaw
-        motorPower_m2 =  cmd_thrust - cmd_roll - cmd_pitch - cmd_yaw
-        motorPower_m3 =  cmd_thrust + cmd_roll - cmd_pitch + cmd_yaw
-        motorPower_m4 =  cmd_thrust + cmd_roll + cmd_pitch - cmd_yaw
+        # Motor mixing
+        motorPower_m1 = cmd_thrust - cmd_roll + cmd_pitch + cmd_yaw
+        motorPower_m2 = cmd_thrust - cmd_roll - cmd_pitch - cmd_yaw
+        motorPower_m3 = cmd_thrust + cmd_roll - cmd_pitch + cmd_yaw
+        motorPower_m4 = cmd_thrust + cmd_roll + cmd_pitch - cmd_yaw
 
-        scaling = 1000 ##Todo, remove necessity of this scaling (SI units in firmware)
-        self.m1_motor.setVelocity(-motorPower_m1/scaling)
-        self.m2_motor.setVelocity(motorPower_m2/scaling)
-        self.m3_motor.setVelocity(-motorPower_m3/scaling)
-        self.m4_motor.setVelocity(motorPower_m4/scaling)
+        scaling = 1000  # Todo, remove necessity of this scaling (SI units in firmware)
+        self.m1_motor.setVelocity(-motorPower_m1 / scaling)
+        self.m2_motor.setVelocity(motorPower_m2 / scaling)
+        self.m3_motor.setVelocity(-motorPower_m3 / scaling)
+        self.m4_motor.setVelocity(motorPower_m4 / scaling)
 
         self.past_time = self.robot.getTime()
         self.past_x_global = x_global
