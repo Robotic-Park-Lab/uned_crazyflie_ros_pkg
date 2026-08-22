@@ -1,27 +1,31 @@
 # uned_crazyflie_gui
 
-Paquete `ament_python` con la interfaz gráfica PyQt5 para el manejo individual de un Crazyflie, más una perspectiva RQT y un fichero RViz genéricos (no ligados a ninguna demo concreta) para visualizar cualquier Crazyflie.
+`ament_python` package with the PyQt5 graphical interface for handling a single Crazyflie, plus a generic RQT perspective and RViz file (not tied to any specific demo) to visualize any Crazyflie.
 
-## Estructura
+## Structure
 
-- `interface_gui.py` (entry point `interface_node`): ventana principal PyQt, carga `main.ui`. Versión básica a propósito: sin los paneles `rqt_plot`/`rqt_graph` embebidos que tenía una versión anterior del código, porque ese embebido dependía de `xdotool`/`QWindow.fromWinId()` (X11, frágil, sin declarar como dependencia) — ver `FUTURO_interface_gui.md` en la rama `doc` para la visión completa original.
-- `main.ui` / `main_ui.py`: diseño de la ventana (Qt Designer) y su versión compilada a Python.
-- `logo.qrc` / `logo_rc.py`: recursos gráficos (logos) empaquetados para Qt.
-- `rqt/crazyflie.perspective`: perspectiva RQT genérica (`rqt_graph`+`rqt_plot`+`rqt_publisher`+`rqt_bag`+`rqt_console`+`rqt_service_caller`), con el namespace `dron01` como placeholder — ajusta los nombres de topic si tu dron usa otro id. Cárgala con `rqt --perspective-file $(ros2 pkg prefix uned_crazyflie_gui)/share/uned_crazyflie_gui/rqt/crazyflie.perspective`.
-- `rviz/crazyflie.rviz`: `Grid` + `TF` (todos los frames habilitados), válido para cualquier Crazyflie sin editar nada. Cárgalo con `rviz2 -d $(ros2 pkg prefix uned_crazyflie_gui)/share/uned_crazyflie_gui/rviz/crazyflie.rviz`.
+- `interface_gui.py` (entry point `interface_node`): main PyQt window, loads `main.ui`. Deliberately basic version: no embedded `rqt_plot`/`rqt_graph` panels like an earlier version of the code had, because that embedding depended on `xdotool`/`QWindow.fromWinId()` (X11, fragile, never declared as a dependency) — see `FUTURO_interface_gui.md` on the `doc` branch for the original full vision.
+- `main.ui` / `main_ui.py`: window design (Qt Designer) and its compiled Python version.
+- `logo.qrc` / `logo_rc.py`: graphical resources (logos) packaged for Qt.
+- `rqt/crazyflie.perspective`: generic RQT perspective (`rqt_graph`+`rqt_plot`+`rqt_publisher`+`rqt_bag`+`rqt_console`+`rqt_service_caller`), using the `dron01` namespace as a placeholder — adjust the topic names if your drone uses a different id. Load it with `rqt --perspective-file $(ros2 pkg prefix uned_crazyflie_gui)/share/uned_crazyflie_gui/rqt/crazyflie.perspective`.
+- `rviz/crazyflie.rviz`: `Grid` + `TF` (all frames enabled), valid for any Crazyflie without editing anything. Load it with `rviz2 -d $(ros2 pkg prefix uned_crazyflie_gui)/share/uned_crazyflie_gui/rviz/crazyflie.rviz`.
 
-## Regenerar los ficheros compilados de Qt
+## Regenerating the compiled Qt files
 
-Si editas `main.ui` o `logo.qrc`, hay que regenerar sus versiones Python:
+If you edit `main.ui` or `logo.qrc`, their Python versions need regenerating:
 ```
 pyuic5 -x main.ui -o main_ui.py
 pyrcc5 -o logo_rc.py logo.qrc
 ```
 
-## Uso
+## Usage
 
 ```
 cd dev_ws
 colcon build --symlink-install --packages-select uned_crazyflie_gui
 ros2 run uned_crazyflie_gui interface_node
 ```
+
+## Tests
+
+`test/test_interface_gui.py`: a headless smoke test. Forces `QT_QPA_PLATFORM=offscreen` (no real display needed), builds the real `MainWindow` from `main.ui` with a real `rclpy` node, and checks it doesn't crash on startup and closes cleanly — not a UI/interaction test, just that `interface_node` actually starts. This is exactly the kind of regression a plain flake8/pep257 pass would never catch: the real bug this class had before this refactor's `a233491` commit was `main_ui.py` doing a bare `import logo_rc`, which broke once the file moved into a proper Python package. Beyond that, the window's widget tree and Qt resource loading are exercised for real but not asserted field-by-field — deeper UI testing would need a real display or a much heavier Qt test harness, not attempted here.
