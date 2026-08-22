@@ -45,7 +45,7 @@ from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.swarm import CachedCfFactory
 from cflib.crazyflie.swarm import Swarm
 
-from uned_crazyflie_common.pid_params import apply_controller_params
+from uned_crazyflie_driver.pid_params import apply_controller_params
 from uned_crazyflie_task.agent import Agent
 from uned_crazyflie_task.cmd_motion import CMD_Motion
 

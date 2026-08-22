@@ -43,8 +43,8 @@ from cflib.utils.power_switch import PowerSwitch
 from cflib.crazyflie.log import LogConfig
 from tf_transformations import quaternion_from_euler
 
-from uned_crazyflie_common.pid_controller import PIDController
-from uned_crazyflie_common.pid_params import apply_controller_params
+from uned_crazyflie_driver.pid_controller import PIDController
+from uned_crazyflie_driver.pid_params import apply_controller_params
 from uned_crazyflie_driver.agent import Agent
 from uned_crazyflie_driver.cmd_motion import CMD_Motion
 

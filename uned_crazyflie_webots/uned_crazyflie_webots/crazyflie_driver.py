@@ -48,7 +48,7 @@ from geometry_msgs.msg import TransformStamped
 from uned_crazyflie_driver.agent import Agent
 from multi_agent_pkg.lagrange_multipliers import Sphere, Cone, Ellipsoid
 
-from uned_crazyflie_common.pid_controller import PIDController
+from uned_crazyflie_driver.pid_controller import PIDController
 
 # Change this path to your crazyflie-firmware folder
 # sys.path.append('/home/kiko/Code/crazyflie-firmware')

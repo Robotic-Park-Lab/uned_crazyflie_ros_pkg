@@ -12,7 +12,7 @@
   <depend>geometry_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend>uned_crazyflie_config</depend>
-  <depend>uned_crazyflie_common</depend>
+  <depend>uned_crazyflie_driver</depend>
   <!-- Paquete de otro repo del laboratorio (ros2-vicon-receiver), sin
        clave rosdep: hay que tenerlo ya compilado en el mismo workspace. -->
   <depend>vicon_receiver</depend>
