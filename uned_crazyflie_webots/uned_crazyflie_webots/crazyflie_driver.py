@@ -760,6 +760,7 @@ class CrazyflieWebotsDriver:
             msg_error.data = 0.0
             dx = dy = dz = 0
             if 'ML2' in self.controller_type:
+                '''
                 projection = self.geometry.projection(self.pose.position)
                 m_gain = self.geometry.R/sqrt(pow(self.pose.position.x-self.geometry.origin.x,2)+pow(self.pose.position.y-self.geometry.origin.y,2)+pow(self.pose.position.z-self.geometry.origin.z,2))
                 pxx = m_gain*(1-pow(projection.x,2)/pow(self.geometry.R,2))
@@ -770,7 +771,7 @@ class CrazyflieWebotsDriver:
                 pzz = m_gain*(1-pow(self.pose.position.z-self.geometry.origin.z,2)/pow(self.geometry.R,2))
                 '''
                 projection = self.geometry.projection(self.pose.position)
-                fpi = self.geometry.value1(projection)
+                fpi = self.geometry.value(projection)
                 # P = I - p_i*p_i^T/self.geometry.value
                 pxx = 1-(pow(projection.x,2)/pow(self.geometry.a,4))/fpi
                 pxy = (-projection.x*projection.y/pow(self.geometry.a,4))/fpi
@@ -778,7 +779,7 @@ class CrazyflieWebotsDriver:
                 pyy = 1-(pow(projection.y,2)/pow(self.geometry.a,4))/fpi
                 pyz = (projection.y*(projection.z-self.geometry.c)/(pow(self.geometry.a,2)*pow(self.geometry.c,2)))/fpi
                 pzz = 1-(pow(projection.z-self.geometry.c,2)/pow(self.geometry.c,4))/fpi
-                '''
+                
                 '''
                 if agent.id == 'sphere':
                     # P = I - (pi*pi^T)/R²
@@ -863,9 +864,10 @@ class CrazyflieWebotsDriver:
                                 dx1  = pxx*x + pxy*y + pxz*z
                                 dy1  = pxy*x + pyy*y + pyz*z
                                 dz1  = pxz*x + pyz*y + pzz*z
-                                dx  += dx1
-                                dy  += dy1
-                                dz  += dz1
+                                
+                                dx  += x
+                                dy  += y
+                                dz  += z
                             else:
                                 # COMUN
                                 distance = pow(error_x,2)+pow(error_y,2)+pow(error_z,2)
