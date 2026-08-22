@@ -1,0 +1,50 @@
+config:
+  publisher:
+    topic00:
+      name: swarm/order
+      type: String
+  subscription:
+    topic00:
+      name: swarm/status
+      type: String
+      
+cmd00:
+  topic: swarm/order
+  type: String
+  value: take_off
+  trigger:
+    type: topic
+    name: swarm/status
+    value: init
+cmd01:
+  topic: swarm/order
+  type: String
+  value: formation_run
+  trigger:
+    type: time
+    name: swarm/status
+    value: 10.0
+cmd02:
+  topic: swarm/order
+  type: String
+  value: formation_stop
+  trigger:
+    type: time
+    name: swarm/status
+    value: 40.0
+cmd03:
+  topic: swarm/order
+  type: String
+  value: land
+  trigger:
+    type: time
+    name: swarm/status
+    value: 5.0
+cmd04:
+  topic: swarm/order
+  type: String
+  value: end
+  trigger:
+    type: time
+    name: swarm/status
+    value: 10.0
