@@ -37,7 +37,6 @@ from std_msgs.msg import (
 from geometry_msgs.msg import Twist, Pose, Point, PoseStamped, Vector3
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry, Path
-from visualization_msgs.msg import Marker
 
 from math import atan2, cos, sin, degrees, pi, sqrt
 import numpy as np
@@ -51,6 +50,8 @@ from multi_agent_pkg.lagrange_multipliers import Sphere, Cone, Ellipsoid
 from uned_crazyflie_driver.pid_controller import PIDController
 from uned_crazyflie_driver.webots_bootstrap import (
     init_webots_devices, init_webots_cascade_controllers)
+from uned_crazyflie_driver.driver_config import resolve_driver_config
+from uned_crazyflie_driver.sensors import build_laserscan, agent_removal_marker
 
 # Change this path to your crazyflie-firmware folder
 # sys.path.append('/home/kiko/Code/crazyflie-firmware')
@@ -160,94 +161,40 @@ class CrazyflieWebotsDriver:
         if self.id == 'dron01':
             self.led.set(2)
         '''
-        if "control_mode" in self.config:
-            self.control_mode = self.config['control_mode']
-        else:
-            self.control_mode = 'HighLevel'
+        # Compartido con Crazyflie_ROS2.__init__() vía
+        # uned_crazyflie_driver.driver_config (ver AUDIT.md rama doc).
+        self.driver_cfg = resolve_driver_config(self.config)
+        self.control_mode = self.driver_cfg['control_mode']
         self.node.get_logger().info(
             'Crazyflie %s::Control Mode: %s!' %
             (self.id, self.control_mode))
-        if "positioning" in self.config:
-            self.positioning = self.config['positioning']
-        else:
-            self.positioning = 'Intern'
+        self.positioning = self.driver_cfg['positioning']
 
         self.continuous = True
 
-        if "controller" in self.config:
-            self.CONTROLLER_TYPE = self.config['controller']['type']
-            if self.config['controller']['type'] == 'ipc':
-                self.controller_IPC = True
-                self.controller_PID = False
-                self.eomas = 3.14
-            elif self.config['controller']['type'] == 'pid':
-                self.controller_IPC = False
-                self.controller_PID = True
-            else:
-                self.controller_IPC = False
-                self.controller_PID = True
-        else:
-            self.CONTROLLER_TYPE = 'pid'
-            self.controller_IPC = False
-            self.controller_PID = True
+        self.CONTROLLER_TYPE = self.driver_cfg['controller_type']
+        self.controller_IPC = self.driver_cfg['controller_IPC']
+        self.controller_PID = self.driver_cfg['controller_PID']
+        if self.controller_IPC:
+            self.eomas = 3.14
         self.node.get_logger().info(
             'Crazyflie %s::Controller Type: %s!' %
             (self.id, self.CONTROLLER_TYPE))
 
-        if "type" in self.config:
-            self.physical = self.config['type'] == 'physical'
-        else:
-            self.physical = False
+        self.physical = self.driver_cfg['physical']
 
-        if "communication" in self.config:
-            self.communication = self.config['communication']['type'] == 'Continuous'
-            if not self.communication:
-                self.threshold = self.config['communication']['threshold']['co']
-            else:
-                self.threshold = 0.001
-        else:
-            self.communication = True
-            self.threshold = 0.001
+        self.communication = self.driver_cfg['communication']
+        self.threshold = self.driver_cfg['threshold']
 
-        if "local_pose" in self.config:
-            self.config_local_pose = self.config['local_pose']['enable']
-        else:
-            self.config_local_pose = False
+        self.config_local_pose = self.driver_cfg['local_pose_enable']
+        self.path_enable = self.driver_cfg['path_enable']
 
-        if "path" in self.config['local_pose']:
-            self.path_enable = self.config['local_pose']['path']
-        else:
-            self.path_enable = False
-
-        if "local_twist" in self.config:
-            self.publisher_twist_enable = self.config['local_twist']['enable']
-        else:
-            self.publisher_twist_enable = False
-
-        if "data_attitude" in self.config:
-            self.publisher_data_attitude_enable = self.config['data_attitude']['enable']
-        else:
-            self.publisher_data_attitude_enable = False
-
-        if "data_rate" in self.config:
-            self.publisher_data_rate_enable = self.config['data_rate']['enable']
-        else:
-            self.publisher_data_rate_enable = False
-
-        if "data_motor" in self.config:
-            self.publisher_data_motor_enable = self.config['data_motor']['enable']
-        else:
-            self.publisher_data_motor_enable = False
-
-        if "mars_data" in self.config:
-            self.publisher_mrs_data_enable = self.config['mars_data']['enable']
-        else:
-            self.publisher_mrs_data_enable = False
-
-        if "data" in self.config:
-            self.publisher_data_enable = self.config['data']['enable']
-        else:
-            self.publisher_data_enable = False
+        self.publisher_twist_enable = self.driver_cfg['local_twist_enable']
+        self.publisher_data_attitude_enable = self.driver_cfg['data_attitude_enable']
+        self.publisher_data_rate_enable = self.driver_cfg['data_rate_enable']
+        self.publisher_data_motor_enable = self.driver_cfg['data_motor_enable']
+        self.publisher_mrs_data_enable = self.driver_cfg['mars_data_enable']
+        self.publisher_data_enable = self.driver_cfg['data_enable']
 
         if "task" in self.config:
             self.task_config = self.config['task']['enable']
@@ -351,32 +298,15 @@ class CrazyflieWebotsDriver:
         self.swarm_status_publisher.publish(msg)
 
     def publish_laserscan_data(self):
+        # Compartido con Crazyflie_ROS2.publish_laserscan() vía
+        # uned_crazyflie_driver.sensors.build_laserscan (ver AUDIT.md rama doc).
         front_range = self.range_front.getValue() / 1000.0
         back_range = self.range_back.getValue() / 1000.0
         left_range = self.range_left.getValue() / 1000.0
         right_range = self.range_right.getValue() / 1000.0
-        # self.node.get_logger().warn('1: %.3f 2: %.3f 3: %.3f 4: %.3f' % (front_range ,
-        # back_range, left_range, right_range))
-
-        max_range = 3.49
-        if front_range > max_range:
-            front_range = float("inf")
-        if left_range > max_range:
-            left_range = float("inf")
-        if right_range > max_range:
-            right_range = float("inf")
-        if back_range > max_range:
-            back_range = float("inf")
-
-        self.msg_laser = LaserScan()
-        self.msg_laser.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
-        self.msg_laser.header.frame_id = self.id
-        self.msg_laser.range_min = 0.1
-        self.msg_laser.range_max = max_range
-        self.msg_laser.ranges = [back_range, left_range, front_range, right_range, back_range]
-        self.msg_laser.angle_min = 0.5 * 2 * pi
-        self.msg_laser.angle_max = -0.5 * 2 * pi
-        self.msg_laser.angle_increment = -1.0 * pi / 2
+        self.msg_laser = build_laserscan(
+            front_range, back_range, left_range, right_range,
+            Time(seconds=self.robot.getTime()).to_msg(), self.id)
         self.laser_publisher.publish(self.msg_laser)
 
     def dt_pose_callback(self, pose):
@@ -526,15 +456,7 @@ class CrazyflieWebotsDriver:
         for agent in self.agent_list:
             if agent.id == aux[1]:
                 agent.disconnect = True
-                line = Marker()
-                line.header.frame_id = 'map'
-                line.header.stamp = self.node.get_clock().now().to_msg()
-                line.id = 1
-                line.type = 5
-                line.action = 0
-                line.scale.x = 0.01
-                line.scale.y = 0.01
-                line.scale.z = 0.01
+                line = agent_removal_marker(self.node.get_clock().now().to_msg())
                 agent.publisher_marker_.publish(line)
                 agent.parent.node.destroy_publisher(agent.publisher_marker_)
                 self.agent_list.pop(j)
@@ -551,15 +473,7 @@ class CrazyflieWebotsDriver:
         self.node.destroy_publisher(self.pose_publisher)
         for agent in self.agent_list:
             agent.disconnect = True
-            line = Marker()
-            line.header.frame_id = 'map'
-            line.header.stamp = self.node.get_clock().now().to_msg()
-            line.id = 1
-            line.type = 5
-            line.action = 0
-            line.scale.x = 0.01
-            line.scale.y = 0.01
-            line.scale.z = 0.01
+            line = agent_removal_marker(self.node.get_clock().now().to_msg())
             agent.publisher_marker_.publish(line)
             agent.parent.node.destroy_publisher(agent.publisher_marker_)
             msg = String()

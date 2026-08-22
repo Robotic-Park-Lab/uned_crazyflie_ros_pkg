@@ -34,10 +34,9 @@ from std_msgs.msg import (
     String, UInt16MultiArray, Float64, Float64MultiArray, MultiArrayDimension, Bool)
 from geometry_msgs.msg import Pose, Twist, TransformStamped, PoseStamped
 from sensor_msgs.msg import LaserScan
-from visualization_msgs.msg import Marker
 from tf2_ros import TransformBroadcaster
 from builtin_interfaces.msg import Time
-from math import pi, sqrt
+from math import sqrt
 from nav_msgs.msg import Odometry, Path
 from cflib.utils.power_switch import PowerSwitch
 from cflib.crazyflie.log import LogConfig
@@ -49,6 +48,8 @@ from uned_crazyflie_driver.agent import Agent
 from uned_crazyflie_driver.cmd_motion import CMD_Motion
 from uned_crazyflie_driver.webots_bootstrap import (
     init_webots_devices, init_webots_cascade_controllers)
+from uned_crazyflie_driver.driver_config import resolve_driver_config
+from uned_crazyflie_driver.sensors import build_laserscan, agent_removal_marker
 
 
 # List of URIs, comment the one you do not want to fly
@@ -85,27 +86,21 @@ class Crazyflie_ROS2():
         self.tfbr = TransformBroadcaster(self.node)
 
         # Read Configuration
-        self.control_mode = self.config['control_mode']
+        # Compartido con CrazyflieWebotsDriver.init() vía
+        # uned_crazyflie_driver.driver_config (ver AUDIT.md rama doc).
+        self.driver_cfg = resolve_driver_config(self.config)
+        self.control_mode = self.driver_cfg['control_mode']
         self.node.get_logger().info('%s::Control Mode: %s!' % (self.id, self.control_mode))
         if self.control_mode == 'Gimbal':
             self.iterate_loop = self.node.create_timer(0.01, self.gimbal_iterate)
-        self.controller_type = self.config['controller']['type']
+        self.controller_type = self.driver_cfg['controller_type']
         self.node.get_logger().info('%s::Controller Type: %s!' % (self.id, self.controller_type))
-        if self.controller_type == 'ipc':
-            self.controller_IPC = True
-            self.controller_PID = False
+        self.controller_IPC = self.driver_cfg['controller_IPC']
+        self.controller_PID = self.driver_cfg['controller_PID']
+        if self.controller_IPC:
             self.eomas = 3.14
-        elif self.controller_type == 'pid':
-            self.controller_IPC = False
-            self.controller_PID = True
-        else:
-            self.controller_IPC = False
-            self.controller_PID = True
-        self.communication = (self.config['communication']['type'] == 'Continuous')
-        if not self.communication:
-            self.threshold = config['communication']['threshold']['co']
-        else:
-            self.threshold = 0.001
+        self.communication = self.driver_cfg['communication']
+        self.threshold = self.driver_cfg['threshold']
 
         # Intialize Variables
         self.state = [10.0, 10.0, 10.0, 10.0, 10.0]
@@ -114,8 +109,8 @@ class Crazyflie_ROS2():
         self.ready = False
         self.disconnect = False
         self.swarm_ready = False
-        self.digital_twin = self.config['type'] == 'digital_twin'
-        self.physical = self.config['type'] == 'physical'
+        self.digital_twin = self.driver_cfg['digital_twin']
+        self.physical = self.driver_cfg['physical']
         self.target_twist = Twist()
         self.target_pose = PoseStamped()
         self.target_pose.header.frame_id = "map"
@@ -155,8 +150,8 @@ class Crazyflie_ROS2():
         # ROS
         # Publisher
         # POSE3D
-        if self.config['local_pose']['enable']:
-            self.path_enable = self.config['local_pose']['path']
+        if self.driver_cfg['local_pose_enable']:
+            self.path_enable = self.driver_cfg['path_enable']
             if self.path_enable:
                 self.path_publisher = self.node.create_publisher(Path, self.id + '/path', 10)
             if self.control_mode == 'None':
@@ -187,33 +182,33 @@ class Crazyflie_ROS2():
 
             self.publisher_pose = self.node.create_publisher(PoseStamped, pose_name, 10)
         # TWIST
-        if self.config['local_twist']['enable']:
+        if self.driver_cfg['local_twist_enable']:
             self.publisher_twist = self.node.create_publisher(Twist, self.id + '/local_twist', 10)
 
         # DATA ATTITUDE.
-        if self.config['data_attitude']['enable']:
+        if self.driver_cfg['data_attitude_enable']:
             self.publisher_data_attitude = self.node.create_publisher(
                 Float64MultiArray, self.id + '/data_attitude', 10)
 
         # DATA RATE.
-        if self.config['data_rate']['enable']:
+        if self.driver_cfg['data_rate_enable']:
             self.publisher_data_rate = self.node.create_publisher(
                 Float64MultiArray, self.id + '/data_rate', 10)
 
         # DATA MOTOR.
-        if self.config['data_motor']['enable']:
+        if self.driver_cfg['data_motor_enable']:
             self.publisher_data_motor = self.node.create_publisher(
                 Float64MultiArray, self.id + '/data_motor', 10)
 
         # MULTIROBOT
-        if self.config['mars_data']['enable'] or True:
+        if self.driver_cfg['mars_data_enable'] or True:
             self.publisher_goalpose = self.node.create_publisher(
                 PoseStamped, self.id + '/goal_pose', 10)
             self.publisher_mrs_data = self.node.create_publisher(
                 Float64MultiArray, self.id + '/mr_data', 10)
 
         # DATA.
-        if self.config['data']['enable']:
+        if self.driver_cfg['data_enable']:
             self.publisher_data = self.node.create_publisher(
                 UInt16MultiArray, self.id + '/data', 10)
         if not self.communication:
@@ -665,32 +660,15 @@ class Crazyflie_ROS2():
         self.publisher_data.publish(msg)
 
     def publish_laserscan(self):
+        # Compartido con CrazyflieWebotsDriver.publish_laserscan_data() vía
+        # uned_crazyflie_driver.sensors.build_laserscan (ver AUDIT.md rama doc).
         front_range = self.range_front.getValue() / 1000.0
         back_range = self.range_back.getValue() / 1000.0
         left_range = self.range_left.getValue() / 1000.0
         right_range = self.range_right.getValue() / 1000.0
-        # self.node.get_logger().warn('1: %.3f 2: %.3f 3: %.3f 4: %.3f' % (front_range ,
-        # back_range, left_range, right_range))
-
-        max_range = 3.49
-        if front_range > max_range:
-            front_range = float("inf")
-        if left_range > max_range:
-            left_range = float("inf")
-        if right_range > max_range:
-            right_range = float("inf")
-        if back_range > max_range:
-            back_range = float("inf")
-
-        self.msg_laser = LaserScan()
-        self.msg_laser.header.stamp = Time(seconds=self.robot.getTime()).to_msg()
-        self.msg_laser.header.frame_id = self.id
-        self.msg_laser.range_min = 0.1
-        self.msg_laser.range_max = max_range
-        self.msg_laser.ranges = [back_range, left_range, front_range, right_range, back_range]
-        self.msg_laser.angle_min = 0.5 * 2 * pi
-        self.msg_laser.angle_max = -0.5 * 2 * pi
-        self.msg_laser.angle_increment = -1.0 * pi / 2
+        self.msg_laser = build_laserscan(
+            front_range, back_range, left_range, right_range,
+            Time(seconds=self.robot.getTime()).to_msg(), self.id)
         self.laser_publisher.publish(self.msg_laser)
 
     ###############
@@ -1061,15 +1039,7 @@ class Crazyflie_ROS2():
         self.descent()
         for agent in self.agent_list:
             agent.disconnect = True
-            line = Marker()
-            line.header.frame_id = 'map'
-            line.header.stamp = self.node.get_clock().now().to_msg()
-            line.id = 1
-            line.type = 5
-            line.action = 0
-            line.scale.x = 0.01
-            line.scale.y = 0.01
-            line.scale.z = 0.01
+            line = agent_removal_marker(self.node.get_clock().now().to_msg())
             agent.publisher_marker_.publish(line)
             agent.node.destroy_publisher(agent.publisher_marker_)
             msg = String()
@@ -1090,15 +1060,7 @@ class Crazyflie_ROS2():
                 if self.physical:
                     agent.parent.scf.cf.high_level_commander.remove_neighbour(agent.idn)
                 agent.disconnect = True
-                line = Marker()
-                line.header.frame_id = 'map'
-                line.header.stamp = self.node.get_clock().now().to_msg()
-                line.id = 1
-                line.type = 5
-                line.action = 0
-                line.scale.x = 0.01
-                line.scale.y = 0.01
-                line.scale.z = 0.01
+                line = agent_removal_marker(self.node.get_clock().now().to_msg())
                 agent.publisher_marker_.publish(line)
                 agent.node.destroy_publisher(agent.publisher_marker_)
                 self.agent_list.pop(j)
