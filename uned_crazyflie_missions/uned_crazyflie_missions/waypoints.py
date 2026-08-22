@@ -27,8 +27,9 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 """
-Mission node: drive a robot through a sequence of waypoints read from a
-config file, publishing an absolute goal pose and reading a feedback pose
+Mission node: drive a robot through a sequence of waypoints read from a config file.
+
+Publishes an absolute goal pose and reads a feedback pose
 -- both topics/types/fields fully configurable in the yaml, so this node
 never hardcodes which robot or driver it's talking to. Works the same with
 a physical or virtual Crazyflie: it only talks over topics, the same

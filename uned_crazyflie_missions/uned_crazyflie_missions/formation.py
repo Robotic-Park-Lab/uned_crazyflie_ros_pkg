@@ -27,8 +27,9 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 """
-Mission node: one instance per robot, drives a distance/offset consensus
-formation law. Subscribes to its own pose and its neighbours' poses,
+Mission node: one instance per robot, drives a distance/offset consensus formation law.
+
+Subscribes to its own pose and its neighbours' poses,
 publishes its own absolute goal pose -- never talks to cflib/Webots
 directly, just topics (same contract as waypoints.py/uned_crazyflie_driver).
 

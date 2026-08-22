@@ -27,8 +27,9 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 """
-Mission node: publish a scripted sequence of values to arbitrary topics,
-each step gated either by a fixed delay or by waiting for a specific value
+Mission node: publish a scripted sequence of values to arbitrary topics.
+
+Each step is gated either by a fixed delay or by waiting for a specific value
 to appear on a subscribed topic. Generic demo/experiment choreography --
 doesn't know about Crazyflies specifically, just topics.
 
