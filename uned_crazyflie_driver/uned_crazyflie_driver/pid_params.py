@@ -30,8 +30,8 @@
 Aplicación de parámetros PID (mensaje Pidcontroller) a un Crazyflie real.
 
 Extraído de un bloque de ~150 líneas duplicado 4 veces (idéntico o casi
-idéntico) en `uned_crazyflie_task/leader_follower.py`,
-`uned_crazyflie_task/shape_based_formation_control.py`,
+idéntico) en `uned_crazyflie_missions/leader_follower.py`,
+`uned_crazyflie_missions/shape_based_formation_control.py`,
 `uned_crazyflie_driver/crazyflie_agent.py` y
 `uned_crazyflie_driver/swarm_driver.py`. Las claves de parámetro de
 firmware (nombres de grupo, sufijos `_kp`/`_ki`/`_kd`, y el caso especial

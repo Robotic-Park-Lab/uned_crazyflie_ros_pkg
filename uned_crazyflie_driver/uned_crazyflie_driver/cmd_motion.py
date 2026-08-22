@@ -29,7 +29,7 @@
 """
 CMD_Motion usado por crazyflie_agent.py.
 
-No es la misma clase que uned_crazyflie_task/cmd_motion.py: los comandos
+No es la misma clase que uned_crazyflie_missions/cmd_motion.py: los comandos
 de vuelo que envía (`send_offboard_setpoint_`, límites de `ckeck_pose`)
 son distintos a propósito, no se han unificado.
 """

@@ -2,7 +2,7 @@
 # Conversor genérico de un fichero ros2 bag (sqlite3, formato por defecto de
 # ROS 2 Humble) a un .csv por topic, basado en el tipo de mensaje en vez de
 # en una lista fija de nombres de topic -- así convierte cualquier bag de
-# este repo (uned_crazyflie_driver, uned_crazyflie_webots, uned_crazyflie_task,
+# este repo (uned_crazyflie_driver, uned_crazyflie_webots, uned_crazyflie_missions,
 # uned_crazyflie_controllers...) sin tener que mantener una lista de topics
 # a mano. Adaptado de
 # https://github.com/Robotic-Park-Lab/RoboticPark/blob/main/scripts/bag2csv_benchmark.py

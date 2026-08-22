@@ -30,7 +30,7 @@
 Agent usado por crazyflie_agent.py para el seguimiento de vecinos en formación.
 
 Seguimiento por distancia o por punto fijo, con publicación de marcadores
-RViz. No es la misma clase que uned_crazyflie_task/agent.py (mucho más
+RViz. No es la misma clase que uned_crazyflie_missions/agent.py (mucho más
 simple, solo lleva una pose): esta versión gestiona además distancias,
 RViz y el high_level_commander de neighbours, así que se mantiene
 separada.

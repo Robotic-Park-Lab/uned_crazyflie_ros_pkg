@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>uned_crazyflie_task</name>
+  <name>uned_crazyflie_missions</name>
   <version>0.0.0</version>
-  <description>Nodos de tarea multi-agente para el crazyflie 2.1: leader-follower, formación basada en forma, y formación en Webots</description>
+  <description>Nodos de misión de alto nivel para el crazyflie 2.1, indiferentes a si el dron es físico o virtual: formaciones (leader-follower, basada en forma, en Webots) y recorrido de waypoints tipo TSP</description>
   <maintainer email="fjmanas@dia.uned.es">Francisco José Mañas Álvarez</maintainer>
   <license>BSD-3-Clause</license>
 
