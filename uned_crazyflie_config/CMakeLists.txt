@@ -44,6 +44,7 @@ install(
     resources
     rviz
     rqt
+    worlds
   DESTINATION share/${PROJECT_NAME}
 )
 
