@@ -148,6 +148,7 @@ bool PositionController::iterate(){
   return true;
 }
 
+#ifndef UNED_CRAZYFLIE_CONTROLLERS_TEST_BUILD
 int main(int argc, char ** argv){
   try{
     rclcpp::init(argc, argv);
@@ -165,6 +166,7 @@ int main(int argc, char ** argv){
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Exception: %s",e.what());
     }
 }
+#endif  // UNED_CRAZYFLIE_CONTROLLERS_TEST_BUILD
 
 euler_angles PositionController::quaternion2euler(geometry_msgs::msg::Quaternion quat) {
   euler_angles rpy;

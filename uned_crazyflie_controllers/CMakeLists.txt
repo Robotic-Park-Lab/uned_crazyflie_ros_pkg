@@ -48,4 +48,40 @@ install(TARGETS eventbased_pid_position_controller periodic_pid_position_control
 install(DIRECTORY include/${PROJECT_NAME}/
     DESTINATION include)
 
+if(BUILD_TESTING)
+    find_package(ament_cmake_gtest REQUIRED)
+
+    # Each test compiles the real controller .cpp (not a copy of its PID
+    # logic) with UNED_CRAZYFLIE_CONTROLLERS_TEST_BUILD defined, which
+    # #ifndef-guards that file's own main() out of the build so it can be
+    # linked into a gtest binary instead. periodic/eventbased position
+    # controllers share the same PositionController class (same header),
+    # so they must stay in separate test executables -- linking both .cpp
+    # files together would collide on duplicate symbol definitions.
+
+    ament_add_gtest(test_periodic_pid_position_controller
+        test/test_periodic_pid_position_controller.cpp
+        src/periodic_pid_position_controller.cpp)
+    target_compile_definitions(test_periodic_pid_position_controller
+        PRIVATE UNED_CRAZYFLIE_CONTROLLERS_TEST_BUILD)
+    ament_target_dependencies(test_periodic_pid_position_controller
+        rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+
+    ament_add_gtest(test_eventbased_pid_position_controller
+        test/test_eventbased_pid_position_controller.cpp
+        src/eventbased_pid_position_controller.cpp)
+    target_compile_definitions(test_eventbased_pid_position_controller
+        PRIVATE UNED_CRAZYFLIE_CONTROLLERS_TEST_BUILD)
+    ament_target_dependencies(test_eventbased_pid_position_controller
+        rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+
+    ament_add_gtest(test_attituderate_controller
+        test/test_attituderate_controller.cpp
+        src/periodic_pid_attituderate_controller.cpp)
+    target_compile_definitions(test_attituderate_controller
+        PRIVATE UNED_CRAZYFLIE_CONTROLLERS_TEST_BUILD)
+    ament_target_dependencies(test_attituderate_controller
+        rclcpp std_msgs sensor_msgs geometry_msgs Eigen3 uned_crazyflie_config)
+endif()
+
 ament_package()
