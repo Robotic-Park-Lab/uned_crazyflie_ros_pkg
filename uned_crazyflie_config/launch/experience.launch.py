@@ -122,14 +122,21 @@ def get_ros2_nodes(context, *args):
                 )
             ))
         elif experience['Operation']['tool'] == 'Gazebo':
-            world_path = os.path.join(config_path, 'worlds', experience['Operation']['world'])
-            gazebo = ExecuteProcess(cmd=['gazebo', '--verbose', world_path, '-s', 'libgazebo_ros_init.so', '-s', 'libgazebo_ros_factory.so', '--ros-args',
-                ], output='screen'
+            world_path = os.path.join(
+                config_package_dir, 'worlds', experience['Operation']['world'])
+            gazebo = ExecuteProcess(
+                cmd=['gazebo', '--verbose', world_path,
+                     '-s', 'libgazebo_ros_init.so', '-s', 'libgazebo_ros_factory.so',
+                     '--ros-args'],
+                output='screen',
             )
             node_list.append(gazebo)
+            # Real bug fixed here: this referenced the undefined 'webots' variable
+            # (only ever assigned in the Webots branch above) -- a guaranteed
+            # NameError the first time Operation.tool: Gazebo was actually used.
             node_list.append(launch.actions.RegisterEventHandler(
                 event_handler=launch.event_handlers.OnProcessExit(
-                    target_action=webots,
+                    target_action=gazebo,
                     on_exit=[launch.actions.EmitEvent(event=launch.events.Shutdown())],
                 )
             ))
@@ -185,7 +192,7 @@ def get_ros2_nodes(context, *args):
     #------------------------#
     #     CPU Monitoring     #
     #------------------------#
-    if experience['CPU_Monitoring']['enable']:
+    if experience.get('CPU_Monitoring', {}).get('enable', False):
         node_list.append(Node(
             package=experience['CPU_Monitoring']['node']['pkg'],
             executable=experience['CPU_Monitoring']['node']['executable'],
@@ -201,7 +208,7 @@ def get_ros2_nodes(context, *args):
     #     Interfaces     #
     #--------------------#
     interface = experience.get('Interface', {})
-    if interface['enable']:
+    if interface.get('enable', False):
         if interface['rqt']['enable']:
             rqt_config_path = os.path.join(config_package_dir, 'rqt', interface['rqt']['file'])
             node_list.append(Node(
@@ -262,12 +269,19 @@ def get_ros2_nodes(context, *args):
     #  Missions    #
     # --------------#
     for mission in experience.get('Missions', []):
+        mission_params = dict(mission.get('params', {}))
+        # uned_crazyflie_missions nodes take a single 'config' param (path to
+        # a .yaml). Accept it relative to resources/, like every other file
+        # reference in this launch, instead of forcing an absolute path.
+        if 'config' in mission_params and not os.path.isabs(mission_params['config']):
+            mission_params['config'] = os.path.join(
+                config_package_dir, 'resources', mission_params['config'])
         node_list.append(Node(
             package=mission['pkg'],
             executable=mission['executable'],
             name=mission.get('name', mission['executable']),
             output='screen',
-            parameters=[mission.get('params', {})],
+            parameters=[mission_params],
         ))
 
     return node_list
@@ -277,7 +291,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'config_file',
-            default_value='experience_swarm_teleop.yaml',
+            default_value='demo_individual_teleop_webots.yaml',
             description='Fichero .yaml de la experiencia a lanzar, dentro de'
             ' uned_crazyflie_config/resources/'
         ),

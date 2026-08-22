@@ -118,14 +118,20 @@ Robots:
       relationship: empty
 
 Missions:
-  - pkg: mars_supervisor_pkg
-    executable: supervisor_node
-    name: supervisor
+  # Real fix: these 2 entries used to point at mars_supervisor_pkg/supervisor_node
+  # and uned_swarm_task/open_loop_signal, neither of which exists in this repo
+  # (leftover from an older reference launch, params also used 'file' instead of
+  # 'config'). Their 'file' values exactly match the 2 config schemas
+  # uned_crazyflie_missions/{sequencer,waypoints}.py were built against, so this
+  # is what they were meant to launch.
+  - pkg: uned_crazyflie_missions
+    executable: sequencer
+    name: sequencer
     params:
-      file: demo_individual_waypoints_topics.yaml
-  - pkg: uned_swarm_task
-    executable: open_loop_signal
-    name: open_loop
+      config: demo_individual_waypoints_topics.yaml
+  - pkg: uned_crazyflie_missions
+    executable: waypoints
+    name: waypoints
     params:
-      file: demo_individual_waypoints.yaml
+      config: demo_individual_waypoints.yaml
       

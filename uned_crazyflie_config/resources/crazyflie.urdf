@@ -3,9 +3,9 @@
     <webots>
         <device reference="camera" type="Camera">
             <ros>
-                <alwaysOn>false</alwaysOn>
-                <enabled>false</enabled>
-                <update_rate>10</update_rate>
+                <alwaysOn>CameraAlwayOn</alwaysOn>
+                <enabled>CameraEnable</enabled>
+                <update_rate>CameraUpdateRate</update_rate>
             </ros>
         </device>
         <plugin type="webots_ros2_driver::Ros2IMU">
