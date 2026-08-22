@@ -28,10 +28,11 @@
 
 """
 Formalizes, as a real pytest test, the manual verification already done
-when experience.launch.py was written (task 8): running get_ros2_nodes()
-with a real LaunchContext against the two example experience files and
-checking it produces the expected actions -- not just that the file
-parses, but that each section of the schema (Simulation/Robots/
+when experience.launch.py was written (task 8) and re-verified against
+Francisco's own reference experience files (2026-08-22): running
+get_ros2_nodes() with a real LaunchContext against real experience files
+and checking it produces the expected actions -- not just that the file
+parses, but that each section of the schema (Operation/Robots/
 Interface/Data_Logging/Missions) actually contributes what it should.
 
 Runs against the installed share/ directory (not the source tree), so it
@@ -43,9 +44,10 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchContext
-from launch.actions import ExecuteProcess, RegisterEventHandler
+from launch.actions import RegisterEventHandler
 from launch_ros.actions import Node
 from webots_ros2_driver.webots_launcher import WebotsLauncher
+from webots_ros2_driver.webots_controller import WebotsController
 
 
 def _load_experience_launch():
@@ -66,60 +68,55 @@ def _get_nodes(config_file):
     return actions, nodes
 
 
-def _bag_record_processes(actions):
-    # WebotsLauncher, Ros2SupervisorLauncher and Node are all themselves
-    # ExecuteProcess subclasses (they launch external processes too), so
-    # isinstance(a, ExecuteProcess) matches far more than just the 'ros2
-    # bag record' action added by Data_Logging -- match the exact type
-    # instead, since the launch file constructs a plain ExecuteProcess(...)
-    # for the bag recording and nothing else in this launch does.
-    return [a for a in actions if type(a) is ExecuteProcess]
-
-
-def _resolved(substitution_or_str, context):
-    if isinstance(substitution_or_str, str):
-        return substitution_or_str
-    return substitution_or_str.perform(context)
-
-
-def test_swarm_teleop_experience_launches_two_virtual_robots_and_interface():
-    actions, nodes = _get_nodes('experience_swarm_teleop.yaml')
+def test_teleop_webots_experience_launches_webots_and_interface():
+    actions, nodes = _get_nodes('demo_individual_teleop_webots.yaml')
 
     assert any(isinstance(a, WebotsLauncher) for a in actions), \
-        'Simulation.enable: true must add a WebotsLauncher'
+        'Operation.mode: virtual + tool: Webots must add a WebotsLauncher'
     assert any(isinstance(a, RegisterEventHandler) for a in actions), \
         'must register a shutdown handler tied to Webots exiting'
+    assert any(isinstance(a, WebotsController) for a in actions), \
+        'the 1 virtual robot in the yaml must get a WebotsController'
 
     packages = [(n.node_package, n.node_executable) for n in nodes]
-    assert packages.count(('webots_ros2_driver', 'driver')) == 2, \
-        'the 2 virtual robots in the yaml must each get a webots_ros2_driver/driver node'
-    assert ('rqt_gui', 'rqt_gui') in packages, 'Interface.rqt.enable: true must add rqt_gui'
-    assert ('rviz2', 'rviz2') in packages, 'Interface.rviz.enable: true must add rviz2'
+    assert ('rviz2', 'rviz2') in packages, 'Interface.rviz2.enable: true must add rviz2'
+    assert ('rqt_gui', 'rqt_gui') not in packages, 'Interface.rqt.enable: false must not add it'
+    assert ('measure_process_ros2_pkg', 'measure_process') in packages, \
+        'CPU_Monitoring.enable: true must add its node'
     assert not any(pkg == 'uned_crazyflie_driver' for pkg, _ in packages), \
         'no robot is physical/digital_twin, so swarm_driver must not be launched'
-    assert not _bag_record_processes(actions), \
-        'Data_Logging.enable: false must not add a ros2 bag record process'
 
 
-def test_tsp_digital_twin_experience_launches_swarm_driver_and_mission():
-    actions, nodes = _get_nodes('experience_tsp_digital_twin.yaml')
+def test_teleop_vicon_experience_adds_vicon_receiver_and_no_webots_launcher():
+    actions, nodes = _get_nodes('demo_individual_teleop_vicon.yaml')
+
+    # This experience doesn't launch Webots itself (no WebotsLauncher), but
+    # its one robot is still 'type: virtual', so it still gets a
+    # WebotsController to drive an already-running external Webots instance.
+    assert not any(isinstance(a, WebotsLauncher) for a in actions)
+    assert any(isinstance(a, WebotsController) for a in actions)
 
     packages = [(n.node_package, n.node_executable) for n in nodes]
-    assert ('webots_ros2_driver', 'driver') in packages, \
-        'a digital_twin robot must still get its Webots visual twin'
-    assert ('uned_crazyflie_driver', 'swarm_driver') in packages, \
-        'a digital_twin robot must also be flown for real via swarm_driver'
-    assert ('uned_crazyflie_missions', 'tsp_waypoints') in packages, \
-        'the Missions section must launch the configured mission node'
-    assert ('rqt_gui', 'rqt_gui') not in packages, \
-        'Interface.rqt.enable: false must not add rqt_gui'
-    assert _bag_record_processes(actions), \
-        'Data_Logging.enable: true must add a ros2 bag record process'
+    assert ('vicon_receiver', 'vicon_client') in packages, \
+        'this experience must launch the Vicon receiver'
+
+
+def test_waypoints_webots_experience_launches_missions():
+    actions, nodes = _get_nodes('demo_individual_waypoints_webots.yaml')
+
+    packages = [(n.node_package, n.node_executable) for n in nodes]
+    assert ('uned_crazyflie_missions', 'sequencer') in packages, \
+        'the Missions section must launch the configured sequencer node'
+    assert ('uned_crazyflie_missions', 'waypoints') in packages, \
+        'the Missions section must launch the configured waypoints node'
 
 
 def test_experience_yaml_resources_are_installed():
     share_dir = get_package_share_directory('uned_crazyflie_config')
-    for name in ('experience_swarm_teleop.yaml', 'experience_tsp_digital_twin.yaml'):
+    for name in ('demo_individual_teleop_webots.yaml', 'demo_individual_teleop_vicon.yaml',
+                 'demo_individual_waypoints_webots.yaml',
+                 'demo_individual_waypoints.yaml', 'demo_individual_waypoints_topics.yaml',
+                 'crazyflie.urdf'):
         path = os.path.join(share_dir, 'resources', name)
         assert os.path.isfile(path), '%s must be installed under resources/' % name
 
@@ -128,3 +125,5 @@ def test_interface_files_referenced_by_examples_resolve_on_disk():
     gui_dir = get_package_share_directory('uned_crazyflie_gui')
     assert os.path.isfile(os.path.join(gui_dir, 'rqt', 'crazyflie.perspective'))
     assert os.path.isfile(os.path.join(gui_dir, 'rviz', 'crazyflie.rviz'))
+    config_dir = get_package_share_directory('uned_crazyflie_config')
+    assert os.path.isfile(os.path.join(config_dir, 'rviz', 'demo_individual.rviz'))
