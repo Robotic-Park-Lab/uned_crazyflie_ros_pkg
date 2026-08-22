@@ -40,9 +40,14 @@ setup(
     description='Driver y controlador ROS 2 para simular el crazyflie 2.1 en Webots',
     license='BSD-3-Clause',
     tests_require=['pytest'],
-    entry_points={
-        'console_scripts': [
-            'crazyflie_driver = uned_crazyflie_webots.crazyflie_driver:main'
-        ],
-    },
+    # Sin entry_points: ninguno de los dos drivers de este paquete se
+    # ejecuta con 'ros2 run'. webots_ros2_driver los carga en tiempo de
+    # simulación por ruta de clase, vía la etiqueta <plugin type="..."/>
+    # de resources/crazyflie.urdf (CrazyflieWebotsDriver, controlador
+    # propio) y resources/crazyflie_firmware.urdf (CrazyflieWebotsDriver
+    # de crazyflie_driver_firmware.py, firmware real / gemelo digital).
+    # Antes había aquí un entry_point 'crazyflie_driver' que apuntaba a
+    # crazyflie_driver:main -- esa función nunca existió en el módulo,
+    # así que 'ros2 run uned_crazyflie_webots crazyflie_driver' ya
+    # fallaba antes de este cambio; era vestigial, no una entrada real.
 )

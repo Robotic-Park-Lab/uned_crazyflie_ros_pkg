@@ -27,7 +27,6 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 
-import cffirmware
 import rclpy
 import os
 from rclpy.time import Time
@@ -41,8 +40,18 @@ import sys
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 
-# Change this path to your crazyflie-firmware folder
-sys.path.append('/home/kiko/Code/crazyflie-firmware')
+# cffirmware son los bindings de Python del firmware real de Bitcraze
+# (crazyflie-firmware compilado con 'make bindings_python', ver su
+# Makefile) -- no se distribuyen por pip ni por rosdep. La ruta a esa
+# carpeta compilada se lee de la variable de entorno
+# CRAZYFLIE_FIRMWARE_PATH; si no está definida, se asume que ya está en
+# PYTHONPATH. Ver AUDIT.md (rama doc) para el estado de esta integración:
+# ni build ni import de cffirmware se han podido verificar en este
+# entorno, al no tener el firmware compilado con bindings disponible.
+_firmware_path = os.environ.get('CRAZYFLIE_FIRMWARE_PATH')
+if _firmware_path:
+    sys.path.append(_firmware_path)
+import cffirmware  # noqa: E402 -- necesita el sys.path.append de arriba
 
 
 class PIDController():

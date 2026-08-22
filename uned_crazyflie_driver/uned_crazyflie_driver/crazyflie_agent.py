@@ -47,6 +47,8 @@ from uned_crazyflie_driver.pid_controller import PIDController
 from uned_crazyflie_driver.pid_params import apply_controller_params
 from uned_crazyflie_driver.agent import Agent
 from uned_crazyflie_driver.cmd_motion import CMD_Motion
+from uned_crazyflie_driver.webots_bootstrap import (
+    init_webots_devices, init_webots_cascade_controllers)
 
 
 # List of URIs, comment the one you do not want to fly
@@ -142,56 +144,11 @@ class Crazyflie_ROS2():
         self.initialize()
 
     def virtualCrazyflie(self):
-        # Initialize motors
-        self.m1_motor = self.robot.getDevice("m1_motor")
-        self.m1_motor.setPosition(float('inf'))
-        self.m1_motor.setVelocity(-1)
-        self.m2_motor = self.robot.getDevice("m2_motor")
-        self.m2_motor.setPosition(float('inf'))
-        self.m2_motor.setVelocity(1)
-        self.m3_motor = self.robot.getDevice("m3_motor")
-        self.m3_motor.setPosition(float('inf'))
-        self.m3_motor.setVelocity(-1)
-        self.m4_motor = self.robot.getDevice("m4_motor")
-        self.m4_motor.setPosition(float('inf'))
-        self.m4_motor.setVelocity(1)
-        # Initialize Sensors
-        self.cam = self.robot.getDevice("camera")
-        self.cam.disable()
-        self.imu = self.robot.getDevice("inertial unit")
-        self.imu.enable(self.timestep)
-        self.gps = self.robot.getDevice("gps")
-        self.gps.enable(self.timestep)
-        self.gyro = self.robot.getDevice("gyro")
-        self.gyro.enable(self.timestep)
-        self.range_front = self.robot.getDevice("range_front")
-        self.range_front.enable(self.timestep)
-        self.range_left = self.robot.getDevice("range_left")
-        self.range_left.enable(self.timestep)
-        self.range_back = self.robot.getDevice("range_back")
-        self.range_back.enable(self.timestep)
-        self.range_right = self.robot.getDevice("range_right")
-        self.range_right.enable(self.timestep)
-        # Intialize Controllers
-
-        # Position
-        self.z_controller = PIDController(1.0, 0.0, 0.0, 0.0, 100, 1.0, -1.0, 0.1, 0.01)
-        self.x_controller = PIDController(1.0, 0.0, 0.0, 0.0, 100, 0.5, -0.5, 0.1, 0.01)
-        self.y_controller = PIDController(1.0, 0.0, 0.0, 0.0, 100, 0.5, -0.5, 0.1, 0.01)
-        # Velocity
-        self.w_controller = PIDController(25.0, 15.0, 0.0, 0.0, 100, 26.0, -16.0, 0.1, 0.01)
-        self.u_controller = PIDController(15.0, 0.5, 0.0, 0.0, 100, 30.0, -30.0, 0.1, 0.01)
-        self.v_controller = PIDController(-15.0, 0.5, 0.0, 0.0, 100, 30.0, -30.0, 0.1, 0.01)
-        # Attitude
-        self.pitch_controller = PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0, 0.1, 0.01)
-        self.roll_controller = PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0, 0.1, 0.01)
-        # self.yaw_controller   = PIDController(6.0, 1.0, 0.349, 0.0581, 100, 400.0, -400.0, 0.1,
-        # 0.01)
-        self.yaw_controller = PIDController(18.86, 0.0, 0.0, 0.0, 100, 400.0, -400.0, 0.1, 0.01)
-        # Rate
-        self.dpitch_controller = PIDController(250.0, 500.0, 2.5, 0.01, 100, 0.0, -0.0, 0.1, 0.01)
-        self.droll_controller = PIDController(250.0, 500.0, 2.5, 0.01, 100, 0.0, -0.0, 0.1, 0.01)
-        self.dyaw_controller = PIDController(120.0, 16.698, 0.0, 0.00, 100, 0.0, -0.0, 0.1, 0.01)
+        # Motores, sensores y los 12 PID en cascada: compartidos con
+        # CrazyflieWebotsDriver vía uned_crazyflie_driver.webots_bootstrap
+        # (bloque idéntico byte a byte entre ambos, ver AUDIT.md rama doc).
+        self.__dict__.update(init_webots_devices(self.robot, self.timestep))
+        self.__dict__.update(init_webots_cascade_controllers())
 
     def initialize(self):
         self.node.get_logger().info('Connected to %s' % self.id)
