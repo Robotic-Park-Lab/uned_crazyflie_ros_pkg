@@ -39,6 +39,12 @@ using namespace std::chrono_literals;
 
 class AttitudeRateController : public rclcpp::Node
 {
+    // Grants the gtest fixture access to the private pid_controller()/
+    // init_controller() so tests can exercise the real, compiled PID math
+    // directly, without duplicating it. Test-only, does not change any
+    // runtime behavior.
+    friend class AttitudeRateControllerTest;
+
 public:
     AttitudeRateController() : Node("attituderate_controller") {
       this->declare_parameter("ROBOT_ID", "dron01");

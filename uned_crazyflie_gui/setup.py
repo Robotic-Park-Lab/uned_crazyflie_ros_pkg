@@ -10,12 +10,15 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name + '/rqt', ['rqt/crazyflie.perspective']),
+        ('share/' + package_name + '/rviz', ['rviz/crazyflie.rviz']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='Francisco José Mañas Álvarez',
     maintainer_email='fjmanas@dia.uned.es',
-    description='Interfaz gráfica para el manejo individual del crazyflie 2.1 (en desarrollo)',
+    description='Interfaz gráfica PyQt para el manejo individual del crazyflie 2.1, con una'
+    ' perspectiva de RQT y un fichero de RViz genéricos para visualizar cualquier Crazyflie',
     license='BSD-3-Clause',
     tests_require=['pytest'],
     entry_points={
