@@ -872,7 +872,7 @@ class CrazyflieWebotsDriver:
 
         # Position Controller
         # Z Controller
-        if not self.variables['formation'] or '_p' in self.variables['controller_type']:
+        if (not self.variables['formation'] or '_p' in self.variables['controller_type']) and self.driver_cfg['control_mode'] == 'HighLevel':
             if self.z_controller.eval_threshold(z_global, self.variables['target_pose'].pose.position.z) or self.driver_cfg['controller_protocol']:
                 self.z_controller.error[0] = (self.variables['target_pose'].pose.position.z - z_global)
                 dtz = self.robot.getTime() - self.z_controller.past_time
@@ -895,7 +895,7 @@ class CrazyflieWebotsDriver:
             cmd_thrust = self.w_controller.last_value * 1000 + 38000
 
         # X-Y Controller
-        if not self.variables['formation'] or '_p' in self.variables['controller_type']:
+        if (not self.variables['formation'] or '_p' in self.variables['controller_type']) and self.driver_cfg['control_mode'] == 'HighLevel':
             # X Controller
             if self.x_controller.eval_threshold(x_global, self.variables['target_pose'].pose.position.x) or self.driver_cfg['controller_protocol']:
                 self.x_controller.error[0] = self.variables['target_pose'].pose.position.x - x_global

@@ -76,6 +76,7 @@ ros2 launch uned_crazyflie_config experience.launch.py config_file:=<experiencia
 |---|---|
 | `demo_individual_teleop_webots.yaml` | 1 Crazyflie virtual en Webots, teleoperado, con la interfaz genérica RQT + RViz. |
 | `demo_individual_teleop_vicon.yaml` | 1 Crazyflie virtual guiado con datos reales de posicionamiento Vicon, misma interfaz. |
+| `demo_individual_joy_webots.yaml` | 1 Crazyflie virtual controlado en velocidad, usar teleop_twist_keyboard con -r cmd_vel:=/dron01/cmd_vel |
 | `demo_individual_waypoints_webots.yaml` | 1 Crazyflie virtual en Webots ejecutando los nodos de misión `sequencer` + `waypoints` sobre una ruta configurada. |
 
 Se irán añadiendo más experiencias a medida que se preparen (Francisco lo hace de forma incremental) — cada una es simplemente un nuevo `.yaml` en `resources/`, siguiendo el esquema documentado al principio de `experience.launch.py` (`Operation` / `Robots` / `Interface` / `Data_Logging` / `Missions`), sin necesidad de un nuevo archivo de lanzamiento. Los antiguos `.launch.py` por demo y el paquete independiente `uned_crazyflie_webots` ya se han eliminado.

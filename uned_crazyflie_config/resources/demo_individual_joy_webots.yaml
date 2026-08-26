@@ -1,0 +1,121 @@
+# Ejemplo de experiencia para el launch único (uned_crazyflie_config/launch/experience.launch.py).
+# 2 Crazyflies virtuales en Webots, teleoperados, con interfaz RQT + RViz genéricas.
+#
+#   ros2 launch uned_crazyflie_config experience.launch.py config_file:=demo_individual_joy_webots.yaml
+#   ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=/dron01/cmd_vel
+
+Operation:
+  mode: virtual     # physical, virtual, hybrid
+  tool: Webots              # Gazebo, Webots
+  world: RoboticPark_N01.wbt
+
+Experience:
+  type: formation           # identification, formation, navigation
+
+
+CPU_Monitoring: 
+  enable: True
+  node: 
+    executable: measure_process
+    name: benchmark
+    pkg: measure_process_ros2_pkg
+  processes: ros2
+
+Interface: 
+  enable: True
+  rviz2: 
+    enable: True
+    node: 
+      executable: rviz2
+      name: rviz2
+      pkg: rviz2
+    file: demo_individual.rviz
+  rqt: 
+    enable: True
+    node: 
+      executable: rqt_gui
+      name: interface
+      pkg: rqt_gui
+    file: demo_individual_joy.perspective
+  own: 
+    enable: False
+    node:
+      name:
+      pkg:
+    file:
+
+Data_Logging: 
+  enable: False
+  all: False
+  name: date
+  topics: /ros2_cpu /cpu_stats /dron01/local_pose
+
+Robots:
+  Robot01:
+    type: virtual
+    name: dron01
+    control_mode: VelocityLevel
+    positioning: Intern
+    pose: 0.0 0.0
+    uri: radio://0/80/2M/E7E7E7E705
+    camera:
+      alwaysOn: false
+      enable: false
+      update_rate: 10
+    controller:
+      type: pid
+      enable: True
+      protocol: Continuous
+      period: 0.01
+      threshold:
+        type: Constant
+        co: 0.01
+        ai: 0.0
+    communication:
+      type: Continuous
+      threshold:
+        type: Constant
+        co: 0.01
+        ai: 0.0
+    local_pose:
+      enable: True
+      path: True
+      T: 100
+    local_twist:
+      enable: False
+      T: 50
+    data_attitude:
+      enable: False
+      T: 50
+    data_rate: 
+      enable: False
+      T: 50
+    data_motor: 
+      enable: False
+      T: 50
+    data:
+      enable: False
+      T: 20
+    mars_data:
+      enable: False
+      T: 50
+    task: 
+      enable: False
+      T: 100
+      Onboard: False
+      controller:
+        type: gradient
+        protocol: Continuous
+        period: 0.1
+        upperLimit: 0.1
+        lowerLimit: -0.1
+        gain: 0.05
+        threshold:
+            type: Constant
+            co: 0.01
+            ai: 0.0
+      role: consensus
+      type: distance
+      relationship: empty
+
+Missions: []

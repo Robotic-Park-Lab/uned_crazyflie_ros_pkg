@@ -274,8 +274,7 @@ def get_ros2_nodes(context, *args):
         # a .yaml). Accept it relative to resources/, like every other file
         # reference in this launch, instead of forcing an absolute path.
         if 'config' in mission_params and not os.path.isabs(mission_params['config']):
-            mission_params['config'] = os.path.join(
-                config_package_dir, 'resources', mission_params['config'])
+            mission_params['config'] = os.path.join(config_package_dir, 'resources', mission_params['config'])
         node_list.append(Node(
             package=mission['pkg'],
             executable=mission['executable'],
