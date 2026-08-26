@@ -48,8 +48,6 @@ dron = list()
 #####################
 # CF Swarm Class  ##
 #####################
-
-
 class CFSwarmDriver(Node):
     def __init__(self):
         super().__init__('swarm_driver')
@@ -83,10 +81,7 @@ class CFSwarmDriver(Node):
         # Define crazyflie URIs
         for robot in documents['Robots']:
             if not documents['Robots'][robot]['type'] == 'virtual':
-                self.get_logger().info(
-                    'Crazyflie %s:: %s' %
-                    (documents['Robots'][robot]['name'],
-                     documents['Robots'][robot]['uri']))
+                self.get_logger().info('Crazyflie %s:: %s' % (documents['Robots'][robot]['name'], documents['Robots'][robot]['uri']))
                 uris.add(documents['Robots'][robot]['uri'])
 
         # logging.basicConfig(level=logging.DEBUG)
@@ -100,14 +95,8 @@ class CFSwarmDriver(Node):
                 id = config['name']
                 self.get_logger().info('Crazyflie %s::%s' % (id, config['uri']))
 
-                # cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[config['uri']], config['uri'], id,
-                # config)
-                cf = Crazyflie_ROS2(self,
-                                    self,
-                                    config['uri'],
-                                    id,
-                                    config,
-                                    scf=self.cf_swarm._cfs[config['uri']])
+                # cf = Crazyflie_ROS2(self, self.cf_swarm._cfs[config['uri']], config['uri'], id, config)
+                cf = Crazyflie_ROS2(self, self, config['uri'], id, config, scf=self.cf_swarm._cfs[config['uri']])
                 dron.append(cf)
                 # while not cf.scf.cf.param.is_updated:
                 #     time.sleep(0.1)

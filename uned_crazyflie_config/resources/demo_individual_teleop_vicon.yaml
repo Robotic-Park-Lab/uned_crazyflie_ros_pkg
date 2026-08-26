@@ -30,7 +30,7 @@ Interface:
       pkg: rviz2
     file: demo_individual.rviz
   rqt: 
-    enable: False
+    enable: True
     node: 
       executable: rqt_gui
       name: interface

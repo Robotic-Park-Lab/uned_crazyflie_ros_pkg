@@ -46,8 +46,7 @@ from uned_crazyflie_driver.pid_controller import PIDController
 from uned_crazyflie_driver.pid_params import apply_controller_params
 from uned_crazyflie_driver.agent import Agent
 from uned_crazyflie_driver.cmd_motion import CMD_Motion
-from uned_crazyflie_driver.webots_bootstrap import (
-    init_webots_devices, init_webots_cascade_controllers)
+from uned_crazyflie_driver.webots_bootstrap import init_webots_devices, init_webots_cascade_controllers
 from uned_crazyflie_driver.driver_config import resolve_driver_config
 from uned_crazyflie_driver.sensors import build_laserscan, agent_removal_marker
 

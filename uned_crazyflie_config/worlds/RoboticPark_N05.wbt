@@ -40,30 +40,105 @@ Crazyflie {
   rotation 0 0 1 0
   name "dron01"
   controller "<extern>"
+  extensionSlot [
+    LED {
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 1 1
+          }
+          geometry Sphere {
+            radius 0.02
+          }
+        }
+      ]
+      name "led_ring"
+    }
+  ]
 }
 Crazyflie {
   translation 1.0 1.0 0.015
   rotation 0 0 1 0
   name "dron02"
   controller "<extern>"
+  extensionSlot [
+    LED {
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 1 1
+          }
+          geometry Sphere {
+            radius 0.02
+          }
+        }
+      ]
+      name "led_ring"
+    }
+  ]
 }
 Crazyflie {
   translation 1.0 -1.0 0.015
   rotation 0 0 1 0
   name "dron03"
   controller "<extern>"
+  extensionSlot [
+    LED {
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 1 1
+          }
+          geometry Sphere {
+            radius 0.02
+          }
+        }
+      ]
+      name "led_ring"
+    }
+  ]
 }
 Crazyflie {
   translation -1.0 -1.0 0.015
   rotation 0 0 1 0
   name "dron04"
   controller "<extern>"
+  extensionSlot [
+    LED {
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 1 1
+          }
+          geometry Sphere {
+            radius 0.02
+          }
+        }
+      ]
+      name "led_ring"
+    }
+  ]
 }
 Crazyflie {
   translation -1.0 1.0 0.015
   rotation 0 0 1 0
   name "dron05"
   controller "<extern>"
+  extensionSlot [
+    LED {
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 1 1
+          }
+          geometry Sphere {
+            radius 0.02
+          }
+        }
+      ]
+      name "led_ring"
+    }
+  ]
 }
 Solid {
   rotation 0 0 1 3.14159

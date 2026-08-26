@@ -76,6 +76,8 @@ def init_webots_devices(robot, timestep):
     devices['range_back'].enable(timestep)
     devices['range_right'] = robot.getDevice("range_right")
     devices['range_right'].enable(timestep)
+    devices['led_ring'] = robot.getDevice('led_ring')
+
     return devices
 
 
@@ -88,11 +90,11 @@ def init_webots_cascade_controllers():
         'y_controller': PIDController(1.0, 0.0, 0.0, 0.0, 100, 0.5, -0.5, 0.1, 0.01),
         # Velocity
         'w_controller': PIDController(25.0, 15.0, 0.0, 0.0, 100, 26.0, -16.0, 0.1, 0.01),
-        'u_controller': PIDController(15.0, 0.5, 0.0, 0.0, 100, 30.0, -30.0, 0.1, 0.01),
+        'u_controller': PIDController(15.0,  0.5, 0.0, 0.0, 100, 30.0, -30.0, 0.1, 0.01),
         'v_controller': PIDController(-15.0, 0.5, 0.0, 0.0, 100, 30.0, -30.0, 0.1, 0.01),
         # Attitude
         'pitch_controller': PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0, 0.1, 0.01),
-        'roll_controller': PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0, 0.1, 0.01),
+        'roll_controller':  PIDController(6.0, 3.0, 0.0, 0.0, 100, 720.0, -720.0, 0.1, 0.01),
         'yaw_controller': PIDController(18.86, 0.0, 0.0, 0.0, 100, 400.0, -400.0, 0.1, 0.01),
         # Rate
         'dpitch_controller': PIDController(250.0, 500.0, 2.5, 0.01, 100, 0.0, -0.0, 0.1, 0.01),

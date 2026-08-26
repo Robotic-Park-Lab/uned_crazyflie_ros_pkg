@@ -79,21 +79,16 @@ class Agent():
                 self.k = self.k
             self.sub_pose_ = self.node.create_subscription(
                 PoseStamped, '/' + self.id + '/local_pose', self.gtpose_callback, 10)
-            if self.parent.config['task']['Onboard'] and self.parent.physical:
+            if self.parent.driver_cfg['task_onboard'] and self.parent.driver_cfg['physical']:
                 parent.scf.cf.high_level_commander.new_neighbour(self.idn, self.d, self.k)
-        if not self.parent.digital_twin:
-            self.sub_d_ = self.node.create_subscription(
-                Float64, self.parent.id + '/' + self.id + '/d', self.d_callback, 10)
-            self.publisher_data_ = self.node.create_publisher(
-                Float64, self.parent.id + '/' + self.id + '/data', 10)
-            self.publisher_order_ = self.node.create_publisher(
-                String, '/' + self.id + '/order', 10)
-            self.publisher_error_ = self.node.create_publisher(
-                Float64, self.parent.id + '/' + self.id + '/error', 10)
+        if not self.parent.driver_cfg['digital_twin']:
+            self.sub_d_ = self.node.create_subscription(Float64, self.parent.id + '/' + self.id + '/d', self.d_callback, 10)
+            self.publisher_data_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/data', 10)
+            self.publisher_order_ = self.node.create_publisher(String, '/' + self.id + '/order', 10)
+            self.publisher_error_ = self.node.create_publisher(Float64, self.parent.id + '/' + self.id + '/error', 10)
             # self.publisher_iae_ = self.node.create_publisher(Float64, self.parent.id + '/' +
             # self.id + '/iae', 10)
-            self.publisher_marker_ = self.node.create_publisher(
-                Marker, self.parent.id + '/' + self.id + '/marker', 10)
+            self.publisher_marker_ = self.node.create_publisher(Marker, self.parent.id + '/' + self.id + '/marker', 10)
 
     def str_(self):
         return ('ID: ' + str(self.id) + ' X: ' + str(self.x) +
@@ -114,7 +109,7 @@ class Agent():
         if self.parent.config['task']['Onboard'] and self.parent.config['type'] != 'virtual':
             self.parent.scf.cf.high_level_commander.update_neighbour(
                 self.idn, self.pose.position.x, self.pose.position.y, self.pose.position.z)
-        if not self.disconnect and not self.parent.digital_twin:
+        if not self.disconnect and not self.parent.driver_cfg['digital_twin']:
             self.node.get_logger().debug(
                 'Agent: X: %.2f Y: %.2f Z: %.2f' %
                 (msg.pose.position.x, msg.pose.position.y, msg.pose.position.z))

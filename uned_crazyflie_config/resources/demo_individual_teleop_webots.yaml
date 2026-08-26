@@ -30,12 +30,12 @@ Interface:
       pkg: rviz2
     file: demo_individual.rviz
   rqt: 
-    enable: False
+    enable: True
     node: 
       executable: rqt_gui
       name: interface
       pkg: rqt_gui
-    file: Swarm_teleop_one.perspective
+    file: demo_individual.perspective
   own: 
     enable: False
     node:
