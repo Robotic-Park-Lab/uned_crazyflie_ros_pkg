@@ -30,6 +30,7 @@
 import rclpy
 from rclpy.time import Time
 from threading import Timer
+import copy
 import yaml
 
 from std_msgs.msg import String, Bool, Float64, Float64MultiArray, MultiArrayDimension, UInt16MultiArray
@@ -817,8 +818,9 @@ class CrazyflieWebotsDriver:
             self.variables['past_y_global'] = y_global
             self.variables['target_pose'].pose.position.y = y_global
             self.variables['init_pose'] = True
-            self.variables['last_pose'] = self.variables['pose']
+            self.variables['last_pose'] = copy.deepcopy(self.variables['pose'])
             init_pose = PoseStamped()
+            init_pose.header.frame_id = "map"
             init_pose.pose = self.variables['last_pose']
             init_pose.header.stamp = self.node.get_clock().now().to_msg()
             if not self.variables['disconnect']:
@@ -854,7 +856,8 @@ class CrazyflieWebotsDriver:
 
         if (self.driver_cfg['communication'] or np.linalg.norm(delta) > 0.01) and not self.variables['disconnect']:
             PoseStamp = PoseStamped()
-            PoseStamp.pose = self.variables['pose']
+            PoseStamp.header.frame_id = "map"
+            PoseStamp.pose = copy.deepcopy(self.variables['pose'])
             PoseStamp.header.stamp = self.node.get_clock().now().to_msg()
             if self.driver_cfg['path_enable']:
                 self.variables['path'].header.stamp = self.node.get_clock().now().to_msg()
@@ -864,7 +867,7 @@ class CrazyflieWebotsDriver:
             if 'ML2' in self.driver_cfg['controller_type']:
                 PoseStamp.pose.position = self.geometry.projection(self.pose.position)
             self.publisher['pose_publisher'].publish(PoseStamp)
-            self.variables['last_pose'] = self.variables['pose']
+            self.variables['last_pose'] = copy.deepcopy(self.variables['pose'])
 
         # Position Controller
         # Z Controller

@@ -208,12 +208,12 @@ def resolve_variable_config():
     
     variables['target_twist'] = Twist()
     variables['target_pose'] = PoseStamped()
-    variables['target_pose'].header.frame_id = "map"
+    variables['target_pose'].header.frame_id = 'map'
     variables['pose'] = Pose()
     variables['last_pose'] = Pose()
     variables['home'] = Pose()
     variables['path'] = Path()
-    variables['path'].header.frame_id = "map"
+    variables['path'].header.frame_id = 'map'
     variables['past_x_global'] = 0
     variables['past_y_global'] = 0
     variables['past_z_global'] = 0
@@ -226,7 +226,7 @@ def resolve_variable_config():
 
     variables['centroid_leader'] = False
     variables['leader_cmd'] = PoseStamped()
-    variables['leader_cmd'].header.frame_id = "map"
+    variables['leader_cmd'].header.frame_id = 'map'
     
     variables['trigger_ai'] = 0.01
     variables['trigger_co'] = 0.1
