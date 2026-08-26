@@ -149,8 +149,6 @@ class CrazyflieWebotsDriver:
         rclpy.init(args=None)
         self.node = rclpy.create_node(self.id + '_driver')
 
-        # self.crazyflie = Crazyflie_ROS2(self, self.node, self.id, self.id, self.config, webots_node=webots_node)
-
         # Intialize Variables
         self.variables = resolve_variable_config()
         self.past_time = self.robot.getTime()
@@ -222,6 +220,9 @@ class CrazyflieWebotsDriver:
                 self.variables['formation'] = False
             else:
                 self.node.get_logger().warning('In land')
+        elif not msg.data.find("led") == -1:
+            auxb = msg.data.split('-')
+            self.led_ring.set(int(auxb[1]))
         elif msg.data == 'formation_run':
             if self.driver_cfg['task_enable']:
                 self.variables['formation'] = True

@@ -53,6 +53,11 @@ Crazyflie {
         }
       ]
       name "led_ring"
+      color [
+        0 1 0,
+        1 0 0,
+        0 0 1
+      ]
     }
   ]
 }
@@ -74,6 +79,11 @@ Crazyflie {
         }
       ]
       name "led_ring"
+      color [
+        0 1 0,
+        1 0 0,
+        0 0 1
+      ]
     }
   ]
 }
@@ -95,6 +105,11 @@ Crazyflie {
         }
       ]
       name "led_ring"
+      color [
+        0 1 0,
+        1 0 0,
+        0 0 1
+      ]
     }
   ]
 }

@@ -35,8 +35,8 @@ Floor {
   }
 }
 Crazyflie {
-  name "dron01"
   translation 0.2 0.4 0.015
+  name "dron01"
   controller "<extern>"
   extensionSlot [
     LED {
@@ -51,6 +51,11 @@ Crazyflie {
         }
       ]
       name "led_ring"
+      color [
+        0 1 0,
+        1 0 0,
+        0 0 1
+      ]
     }
   ]
 }
